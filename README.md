@@ -2,6 +2,8 @@
 
 Dolphy is a powerful Android multi-tool developed for wireless protocol research, cybersecurity testing, and hardware emulation. It brings advanced hardware-focused utility functions to stock Android devices completely without root access.
 
+Dolphy releases telegram channel - https://t.me/Dolphy_app_official
+
 ---
 
 ## Features & Modules
