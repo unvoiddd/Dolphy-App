@@ -24,3 +24,4 @@ object NfcAudioSpoofState {
         _spoofUrl.value = url
     }
 }
+

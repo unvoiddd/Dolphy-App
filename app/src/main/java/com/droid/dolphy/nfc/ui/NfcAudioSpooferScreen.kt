@@ -1,5 +1,7 @@
 package com.droid.dolphy.nfc.ui
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.app.Activity
 import android.nfc.NfcAdapter
 import android.widget.Toast
@@ -100,17 +102,17 @@ fun NfcAudioSpooferScreen(
             TopAppBar(
                 title = { Text("NFC Audio Spoof", color = Color.White) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    DolphyIconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад", tint = Color.White)
                     }
                 },
                 actions = {
                     if (!isStarted) {
-                        IconButton(onClick = { viewModel.startServer() }) {
+                        DolphyIconButton(onClick = { viewModel.startServer() }) {
                             Icon(Icons.Default.PlayArrow, "Запуск", tint = accentColor)
                         }
                     } else {
-                        IconButton(onClick = { viewModel.stopServer() }) {
+                        DolphyIconButton(onClick = { viewModel.stopServer() }) {
                             Icon(Icons.Default.Stop, "Стоп", tint = Color.Red)
                         }
                     }
@@ -199,7 +201,7 @@ fun NfcAudioSpooferScreen(
                 if (isStarted && serverIp != null) {
                     val clipboard = LocalClipboardManager.current
                     val context = LocalContext.current
-                    IconButton(
+                    DolphyIconButton(
                         onClick = {
                             clipboard.setText(AnnotatedString(spoofUrl))
                             Toast.makeText(context, "URL скопирован в буфер обмена", Toast.LENGTH_SHORT).show()
@@ -223,7 +225,7 @@ fun NfcAudioSpooferScreen(
             Box(modifier = Modifier.fillMaxWidth()) {
                 Card(
                     onClick = { expanded = true },
-                    modifier = Modifier.fillMaxWidth().border(1.dp, accentColor.copy(alpha = 0.4f), CardDefaults.shape),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f))
                 ) {
                     Row(
@@ -393,3 +395,4 @@ fun RowScope.SoundButton(label: String, icon: ImageVector?, color: Color, emoji:
         }
     }
 }
+

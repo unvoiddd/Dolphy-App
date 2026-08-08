@@ -1,0 +1,80 @@
+import material.icons.WifiOff
+import material.icons.Refresh
+import material.icons.PlayArrow
+import material.icons.Stop
+
+{
+  "id": "com.droid.dolphy.deauther.js",
+  "name": "Wi-Fi Deauther (Decl)",
+  "version": "1.0.0",
+  "description": "Scan and deauthenticate Wi-Fi clients (Requires Root)",
+  "icon": "WifiOff",
+  "permissions": ["hardware.root", "network.wifi"],
+  "entryScreen": "main",
+  "state": {
+    "scanning": false,
+    "interface": "wlan0",
+    "networks": []
+  },
+  "screens": [
+    {
+      "id": "main",
+      "title": "Deauther Control",
+      "layout": [
+        {
+          "type": "card",
+          "children": [
+            { "type": "text", "style": "label", "text": "Interface: {{state.interface}}" },
+            { "type": "text", "style": "title", "text": "Scanner Status: {{state.scanning}}" }
+          ]
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "button",
+              "text": "Scan",
+              "icon": "Refresh",
+              "weight": 1.0,
+              "onClick": {
+                "type": "root_shell",
+                "message": "iw dev {{state.interface}} scan | grep SSID",
+                "key": "scan_raw",
+                "actions": {
+                    "type": "toast",
+                    "message": "Scan completed"
+                }
+              }
+            },
+            {
+              "type": "button",
+              "text": "Start",
+              "icon": "PlayArrow",
+              "weight": 1.0,
+              "onClick": { "type": "toggle_state", "key": "scanning" }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "style": "title",
+          "text": "Detected Networks"
+        },
+        {
+          "type": "table",
+          "stateKey": "networks",
+          "hint": "No networks found. Tap Scan.",
+          "columns": [
+            { "title": "SSID", "key": "ssid", "weight": 2.0 },
+            { "title": "BSSID", "key": "bssid", "weight": 2.0 },
+            { "title": "CH", "key": "channel", "weight": 0.5 }
+          ],
+          "onClick": [
+            { "type": "toast", "message": "Selected {{value.ssid}}" },
+            { "type": "set_state", "key": "selected_bssid", "value": "{{value.bssid}}" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -198,7 +198,7 @@ fun DolphyZeroScreen(navController: NavController) {
                 .systemBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            IconButton(onClick = { goBack() }) {
+            DolphyIconButton(onClick = { goBack() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
@@ -218,7 +218,6 @@ fun DolphyZeroScreen(navController: NavController) {
                         .aspectRatio(0.58f)
                         .clip(RoundedCornerShape(36.dp))
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                        .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(36.dp))
                         .padding(20.dp)
                 ) {
                     Column(
@@ -515,3 +514,4 @@ private fun Int.floorMod(divisor: Int): Int {
     val result = this % divisor
     return if(result < 0) result + divisor else result
 }
+

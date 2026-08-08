@@ -1,5 +1,7 @@
 package com.droid.dolphy.bluetooth.whisperpair
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -142,7 +144,7 @@ fun WhisperPairBluetoothScreen(navController: NavController) {
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        DolphyIconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                         }
                         Text(
@@ -395,7 +397,7 @@ private fun ScannerTab(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
-            items(devices.sortedByDescending { it.rssi }) { device ->
+            items(devices.sortedByDescending { it.rssi }, key = { it.address }) { device ->
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))) {
                     Column(Modifier.fillMaxWidth().padding(12.dp)) {
                         Row(
@@ -466,7 +468,7 @@ private fun PairedTab(
             Text(stringResource(R.string.whisperpair_paired_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(devices) { device ->
+                items(devices, key = { it.address }) { device ->
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                             Text(device.displayName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
@@ -495,3 +497,4 @@ private fun RecordingsTab(paddingValues: PaddingValues) {
         )
     }
 }
+

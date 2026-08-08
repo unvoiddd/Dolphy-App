@@ -18,3 +18,4 @@ interface HidController {
 
     fun checkDevices(): Boolean = true
 }
+

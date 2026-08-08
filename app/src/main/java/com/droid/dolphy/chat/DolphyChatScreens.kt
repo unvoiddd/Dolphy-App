@@ -1,5 +1,7 @@
 package com.droid.dolphy.chat
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.*
@@ -774,7 +776,7 @@ fun DolphyChatMainScreen(userName: String, navController: NavController) {
                         }
                     }
                 } else {
-                    items(discoveredUsers) { user ->
+                    items(discoveredUsers, key = { it.id }) { user ->
                         ChatUserCard(
                             user = user,
                             accentColor = accentColor,
@@ -798,8 +800,7 @@ fun ChatUserCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ),
@@ -919,7 +920,7 @@ fun DolphyChatConversationScreen(
                     )
                 )
 
-                IconButton(
+                DolphyIconButton(
                     onClick = {
                         if (messageText.isNotBlank()) {
 
@@ -976,3 +977,4 @@ fun ChatBubble(
         }
     }
 }
+

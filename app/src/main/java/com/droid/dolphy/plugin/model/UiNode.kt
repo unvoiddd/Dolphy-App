@@ -3,6 +3,7 @@ package com.droid.dolphy.plugin.model
 
 
 
+
 sealed class UiNode {
     data class Scaffold(
         val topBar: TopBar? = null,
@@ -118,6 +119,17 @@ sealed class UiNode {
         val tint: String? = null,
     ) : UiNode()
 
+    
+    data class Image(
+        val source: String,
+        val width: Float? = null,
+        val height: Float? = null,
+        val scale: String = "fit",
+        val cornerRadius: Float = 0f,
+        val fillMaxWidth: Boolean = false,
+        val contentDescription: String = "",
+    ) : UiNode()
+
     data class Chip(
         val text: String,
         val selected: Boolean = false,
@@ -184,6 +196,86 @@ sealed class UiNode {
         val onClickId: String? = null,
     )
 
+
+    
+    data class ConnectedButtonGroup(
+        val options: List<Pair<String, String>>,
+        val selectedValue: String,
+        val onSelectId: String? = null,
+    ) : UiNode()
+
+    
+    data class TabRow(
+        val tabs: List<String>,
+        val selectedIndex: Int = 0,
+        val onSelectId: String? = null,
+    ) : UiNode()
+
+    
+    data class BounceButton(
+        val text: String,
+        val onClickId: String? = null,
+        val enabled: Boolean = true,
+        val fillMaxWidth: Boolean = true,
+    ) : UiNode()
+
+    
+    data class SplitButton(
+        val primaryText: String,
+        val onPrimaryId: String? = null,
+        val onSecondaryId: String? = null,
+        val enabled: Boolean = true,
+        val fillMaxWidth: Boolean = true,
+    ) : UiNode()
+
+    
+    data class WavyProgress(
+        val progress: Float? = null,
+        val size: Float = 64f,
+    ) : UiNode()
+
+    
+    data class FloatingToolbar(
+        val items: List<ToolbarItem>,
+    ) : UiNode()
+
+    data class ToolbarItem(
+        val icon: String,
+        val selected: Boolean = false,
+        val onClickId: String? = null,
+        val label: String = "",
+    )
+
+    data class Checkbox(
+        val checked: Boolean,
+        val onChangeId: String? = null,
+        val title: String = "",
+        val subtitle: String = "",
+        val enabled: Boolean = true,
+    ) : UiNode()
+
+    data class RadioGroup(
+        val options: List<Pair<String, String>>,
+        val selectedValue: String,
+        val onSelectId: String? = null,
+        val title: String = "",
+    ) : UiNode()
+
+    data class Dropdown(
+        val options: List<Pair<String, String>>,
+        val selectedValue: String,
+        val onSelectId: String? = null,
+        val label: String = "",
+        val enabled: Boolean = true,
+    ) : UiNode()
+
+    data class LazyRow(
+        val children: List<UiNode>,
+        val padding: Float = 0f,
+        val spacing: Float = 8f,
+        val fillMaxWidth: Boolean = true,
+    ) : UiNode()
+
     data object Empty : UiNode()
 }
 
@@ -196,3 +288,44 @@ data class PluginDialogSpec(
     val buttons: List<UiNode.DialogButton>,
     val cancelable: Boolean = true,
 )
+
+data class PluginSnackbarSpec(
+    val message: String,
+    val actionLabel: String? = null,
+    val actionId: String? = null,
+    val durationMs: Long = 3000L,
+)
+
+data class PluginBottomSheetSpec(
+    val title: String = "",
+    val message: String = "",
+    val buttons: List<UiNode.DialogButton> = emptyList(),
+    val cancelable: Boolean = true,
+)
+
+
+enum class PluginMediaAction {
+    PICK_FILE,
+    PICK_IMAGE,
+    PICK_VIDEO,
+    TAKE_PHOTO,
+    CREATE_DOCUMENT,
+}
+
+data class PluginMediaRequest(
+    val action: PluginMediaAction,
+    val mimeTypes: List<String> = listOf("*/*"),
+    val multiple: Boolean = false,
+    val destPath: String? = null,
+    val includeBase64: Boolean = false,
+    
+    val suggestedName: String? = null,
+    val onResult: (String) -> Unit,
+)
+
+
+data class PluginPermissionRequest(
+    val permissions: List<String>,
+    val onResult: (String) -> Unit,
+)
+

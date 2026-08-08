@@ -67,3 +67,4 @@ object NfcNdefPayloads {
         return NdefMessage(NdefRecord.createTextRecord("en", t))
     }
 }
+

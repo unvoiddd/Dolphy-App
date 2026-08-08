@@ -16,6 +16,13 @@ class RootHidController : HidController {
     private val KEYBOARD_DEV = "/dev/hidg0"
     private val MOUSE_DEV = "/dev/hidg1"
 
+    enum class UsbLinkStatus {
+        NO_ROOT,
+        SETUP,
+        DISCONNECTED,
+        CONNECTED,
+    }
+
     override fun checkDevices(): Boolean {
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "test -e $KEYBOARD_DEV && echo exists || echo missing"))
@@ -32,6 +39,65 @@ class RootHidController : HidController {
         } catch (e: Exception) {
             Log.e("RootHidController", "Failed to check HID devices", e)
             false
+        }
+    }
+
+    fun hasHidNodes(): Boolean = suTestExists(KEYBOARD_DEV) && suTestExists(MOUSE_DEV)
+
+    
+    fun probeLinkStatus(hasRoot: Boolean): UsbLinkStatus {
+        if (!hasRoot) return UsbLinkStatus.NO_ROOT
+        return try {
+            if (!hasHidNodes()) return UsbLinkStatus.DISCONNECTED
+            val configured = suShell(
+                "if [ -f /sys/class/android_usb/android0/state ]; then " +
+                    "cat /sys/class/android_usb/android0/state; " +
+                    "elif [ -f /sys/kernel/config/usb_gadget/dolphy_hid/UDC ]; then " +
+                    "U=\$(cat /sys/kernel/config/usb_gadget/dolphy_hid/UDC 2>/dev/null); " +
+                    "if [ -n \"\$U\" ]; then echo CONFIGURED; else echo DISCONNECTED; fi; " +
+                    "else echo CONFIGURED; fi",
+            ).trim().uppercase()
+            if (configured.contains("CONFIGURED") || configured.contains("CONNECTED")) {
+                UsbLinkStatus.CONNECTED
+            } else {
+                UsbLinkStatus.DISCONNECTED
+            }
+        } catch (e: Exception) {
+            Log.w("RootHidController", "probeLinkStatus", e)
+            UsbLinkStatus.DISCONNECTED
+        }
+    }
+
+    
+    fun wakeAsMouse() {
+        try {
+            mouseMove(2, 0)
+            Thread.sleep(30)
+            mouseMove(-2, 0)
+        } catch (e: Exception) {
+            Log.w("RootHidController", "wakeAsMouse", e)
+        }
+    }
+
+    private fun suTestExists(path: String): Boolean {
+        return try {
+            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "test -e $path && echo exists || echo missing"))
+            val out = p.inputStream.bufferedReader().readText().trim()
+            p.waitFor()
+            out == "exists"
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun suShell(script: String): String {
+        return try {
+            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", script))
+            val out = p.inputStream.bufferedReader().readText()
+            p.waitFor()
+            out
+        } catch (e: Exception) {
+            ""
         }
     }
 
@@ -304,3 +370,4 @@ class RootHidController : HidController {
         sendMediaReport()
     }
 }
+

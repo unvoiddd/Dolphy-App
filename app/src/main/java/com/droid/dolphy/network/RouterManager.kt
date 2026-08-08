@@ -262,3 +262,4 @@ class RouterManager(private val context: Context) {
         if (!found) onLog("Wi-Fi interfaces detected (no detailed status)")
     }
 }
+

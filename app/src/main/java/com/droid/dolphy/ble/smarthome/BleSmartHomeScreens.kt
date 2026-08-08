@@ -1,5 +1,7 @@
 package com.droid.dolphy.ble.smarthome
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
@@ -65,13 +67,12 @@ import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
 import com.droid.dolphy.DolphyCircularProgressIndicator
 import com.droid.dolphy.DolphySlider
-import com.droid.dolphy.ExpressiveSegmentedCardList
+import com.droid.dolphy.M3SegmentedList
+import com.droid.dolphy.M3SegmentedListItem
 import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.MaterialCard
-import com.droid.dolphy.MaterialDivider
 import com.droid.dolphy.R
 import com.droid.dolphy.SectionTopBar
-import com.droid.dolphy.SignalRow
 import kotlinx.coroutines.delay
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -183,7 +184,7 @@ fun BleSmartHomeScanScreen(navController: NavController) {
                     onBack = { navController.popBackStack() },
                     transparent = true,
                     actions = {
-                        IconButton(onClick = {
+                        DolphyIconButton(onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             if (isScanning) stopScan() else startScan()
                         }) {
@@ -235,7 +236,7 @@ fun BleSmartHomeScanScreen(navController: NavController) {
                         } else if (noDevicesFound) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(stringResource(R.string.ir_not_found), color = MaterialTheme.colorScheme.onBackground)
-                                IconButton(
+                                DolphyIconButton(
                                     onClick = { startScan() },
                                     modifier = Modifier
                                         .size(52.dp)
@@ -247,24 +248,22 @@ fun BleSmartHomeScanScreen(navController: NavController) {
                         }
                     }
                 } else {
-                    ExpressiveSegmentedCardList(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items.forEachIndexed { index, item ->
-                            SignalRow(
-                                title = item.vendor.takeIf { it != "Unknown" } ?: "Smart Light",
-                                description = "${item.address} • ${item.rssi} dBm",
-                                icon = Icons.Default.Lightbulb,
-                                accentColor = accent,
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    navController.navigate("ble_smart_home_device/${item.address}")
-                                }
-                            )
-                            if (index < items.size - 1) {
-                                MaterialDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-                            }
-                        }
+                    M3SegmentedList(
+                        items = items,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { index, count, item ->
+                        M3SegmentedListItem(
+                            index = index,
+                            count = count,
+                            headline = item.vendor.takeIf { it != "Unknown" } ?: "Smart Light",
+                            supporting = "${item.address} • ${item.rssi} dBm",
+                            leadingIcon = Icons.Default.Lightbulb,
+                            leadingIconTint = accent,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                navController.navigate("ble_smart_home_device/${item.address}")
+                            },
+                        )
                     }
                     if (isScanning) {
                         Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
@@ -478,4 +477,5 @@ private fun ColorWheel(
         drawCircle(Color.White, radius = 6f, center = androidx.compose.ui.geometry.Offset(px, py))
     }
 }
+
 

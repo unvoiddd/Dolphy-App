@@ -144,13 +144,13 @@ fun BluetoothJammerScanScreen(onBack: () -> Unit, accentColor: Color) {
                 Text(
                     text = stringResource(R.string.bt_jammer_select_device),
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                 )
 
                 if (devices.isEmpty() && !isScanning) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.bt_jammer_no_devices), color = Color.White.copy(alpha = 0.3f))
+                        Text(stringResource(R.string.bt_jammer_no_devices), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -159,7 +159,7 @@ fun BluetoothJammerScanScreen(onBack: () -> Unit, accentColor: Color) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 32.dp)
                 ) {
-                    items(devices) { device ->
+                    items(devices, key = { it.address }) { device ->
                         MaterialCard(
                             modifier = Modifier.fillMaxWidth().clickable { selectedDevice = device },
                             accentColor = accentColor,
@@ -176,7 +176,7 @@ fun BluetoothJammerScanScreen(onBack: () -> Unit, accentColor: Color) {
                                 Spacer(Modifier.width(16.dp))
                                 Column {
                                     Text(device.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text(device.address, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
+                                    Text(device.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -253,7 +253,7 @@ fun BluetoothJammerAttackScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.bt_jammer_target), style = MaterialTheme.typography.labelSmall, color = accentColor.copy(alpha = 0.7f), fontWeight = FontWeight.Bold)
                         Text(device.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-                        Text(device.address, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.5f))
+                        Text(device.address, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(Modifier.height(24.dp))
 
@@ -286,7 +286,7 @@ fun BluetoothJammerAttackScreen(
 
 
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.bt_jammer_activity_log), style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.5f))
+                    Text(stringResource(R.string.bt_jammer_activity_log), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.weight(1f))
                     if (isAttacking) {
                         ExpressiveCircularProgressIndicator(modifier = Modifier.size(16.dp), color = accentColor)
@@ -317,3 +317,4 @@ fun BluetoothJammerAttackScreen(
         }
     }
 }
+

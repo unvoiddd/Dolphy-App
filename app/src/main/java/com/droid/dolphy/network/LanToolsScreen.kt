@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,16 +60,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.droid.dolphy.M3SegmentedListItem
+import com.droid.dolphy.M3SegmentedListItemSpacing
 import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.MaterialButton
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
 import com.droid.dolphy.SectionTopBar
+import com.droid.dolphy.m3SegmentedItems
 import kotlinx.coroutines.launch
+
+private data class LanToolEntry(
+    val icon: ImageVector,
+    val title: String,
+    val description: String,
+    val route: String,
+)
 
 @Composable
 fun LanToolsScreen(navController: NavController) {
     val accent = MaterialTheme.colorScheme.primary
+    val tools = listOf(
+        LanToolEntry(
+            Icons.Default.Router,
+            stringResource(R.string.lan_tools_item_scanner),
+            stringResource(R.string.lan_tools_item_scanner_desc),
+            "other/lan_scanner_run",
+        ),
+        LanToolEntry(
+            Icons.Default.Videocam,
+            stringResource(R.string.lan_tools_item_cameras),
+            stringResource(R.string.lan_tools_item_cameras_desc),
+            "other/lan_camera_scan",
+        ),
+        LanToolEntry(
+            Icons.Default.Print,
+            stringResource(R.string.wifi_print_title),
+            stringResource(R.string.wifi_print_hero_desc),
+            "other/wifi_print",
+        ),
+    )
     MaterialBackground(accentColor = accent) {
         Column(Modifier.fillMaxSize()) {
             SectionTopBar(
@@ -81,30 +112,25 @@ fun LanToolsScreen(navController: NavController) {
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
             ) {
                 item {
                     Text(
                         text = stringResource(R.string.lan_tools_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 4.dp, start = 4.dp),
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
                     )
                 }
-                item {
-                    LanToolRow(
-                        icon = Icons.Default.Router,
-                        title = stringResource(R.string.lan_tools_item_scanner),
-                        description = stringResource(R.string.lan_tools_item_scanner_desc),
-                        onClick = { navController.navigate("other/lan_scanner_run") },
-                    )
-                }
-                item {
-                    LanToolRow(
-                        icon = Icons.Default.Videocam,
-                        title = stringResource(R.string.lan_tools_item_cameras),
-                        description = stringResource(R.string.lan_tools_item_cameras_desc),
-                        onClick = { navController.navigate("other/lan_camera_scan") },
+                m3SegmentedItems(tools) { index, count, tool ->
+                    M3SegmentedListItem(
+                        index = index,
+                        count = count,
+                        headline = tool.title,
+                        supporting = tool.description,
+                        leadingIcon = tool.icon,
+                        leadingIconTint = accent,
+                        onClick = { navController.navigate(tool.route) },
                     )
                 }
             }
@@ -515,3 +541,4 @@ private fun CameraResultCard(cam: CameraNetworkScanner.FoundCamera) {
         }
     }
 }
+

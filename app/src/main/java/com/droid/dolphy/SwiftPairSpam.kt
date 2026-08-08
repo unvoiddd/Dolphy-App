@@ -151,3 +151,4 @@ class SwiftPairSpam : Spammer {
     override fun getBlinkRunnable(): Runnable? = blinkRunnable
 }
 
+

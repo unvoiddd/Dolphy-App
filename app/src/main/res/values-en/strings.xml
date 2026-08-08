@@ -124,6 +124,10 @@
     
     <string name="ir_tv_remotes">IR Remotes (TV)</string>
     <string name="ir_flipper_remotes">IR Remotes (Flipper)</string>
+    <string name="ir_favorites">Favorites</string>
+    <string name="ir_no_favorites">Remotes marked with a star will appear here</string>
+    <string name="ir_add_to_favorites">Add to favorites</string>
+    <string name="ir_remove_from_favorites">Remove from favorites</string>
     <string name="ir_universal_remotes">Universal Remotes</string>
     <string name="ir_user_remotes">Your Remotes</string>
     <string name="ir_storm">IR Storm</string>
@@ -250,6 +254,15 @@
     <string name="hid_device_wearable">Wearable</string>
     <string name="hid_device_other">Device</string>
     <string name="hid_connect">Connect</string>
+    <string name="hid_quiet_connect">Quiet connect</string>
+    <string name="hid_quiet_connect_toast">Blue Ducky: connecting without PIN / confirmation…</string>
+    <string name="hid_blueducky_info_title">BlueDucky</string>
+    <string name="hid_blueducky_info_body">Performs a quiet connection to devices via the Blue Ducky vulnerability (CVE-2023-45866) — HID without PIN or pairing confirmation dialogs.\n\nWorks against vulnerable targets:\n• Android 4.2.2 – Android 13 (before 2023/2024 Bluetooth security patches)\n• Unpatched Linux BlueZ stacks\n• Some early iOS/macOS revisions\n\nOn Android 14+ and freshly patched OEMs the host may still require confirmation or reject unauthenticated HID. \"Connect\" is the normal path with dialogs; \"Quiet connect\" uses silent Just Works + auto-confirm pairing.</string>
+    <string name="audio_whisper_pair">WhisperPair</string>
+    <string name="audio_dolphy_pair">DolphyPair</string>
+    <string name="audio_hijack_starting">Starting hijack…</string>
+    <string name="audio_hijack_ok">Hijack: %1$s</string>
+    <string name="audio_hijack_fail">Hijack failed: %1$s</string>
     <string name="hid_scan">Scan</string>
     <string name="hid_reconnect_title">Connection Update Required</string>
     <string name="hid_reconnect_message">%s is paired but HID connection is not complete. Check HID profile in Bluetooth settings.</string>
@@ -713,6 +726,7 @@
     <string name="universal_error_unknown">Error: %s</string>
     <string name="universal_unknown">unknown</string>
     <string name="universal_desc_tv_ir">Database from flipperzero-firmware-dev: tv.ir</string>
+    <string name="universal_desc_stacked">Shared buttons from all remotes in the “%s” category</string>
     <string name="universal_desc_ac_ir">Database from flipperzero-firmware-dev: ac.ir</string>
     <string name="universal_desc_audio_ir">Database from flipperzero-firmware-dev: audio.ir</string>
     <string name="universal_desc_projector_ir">Database from flipperzero-firmware-dev: projector.ir</string>
@@ -931,4 +945,76 @@
 
     
     <string name="nfc_troll_no_desc" />
+    <string name="wifi_print_title">Wi-Fi Print</string>
+    <string name="wifi_print_hero_title">Print without the system dialog</string>
+    <string name="wifi_print_hero_desc">Discover IPP printers, verify capabilities, and send documents directly</string>
+    <string name="wifi_print_scan">Scan</string>
+    <string name="wifi_print_searching">Searching…</string>
+    <string name="wifi_print_add">Add</string>
+    <string name="wifi_print_no_printers">No printers found</string>
+    <string name="wifi_print_no_printers_desc">Make sure the phone and printer are connected to the same Wi-Fi network</string>
+    <string name="wifi_print_printer_info">Printer</string>
+    <string name="wifi_print_reading">Reading printer capabilities…</string>
+    <string name="wifi_print_document">Document</string>
+    <string name="wifi_print_document_desc">PDF, JPEG, PNG, and WebP are supported. Dolphy converts the file to PWG Raster when needed.</string>
+    <string name="wifi_print_choose_file">Choose file</string>
+    <string name="wifi_print_change_file">Choose another file</string>
+    <string name="wifi_print_settings">Print settings</string>
+    <string name="wifi_print_copies">Copies</string>
+    <string name="wifi_print_paper">Paper</string>
+    <string name="wifi_print_sides">Sides</string>
+    <string name="wifi_print_color">Color</string>
+    <string name="wifi_print_orientation">Orientation</string>
+    <string name="wifi_print_quality">Quality</string>
+    <string name="wifi_print_print">Print</string>
+    <string name="wifi_print_sending">Sending…</string>
+    <string name="wifi_print_test_page">Print test page</string>
+    <string name="wifi_print_manual_title">Add IPP printer</string>
+    <string name="wifi_print_host">IP address or host name</string>
+    <string name="wifi_print_port">Port</string>
+    <string name="wifi_print_path">Queue path</string>
+    <string name="wifi_print_secure">Secure IPPS connection</string>
+    <string name="wifi_print_cancel">Cancel</string>
+    <string name="settings_ui_scale">Interface scale</string>
+    <string name="settings_liquid_glass">Liquid Glass</string>
+    <string name="settings_liquid_glass_summary">Glass navigation bar (LiquidBottomTabs)</string>
+    <string name="settings_liquid_glass_buttons">Buttons</string>
+    <string name="settings_liquid_glass_topbars">Top bars</string>
+    <string name="settings_liquid_glass_nav">Navigation</string>
+    <string name="settings_plugins">Plugins</string>
+    <string name="settings_plugins_summary">Install and manage JS plugins</string>
+    <string name="settings_general">General</string>
+
+    <!-- Plugins -->
+    <string name="plugin_manager_title">Plugins</string>
+    <string name="plugin_manager_card_title">Dolphy JS plugins</string>
+    <string name="plugin_manager_card_body">A .js file: screens, Other, Wi-Fi, BLE, NFC, IR, WebView, root, Shizuku.</string>
+    <string name="plugin_manager_pick_file">Choose file</string>
+    <string name="plugin_manager_about">Learn more</string>
+    <string name="plugin_manager_installed">Installed</string>
+    <string name="plugin_manager_empty">No plugins yet. Choose a .js file above.</string>
+    <string name="plugin_manager_installed_toast">Plugin %1$s installed</string>
+    <string name="plugin_manager_installed_msg">Installed: %1$s</string>
+    <string name="plugin_manager_error">Error: %1$s</string>
+    <string name="plugin_about_title">About plugins</string>
+    <string name="plugin_about_guide_title">Author guide</string>
+    <string name="plugin_about_guide_body">A plugin is a .js file. Import: Settings → General → Plugins → Choose file.\n\nYou can build screens (ui.m3 / expressive), Other cards, Wi-Fi, BLE spam, NFC, IR, HTTP, download, media/camera pick, WebView, Root (extended), Shizuku, shell, crypto, timers, snackbar, assets, and publish your own APIs via library plugins.</string>
+    <string name="plugin_host_title">Plugin</string>
+    <string name="plugin_host_not_installed">Plugin “%1$s” is not installed.\nImport a .js file from Plugin manager.</string>
+    <string name="plugin_host_empty_screen">Empty screen</string>
+
+    <!-- ScooterHack -->
+    <string name="scooter_hack_title">ScooterHack</string>
+    <string name="scooter_hack_card_desc">Scan Xiaomi/Ninebot, lock/unlock, beep, battery</string>
+    <string name="scooter_scan_start">Scan scooters</string>
+    <string name="scooter_scan_stop">Stop scan</string>
+    <string name="scooter_scan_hint"> </string>
+    <string name="scooter_scanning">Searching scooters…</string>
+    <string name="scooter_empty">No scooters found. Start a scan near a device.</string>
+    <string name="scooter_connect">Connect</string>
+    <string name="scooter_disconnect">Disconnect</string>
+    <string name="scooter_sound">Sound</string>
+    <string name="scooter_lock">Lock</string>
+    <string name="scooter_unlock">Unlock</string>
+    <string name="scooter_perm_denied">Bluetooth and location permissions are required</string>
 </resources>

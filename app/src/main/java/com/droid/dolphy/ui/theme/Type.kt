@@ -57,3 +57,4 @@ fun buildExpressiveTypography(useFlipperFont: Boolean, fontScale: Float): Typogr
 }
 
 val Typography = buildAppTypography(useFlipperFont = true, fontScale = 1.08f)
+

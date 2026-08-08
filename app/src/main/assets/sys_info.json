@@ -1,0 +1,80 @@
+import material.icons.Info
+import material.icons.SettingsBluetooth
+import material.icons.Security
+
+{
+  "id": "com.droid.dolphy.sysinfo",
+  "name": "System Info",
+  "version": "1.0.0",
+  "description": "Показывает информацию о системе и Root-статус",
+  "author": "Dolphy Team",
+  "icon": "Info",
+  "permissions": ["hardware.root", "hardware.shell"],
+  "state": {
+    "root_status": "Нажмите проверить",
+    "kernel_info": "...",
+    "android_version": "..."
+  },
+  "screens": [
+    {
+      "id": "main",
+      "title": "Инфо о системе",
+      "layout": [
+        {
+          "type": "card",
+          "children": [
+            {
+              "type": "text",
+              "text": "Статус Root",
+              "style": "title"
+            },
+            {
+              "type": "text",
+              "text": "{{ state.root_status }}",
+              "style": "body"
+            },
+            {
+              "type": "button",
+              "text": "Проверить Root",
+              "icon": "Security",
+              "onClick": [
+                {
+                  "type": "root_shell",
+                  "value": "id",
+                  "key": "root_status"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "children": [
+            {
+              "type": "text",
+              "text": "Ядро",
+              "style": "title"
+            },
+            {
+              "type": "text",
+              "text": "{{ state.kernel_info }}",
+              "style": "body"
+            },
+            {
+              "type": "button",
+              "text": "Обновить инфо",
+              "icon": "SettingsBluetooth",
+              "onClick": [
+                {
+                  "type": "shell",
+                  "value": "uname -a",
+                  "key": "kernel_info"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

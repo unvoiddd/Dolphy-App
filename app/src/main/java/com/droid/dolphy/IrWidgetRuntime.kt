@@ -1,4 +1,4 @@
-Ôªøpackage com.droid.dolphy
+package com.droid.dolphy
 
 import android.content.Context
 import android.util.Log
@@ -79,7 +79,7 @@ object IrWidgetRuntime {
                 val buttons = withContext(Dispatchers.IO) {
                     val flIndex = IrRepository.getFlipperIndex(context)
                     flIndex.entries
-                        .filter { it.key.substringBefore('/').equals("–ò–ö –≥–ª—É—à–∏–ª–∫–∞", ignoreCase = true) }
+                        .filter { it.key.substringBefore('/').equals("»  „ÎÛ¯ËÎÍ‡", ignoreCase = true) }
                         .flatMap { (_, models) ->
                             models.values.flatMap { assetPath -> IrRepository.loadButtons(context, assetPath) }
                         }
@@ -131,7 +131,7 @@ object IrWidgetRuntime {
 
     private fun normalizeSearch(text: String): String {
         return text.lowercase()
-            .replace(Regex("[^a-z0-9–∞-—è—ë]+"), " ")
+            .replace(Regex("[^a-z0-9‡-ˇ∏]+"), " ")
             .trim()
     }
 
@@ -169,3 +169,4 @@ data class UniversalAction(
     val signalName: String,
     val displayName: String
 )
+

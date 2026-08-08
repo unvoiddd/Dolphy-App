@@ -1,5 +1,7 @@
 package com.droid.dolphy.nfc.ui
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
@@ -71,7 +73,9 @@ import com.droid.dolphy.trackNfcEmulate
 import com.droid.dolphy.nfc.EmulatedNfcTag
 import com.droid.dolphy.nfc.NfcTagEmulationStore
 import com.droid.dolphy.nfc.NfcType4HostApduService
+import com.droid.dolphy.nfc.RootNfcHelper
 import java.net.URI
+import kotlinx.coroutines.withContext
 
 @Composable
 fun NfcTagEmulationListScreen(navController: NavController) {
@@ -260,17 +264,27 @@ fun NfcTagEmulationRunScreen(navController: NavController, tagId: Long) {
         label = "emulation_scale",
     )
 
+    var rootMode by remember { mutableStateOf(false) }
+    var nfcOn by remember { mutableStateOf(nfcEnabled) }
+    var isDefault by remember { mutableStateOf(isDefaultPaymentApp) }
+
     LaunchedEffect(tagId) {
         tag?.let { NfcTagEmulationStore.setActiveTag(context, it) }
+        val mode = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            RootNfcHelper.prepareForEmulation(context)
+        }
+        rootMode = mode == "root"
+        nfcOn = NfcAdapter.getDefaultAdapter(context)?.isEnabled == true || RootNfcHelper.isNfcEnabled(context)
+        isDefault = isDolphyDefaultPaymentService(context) || rootMode
     }
 
-    LaunchedEffect(hasHce, nfcEnabled, isDefaultPaymentApp) {
-        if (hasHce && nfcEnabled && !isDefaultPaymentApp) {
+    LaunchedEffect(hasHce, nfcOn, isDefault) {
+        if (hasHce && nfcOn && !isDefault && !rootMode) {
             openPaymentSettingsForDolphy(context)
         }
     }
-    LaunchedEffect(tagId, hasHce, nfcEnabled, isDefaultPaymentApp) {
-        if (hasHce && nfcEnabled && isDefaultPaymentApp && tag != null) {
+    LaunchedEffect(tagId, hasHce, nfcOn, isDefault) {
+        if (hasHce && nfcOn && isDefault && tag != null) {
             trackNfcEmulate(context)
         }
     }
@@ -297,7 +311,7 @@ fun NfcTagEmulationRunScreen(navController: NavController, tagId: Long) {
 
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        if (!nfcEnabled) {
+                        if (!nfcOn) {
                             Image(
                                 painter = painterResource(id = R.drawable.passport_bad2_46x49),
                                 contentDescription = "NFC unavailable",
@@ -321,16 +335,20 @@ fun NfcTagEmulationRunScreen(navController: NavController, tagId: Long) {
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = if (nfcEnabled) stringResource(R.string.nfc_emulating) else stringResource(R.string.nfc_unavailable),
+                            text = if (nfcOn) stringResource(R.string.nfc_emulating) else stringResource(R.string.nfc_unavailable),
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = if (nfcEnabled) "NFC Forum Type 4" else stringResource(R.string.nfc_enable_instruction),
+                            text = when {
+                                !nfcOn -> stringResource(R.string.nfc_enable_instruction)
+                                rootMode -> "NFC Forum Type 4 · root"
+                                else -> "NFC Forum Type 4"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextGray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
@@ -342,7 +360,7 @@ fun NfcTagEmulationRunScreen(navController: NavController, tagId: Long) {
                         Text(
                             text = tag?.url ?: "—",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextGray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
@@ -353,7 +371,7 @@ fun NfcTagEmulationRunScreen(navController: NavController, tagId: Long) {
                                 else -> stringResource(R.string.nfc_set_default_payment)
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextGray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         if (!isDefaultPaymentApp) {
@@ -409,7 +427,7 @@ private fun EmulatedTagRow(
                 Text(
                     text = tag.url,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -430,14 +448,14 @@ private fun EmulationTopBar(
         onBack = onBack,
         transparent = true,
         actions = {
-            IconButton(onClick = onToggleEditMode) {
+            DolphyIconButton(onClick = onToggleEditMode) {
                 Icon(
                     imageVector = Icons.Filled.Edit,
                     contentDescription = if (editMode) "Выйти из режима редактирования" else "Редактировать"
                 )
             }
             if (editMode) {
-                IconButton(
+                DolphyIconButton(
                     onClick = onDeleteSelected,
                     enabled = hasSelection
                 ) {
@@ -513,3 +531,4 @@ private fun isValidWebUrl(url: String): Boolean {
         false
     }.getOrDefault(false)
 }
+

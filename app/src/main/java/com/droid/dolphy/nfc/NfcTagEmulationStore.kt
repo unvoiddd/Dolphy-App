@@ -81,3 +81,4 @@ object NfcTagEmulationStore {
         }.getOrNull()
     }
 }
+

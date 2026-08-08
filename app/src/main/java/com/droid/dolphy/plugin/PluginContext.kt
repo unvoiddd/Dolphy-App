@@ -7,3 +7,4 @@ data class PluginContext(
     val pluginId: String,
     val navigateToScreen: (String) -> Unit
 )
+

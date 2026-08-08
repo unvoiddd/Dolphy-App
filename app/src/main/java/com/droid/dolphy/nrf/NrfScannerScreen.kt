@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.droid.dolphy.ConnectedButtonGroup
 import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.R
 import com.droid.dolphy.SectionTopBar
@@ -94,45 +95,38 @@ fun NrfScannerScreen(
             }
 
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = selectedFilter == null,
-                    onClick = { viewModel.setFilter(null) },
-                    label = { Text(stringResource(R.string.nrf_scanner_all)) },
-                    leadingIcon = if (selectedFilter == null) {
-                        { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    } else null
-                )
-
-                FilterChip(
-                    selected = selectedFilter == DeviceType.BLE_DEVICE,
-                    onClick = { viewModel.setFilter(DeviceType.BLE_DEVICE) },
-                    label = { Text(stringResource(R.string.nrf_scanner_ble)) }
-                )
-
-                FilterChip(
-                    selected = selectedFilter == DeviceType.CLASSIC_DEVICE,
-                    onClick = { viewModel.setFilter(DeviceType.CLASSIC_DEVICE) },
-                    label = { Text(stringResource(R.string.nrf_scanner_classic)) }
-                )
-
-                FilterChip(
-                    selected = selectedFilter == DeviceType.BEACON,
-                    onClick = { viewModel.setFilter(DeviceType.BEACON) },
-                    label = { Text(stringResource(R.string.nrf_scanner_beacon)) }
-                )
-
-                FilterChip(
-                    selected = selectedFilter == DeviceType.FAST_PAIR,
-                    onClick = { viewModel.setFilter(DeviceType.FAST_PAIR) },
-                    label = { Text(stringResource(R.string.nrf_scanner_fast_pair)) }
-                )
+            val filterOptions = listOf(
+                stringResource(R.string.nrf_scanner_all) to "all",
+                stringResource(R.string.nrf_scanner_ble) to "ble",
+                stringResource(R.string.nrf_scanner_classic) to "classic",
+                stringResource(R.string.nrf_scanner_beacon) to "beacon",
+                stringResource(R.string.nrf_scanner_fast_pair) to "fast_pair",
+            )
+            val selectedValue = when (selectedFilter) {
+                null -> "all"
+                DeviceType.BLE_DEVICE -> "ble"
+                DeviceType.CLASSIC_DEVICE -> "classic"
+                DeviceType.BEACON -> "beacon"
+                DeviceType.FAST_PAIR -> "fast_pair"
+                else -> "all"
             }
+            ConnectedButtonGroup(
+                options = filterOptions,
+                selectedValue = selectedValue,
+                onValueSelected = { key ->
+                    viewModel.setFilter(
+                        when (key) {
+                            "ble" -> DeviceType.BLE_DEVICE
+                            "classic" -> DeviceType.CLASSIC_DEVICE
+                            "beacon" -> DeviceType.BEACON
+                            "fast_pair" -> DeviceType.FAST_PAIR
+                            else -> null
+                        },
+                    )
+                },
+                accentColor = colorScheme.primary,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         Divider(thickness = 0.5.dp, color = colorScheme.outlineVariant)
@@ -196,3 +190,4 @@ fun NrfScannerScreen(
     }
 }
 }}
+

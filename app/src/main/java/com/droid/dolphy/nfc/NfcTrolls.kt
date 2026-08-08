@@ -40,3 +40,4 @@ val NFC_TROLLS = listOf(
     NfcTroll("GTAV Geoguesser", "Угадай, где ты в Лос-Сантосе", "https://gta-geoguessr.com/"),
     NfcTroll("Idiot Tribute", "Классическая анимация 'You are an idiot'", "https://the-idiot-test.com/")
 )
+

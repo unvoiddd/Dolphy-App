@@ -110,3 +110,4 @@ class ContinuitySingleSpam(
 
     private fun toHexByte(b: Int): String = String.format("%02X", b and 0xFF)
 }
+

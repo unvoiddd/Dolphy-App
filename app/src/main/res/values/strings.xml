@@ -118,6 +118,15 @@
     <string name="hid_bad_hid_mode">Bad HID Mode</string>
     <string name="hid_clear_selection">Выключить выбор</string>
     <string name="hid_connect">Подключить</string>
+    <string name="hid_quiet_connect">Тихо подключиться</string>
+    <string name="hid_quiet_connect_toast">Blue Ducky: подключение без PIN и подтверждений…</string>
+    <string name="hid_blueducky_info_title">BlueDucky</string>
+    <string name="hid_blueducky_info_body">Выполняет тихое подключение к устройствам через уязвимость Blue Ducky (CVE-2023-45866) — HID-соединение без окон PIN-кода и подтверждения pairing.\n\nРаботает на уязвимых целях:\n• Android 4.2.2 – Android 13 (до патчей Bluetooth security bulletins 2023/2024)\n• Linux BlueZ (непропатченные стеки)\n• Часть iOS/macOS в ранних ревизиях\n\nНа Android 14+ и свежих OEM-патчах хост может требовать подтверждение или отклонять unauthenticated HID. «Подключить» — обычный путь с диалогами; «Тихо подключиться» — silent Just Works + auto-confirm pairing.</string>
+    <string name="audio_whisper_pair">WhisperPair</string>
+    <string name="audio_dolphy_pair">DolphyPair</string>
+    <string name="audio_hijack_starting">Запуск перехвата…</string>
+    <string name="audio_hijack_ok">Перехват: %1$s</string>
+    <string name="audio_hijack_fail">Перехват не удался: %1$s</string>
     <string name="hid_connected">Подключено к %s</string>
     <string name="hid_connecting">Подключение...</string>
     <string name="hid_connection_lost_reconnecting">Связь потеряна, идёт переподключение</string>
@@ -248,6 +257,10 @@
     <string name="ir_file_not_found">Файл %s не найден или не содержит команд</string>
     <string name="ir_flipper_db_not_found">Flipper база не найдена или пуста</string>
     <string name="ir_flipper_remotes">ИК пульты (Flipper)</string>
+    <string name="ir_favorites">Избранное</string>
+    <string name="ir_no_favorites">Здесь появятся пульты, отмеченные звездочкой</string>
+    <string name="ir_add_to_favorites">Добавить в избранное</string>
+    <string name="ir_remove_from_favorites">Удалить из избранного</string>
     <string name="ir_import">Импорт .ir файла</string>
     <string name="ir_import_failed">Не удалось импортировать команды из файла</string>
     <string name="ir_import_select_ir">Выберите файл формата .ir</string>
@@ -529,6 +542,7 @@
     <string name="universal_desc_audio_ir">База из flipperzero-firmware-dev: audio.ir</string>
     <string name="universal_desc_projector_ir">База из flipperzero-firmware-dev: projector.ir</string>
     <string name="universal_desc_tv_ir">База из flipperzero-firmware-dev: tv.ir</string>
+    <string name="universal_desc_stacked">Общие кнопки из всех пультов категории «%s»</string>
     <string name="universal_error_unknown">Ошибка: %s</string>
     <string name="universal_files_list">Файлы: %s</string>
     <string name="universal_files_missing">Файлы базы не заданы.</string>
@@ -644,6 +658,24 @@
     <string name="zero_wifi_deauth">WiFi Deauth</string>
     <string name="nfc_master_key">Мастер ключ</string>
     <string name="nfc_master_key_title">Мастер ключ</string>
+    <string name="nfc_master_key_root_only_desc">Root-only: брутфорс ключей домофонов и NFC-замков (Mifare Classic и др.) через su. Поднесите телефон к считывателю.</string>
+    <string name="nfc_master_key_status_root">Root · готово к бруту</string>
+    <string name="nfc_master_key_status_no_root">Требуются root права</string>
+    <string name="nfc_master_key_start">Начать брут</string>
+    <string name="nfc_master_key_stop">Стоп</string>
+    <string name="bad_usb_title">BAD USB</string>
+    <string name="bad_usb_card_desc">Ducky script · USB HID gadget (root)</string>
+    <string name="bad_usb_script_label">Ducky script</string>
+    <string name="bad_usb_run">Выполнить</string>
+    <string name="bad_usb_running">Выполняется…</string>
+    <string name="bad_usb_status_root">Требуются root права</string>
+    <string name="bad_usb_status_disconnected">Отключено</string>
+    <string name="bad_usb_status_connected">Подключено по USB</string>
+    <string name="bad_usb_status_setup">Настройка HID gadget…</string>
+    <string name="bad_usb_hint">Телефон как USB-клавиатура/мышь (gadget). Подключите USB к ПК, вставьте Ducky script и нажмите Выполнить.</string>
+    <string name="bad_usb_empty">Введите Ducky script</string>
+    <string name="bad_usb_done">Скрипт выполнен</string>
+    <string name="bad_usb_fail">Ошибка выполнения</string>
     <string name="nrf_scanner_title">NRF Scanner</string>
     <string name="nrf_scanner_description">Продвинутый поиск Bluetooth устройств</string>
     <string name="nrf_scanner_found">Найдено: %d устройств</string>
@@ -674,9 +706,9 @@
     <string name="nrf_scanner_bypass_3">Обход 3...</string>
     <string name="nrf_scanner_error">Ошибка подключения</string>
     <string name="nrf_scanner_success">Успешно подключено</string>
-    <string name="nfc_master_key_description">Перебор стандартных ключей и уязвимостей для открытия считывателей</string>
-    <string name="nfc_master_key_desc">Эта функция последовательно перебирает известные уязвимости и стандартные ключи (Mifare Classic, Type 4 и др.) для попытки авторизации на считывателях.</string>
-    <string name="nfc_master_key_scanning">Перебор ключей...</string>
+    <string name="nfc_master_key_description">Root: брутфорс домофонов и NFC-замков</string>
+    <string name="nfc_master_key_desc">Root-only перебор ключей для домофонных и NFC-замков (Mifare Classic и др.).</string>
+    <string name="nfc_master_key_scanning">Брутфорс ключей…</string>
 
     
     <string name="qr_tools">QR инструменты</string>
@@ -703,8 +735,8 @@
     <string name="qr_terminal_logs">Логи терминала</string>
     <string name="nfc_audio_spoofer">NFC Audio spoof</string>
     <string name="nfc_audio_spoofer_desc">Эмуляция NFC-метки с сайтом для удаленного управления аудио</string>
-    <string name="audio_scanner_title">Сканер Аудиоустройств</string>
-    <string name="audio_scanner_desc">Поиск и тестирование Bluetooth-аудиоустройств. Подключение к колонкам и наушникам. By ZalexDev</string>
+    <string name="audio_scanner_title">BL-Audio Hijack</string>
+    <string name="audio_scanner_desc">Перехват Bluetooth аудиоустройств</string>
 
     <string name="audio_connect">Подключить</string>
     <string name="audio_connecting">Подключение...</string>
@@ -737,15 +769,13 @@
     <string name="serial_error_config">Ошибка настройки порта</string>
 
     
-    <string name="other_bad_usb">Bad USB</string>
-    <string name="other_bad_usb_desc">Эмуляция Bad USB через DuckyScript (требуется Root)</string>
-
-    <string name="bad_usb_title">Bad USB</string>
+    <string name="other_bad_usb">BAD USB</string>
+    <string name="other_bad_usb_desc">Ducky script · USB HID gadget (root)</string>
     <string name="bad_usb_script_hint">Введите DuckyScript…</string>
     <string name="bad_usb_status">Статус: %s</string>
-    <string name="bad_usb_connected">Connected</string>
-    <string name="bad_usb_disconnected">Disconnected</string>
-    <string name="bad_usb_root_denied">Root access denied</string>
+    <string name="bad_usb_connected">Подключено по USB</string>
+    <string name="bad_usb_disconnected">Отключено</string>
+    <string name="bad_usb_root_denied">Требуются root права</string>
     <string name="root_required_title">Root права не найдены</string>
     <string name="root_required_message">Для функции нужны Root права</string>
 
@@ -871,4 +901,76 @@
     <string name="audio_no_recordings">Записей пока нет</string>
     <string name="audio_quiet_connect_title">О Quiet Connect</string>
     <string name="audio_quiet_connect_text">Функция позволяет подключаться к колонкам и наушникам без подтверждения</string>
+    <string name="wifi_print_title">Wi-Fi печать</string>
+    <string name="wifi_print_hero_title">Печать без системного окна</string>
+    <string name="wifi_print_hero_desc">Поиск IPP-принтеров, проверка возможностей и прямая отправка документов</string>
+    <string name="wifi_print_scan">Найти</string>
+    <string name="wifi_print_searching">Поиск…</string>
+    <string name="wifi_print_add">Добавить</string>
+    <string name="wifi_print_no_printers">Принтеры не найдены</string>
+    <string name="wifi_print_no_printers_desc">Убедитесь, что телефон и принтер подключены к одной Wi-Fi сети</string>
+    <string name="wifi_print_printer_info">Принтер</string>
+    <string name="wifi_print_reading">Читаем возможности принтера…</string>
+    <string name="wifi_print_document">Документ</string>
+    <string name="wifi_print_document_desc">Поддерживаются PDF, JPEG, PNG и WebP. При необходимости Dolphy преобразует файл в PWG Raster.</string>
+    <string name="wifi_print_choose_file">Выбрать файл</string>
+    <string name="wifi_print_change_file">Выбрать другой файл</string>
+    <string name="wifi_print_settings">Настройки печати</string>
+    <string name="wifi_print_copies">Копии</string>
+    <string name="wifi_print_paper">Бумага</string>
+    <string name="wifi_print_sides">Стороны</string>
+    <string name="wifi_print_color">Цвет</string>
+    <string name="wifi_print_orientation">Ориентация</string>
+    <string name="wifi_print_quality">Качество</string>
+    <string name="wifi_print_print">Печатать</string>
+    <string name="wifi_print_sending">Отправка…</string>
+    <string name="wifi_print_test_page">Напечатать тестовую страницу</string>
+    <string name="wifi_print_manual_title">Добавить IPP-принтер</string>
+    <string name="wifi_print_host">IP-адрес или имя</string>
+    <string name="wifi_print_port">Порт</string>
+    <string name="wifi_print_path">Путь очереди</string>
+    <string name="wifi_print_secure">Защищённое соединение IPPS</string>
+    <string name="wifi_print_cancel">Отмена</string>
+    <string name="settings_ui_scale">Масштаб интерфейса</string>
+    <string name="settings_liquid_glass">Liquid Glass</string>
+    <string name="settings_liquid_glass_summary">Стеклянная панель навигации (LiquidBottomTabs)</string>
+    <string name="settings_liquid_glass_buttons">Кнопки</string>
+    <string name="settings_liquid_glass_topbars">Топбары</string>
+    <string name="settings_liquid_glass_nav">Навигация</string>
+    <string name="settings_plugins">Плагины</string>
+    <string name="settings_plugins_summary">Установка и управление JS-плагинами</string>
+    <string name="settings_general">Общие</string>
+
+    <!-- Plugins -->
+    <string name="plugin_manager_title">Плагины</string>
+    <string name="plugin_manager_card_title">JS-плагины Dolphy</string>
+    <string name="plugin_manager_card_body">Файл .js: экраны, Другое, Wi-Fi, BLE, NFC, IR, WebView, root, Shizuku.</string>
+    <string name="plugin_manager_pick_file">Выбрать файл</string>
+    <string name="plugin_manager_about">Подробнее</string>
+    <string name="plugin_manager_installed">Установленные</string>
+    <string name="plugin_manager_empty">Пока нет плагинов. Выберите .js файл выше.</string>
+    <string name="plugin_manager_installed_toast">Плагин %1$s установлен</string>
+    <string name="plugin_manager_installed_msg">Установлен: %1$s</string>
+    <string name="plugin_manager_error">Ошибка: %1$s</string>
+    <string name="plugin_about_title">О плагинах</string>
+    <string name="plugin_about_guide_title">Руководство автора</string>
+    <string name="plugin_about_guide_body">Плагин — это файл .js. Импорт: Настройки → Общие → Плагины → Выбрать файл.\n\nМожно собирать экраны (ui.m3 / expressive), карточки в Другое, Wi-Fi, BLE spam, NFC, IR, HTTP, download, media/camera pick, WebView, Root (расширенный), Shizuku, shell, crypto, timers, snackbar, assets и публиковать свои API через плагины-библиотеки.</string>
+    <string name="plugin_host_title">Плагин</string>
+    <string name="plugin_host_not_installed">Плагин «%1$s» не установлен.\nИмпортируйте .js через Управление плагинами.</string>
+    <string name="plugin_host_empty_screen">Пустой экран</string>
+
+    <!-- ScooterHack -->
+    <string name="scooter_hack_title">ScooterHack</string>
+    <string name="scooter_hack_card_desc">Управление электросамокатами по BLE. Не для арендованных самокатов, их ПО не поддерживается.</string>
+    <string name="scooter_scan_start">Сканировать самокаты</string>
+    <string name="scooter_scan_stop">Остановить скан</string>
+    <string name="scooter_scan_hint"> </string>
+    <string name="scooter_scanning">Поиск самокатов…</string>
+    <string name="scooter_empty">Самокаты не найдены. Запустите скан рядом с устройством.</string>
+    <string name="scooter_connect">Подключить</string>
+    <string name="scooter_disconnect">Отключить</string>
+    <string name="scooter_sound">Звук</string>
+    <string name="scooter_lock">Замок</string>
+    <string name="scooter_unlock">Открыть</string>
+    <string name="scooter_perm_denied">Нужны разрешения Bluetooth и геолокации</string>
 </resources>

@@ -328,3 +328,4 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
     }
 
 }
+

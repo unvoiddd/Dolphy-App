@@ -1,4 +1,4 @@
-Ôªøpackage com.droid.dolphy
+package com.droid.dolphy
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -53,12 +53,12 @@ class FlipperWidgetProvider : AppWidgetProvider() {
         private val mainItems = listOf("BLE", "IR")
 
         private val irMenuItems = listOf(
-            "–£–Ω. –¢–í",
-            "–£–Ω. Audio",
-            "–£–Ω. AC",
-            "–£–Ω. Proj",
-            "–ò–ö —à—Ç–æ—Ä–º",
-            "–ò–ö –≥–ª—É—à–∏–ª–∫–∞"
+            "”Ì. “¬",
+            "”Ì. Audio",
+            "”Ì. AC",
+            "”Ì. Proj",
+            "»  ¯ÚÓÏ",
+            "»  „ÎÛ¯ËÎÍ‡"
         )
 
         private val bleSections = listOf(BleSection.IOS, BleSection.SAMSUNG, BleSection.ANDROID, BleSection.WINDOWS)
@@ -159,7 +159,7 @@ class FlipperWidgetProvider : AppWidgetProvider() {
                 )
 
                 if (screen == WidgetScreen.IR && irMode == IrMode.MENU) {
-                    views.setTextViewText(R.id.ir_header_title, "IR –º–µ–Ω—é")
+                    views.setTextViewText(R.id.ir_header_title, "IR ÏÂÌ˛")
                     irIds.forEachIndexed { i, viewId ->
                         val label = irMenuItems.getOrNull(i).orEmpty()
                         views.setTextViewText(viewId, label)
@@ -176,10 +176,10 @@ class FlipperWidgetProvider : AppWidgetProvider() {
                     }
                 } else if (screen == WidgetScreen.IR) {
                     val title = when (irCategory) {
-                        UniversalCategory.TV -> "–£–Ω. –¢–í"
-                        UniversalCategory.AUDIO -> "–£–Ω. Audio"
-                        UniversalCategory.AC -> "–£–Ω. AC"
-                        UniversalCategory.PROJECTOR -> "–£–Ω. Proj"
+                        UniversalCategory.TV -> "”Ì. “¬"
+                        UniversalCategory.AUDIO -> "”Ì. Audio"
+                        UniversalCategory.AC -> "”Ì. AC"
+                        UniversalCategory.PROJECTOR -> "”Ì. Proj"
                     }
                     views.setTextViewText(R.id.ir_header_title, title)
                     val actions = actionsForCategory(irCategory)
@@ -389,3 +389,4 @@ private enum class IrMode {
     MENU,
     UNIVERSAL
 }
+

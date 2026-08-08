@@ -40,6 +40,8 @@ private data class OtherItem(
     val isPlugin: Boolean = false,
     val pluginId: String? = null,
     val screenId: String? = null,
+    
+    val requiresRoot: Boolean = false,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,6 +101,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                         title = OtherSections.BLUETOOTH,
                         items = listOf(
                             OtherItem(Icons.Default.BluetoothAudio, stringResource(R.string.audio_scanner_title), stringResource(R.string.audio_scanner_desc), Color(0xFFE91E63), "other/audio_scanner"),
+                            OtherItem(Icons.Default.ElectricScooter, stringResource(R.string.scooter_hack_title), stringResource(R.string.scooter_hack_card_desc), Color(0xFF00BFA5), "other/scooter_hack"),
                             OtherItem(Icons.Default.Bluetooth, "NRF Scanner", stringResource(R.string.nrf_scanner_description), Color(0xFF2196F3), "other/nrf_scanner"),
                             OtherItem(Icons.Default.Chat, "Dolphy Chat", stringResource(R.string.other_dolphy_chat_desc), Color(0xFF2196F3), "other/dolphy_chat_global"),
                             OtherItem(Icons.Default.Keyboard, stringResource(R.string.other_hid), stringResource(R.string.other_hid_desc), Color(0xFF9C27B0), "hid"),
@@ -115,6 +118,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                         title = OtherSections.OTHER,
                         items = listOf(
                             OtherItem(Icons.Outlined.Nfc, stringResource(R.string.other_nfc), stringResource(R.string.other_nfc_desc), Color(0xFF00BCD4), "other/nfc_tools"),
+                            OtherItem(Icons.Default.Terminal, stringResource(R.string.other_bad_usb), stringResource(R.string.other_bad_usb_desc), Color(0xFFE65100), "other/bad_usb", requiresRoot = true),
                             OtherItem(Icons.Default.QrCodeScanner, stringResource(R.string.other_qr_tools), stringResource(R.string.other_qr_tools_desc), Color(0xFF8BC34A), "other/qr_tools"),
                             OtherItem(Icons.Filled.WifiOff, "WI-FI Attacks", stringResource(R.string.network_hub_card_description), Color(0xFFD32F2F), "other/network_diagnostic_hub"),
                             OtherItem(Icons.Default.Cast, stringResource(R.string.smarttv_cast_title), stringResource(R.string.smarttv_cast_card_description), Color(0xFF4285F4), "other/smarttv_cast"),
@@ -178,33 +182,36 @@ private fun SectionBlock(
     onClick: (OtherItem) -> Unit,
 ) {
     if (items.isEmpty()) return
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.6f),
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
-        )
-        items.forEachIndexed { index, item ->
-            val shape = getSegmentedShape(index, items.size)
-            MaterialCard(
-                modifier = Modifier.fillMaxWidth(),
-                accentColor = accent,
-                shape = shape,
-                contentPadding = 0.dp,
-            ) {
-                OtherFunctionRow(
-                    icon = item.icon,
-                    iconTint = item.color,
-                    title = item.title,
-                    description = item.description,
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onClick(item)
-                    },
-                )
-            }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        M3SegmentedListSectionHeader(title = title)
+        M3SegmentedList(items = items) { index, count, item ->
+            M3SegmentedListItem(
+                index = index,
+                count = count,
+                headline = item.title,
+                supporting = item.description.takeIf { it.isNotBlank() },
+                leadingIcon = item.icon,
+                leadingIconTint = item.color,
+                showChevron = !item.requiresRoot,
+                trailingContent = if (item.requiresRoot) {
+                    {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RootBadge(accentColor = accent)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                } else null,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onClick(item)
+                },
+            )
         }
     }
 }
@@ -245,14 +252,15 @@ private fun OtherFunctionRow(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.3f),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
+

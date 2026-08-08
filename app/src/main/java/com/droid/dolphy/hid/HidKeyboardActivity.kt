@@ -1,6 +1,8 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 package com.droid.dolphy.hid
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothClass
@@ -40,6 +42,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -47,6 +50,7 @@ import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DevicesOther
 import androidx.compose.material.icons.filled.Headset
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Refresh
@@ -83,13 +87,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
+import androidx.compose.runtime.CompositionLocalProvider
 import com.droid.dolphy.AppLocale
 import com.droid.dolphy.DolphyCircularProgressIndicator
 import com.droid.dolphy.DolphyTheme
+import com.droid.dolphy.LocalExpressiveEnabled
+import com.droid.dolphy.LocalLiquidGlassBackdrop
+import com.droid.dolphy.LocalLiquidGlassButtons
+import com.droid.dolphy.LocalLiquidGlassEnabled
+import com.droid.dolphy.LocalLiquidGlassNav
+import com.droid.dolphy.LocalLiquidGlassTopBars
 import com.droid.dolphy.R
 import com.droid.dolphy.SectionTopBar
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
+import com.kyant.backdrop.backdrops.emptyBackdrop
 
 class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
 
@@ -151,6 +163,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
     private val settingsPrefs by lazy { getSharedPreferences("DolphyPrefs", Context.MODE_PRIVATE) }
     private val showReconnectBanner = mutableStateOf(false)
     private val showLongConnectingDialog = mutableStateOf(false)
+    private val showBlueDuckyInfoDialog = mutableStateOf(false)
     private var originalBtName: String? = null
     private var lastConnectingToastAtMs = 0L
 
@@ -288,6 +301,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
         val isAdaptiveColor = settingsPrefs.getBoolean("is_adaptive_color", true)
         val flipperFontEnabled = settingsPrefs.getBoolean("flipper_font_enabled", true)
         val flipperFontScale = settingsPrefs.getFloat("flipper_font_scale", 1.08f)
+        val uiScale = settingsPrefs.getFloat("ui_scale", 1f).coerceIn(0.8f, 1.2f)
         val animatedBackgroundEnabled = settingsPrefs.getBoolean("animated_background_enabled", false)
         val expressiveEnabled = settingsPrefs.getBoolean("md3_expressive", false)
         val themeMode = settingsPrefs.getInt("theme_mode", 0)
@@ -303,15 +317,35 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
 
             val accentColor = Color(accentColorInt)
 
+            val liquidGlassEnabled = remember {
+                settingsPrefs.getBoolean("liquid_glass_enabled", false) ||
+                    settingsPrefs.getBoolean("liquid_glass", false)
+            }
+            val liquidButtons = remember { settingsPrefs.getBoolean("liquid_glass_buttons", true) }
+            val liquidTopBars = remember { settingsPrefs.getBoolean("liquid_glass_topbars", true) }
+            val liquidNav = remember { settingsPrefs.getBoolean("liquid_glass_nav", true) }
+            val controlsBackdrop = remember(liquidGlassEnabled) {
+                if (liquidGlassEnabled) emptyBackdrop() else null
+            }
+
             DolphyTheme(
                 darkTheme = isDarkTheme,
                 accentColor = accentColor,
                 isAdaptiveColor = isAdaptiveColor,
                 useFlipperFont = flipperFontEnabled,
                 flipperFontScale = flipperFontScale,
+                uiScale = uiScale,
                 animatedBackgroundEnabled = animatedBackgroundEnabled,
                 expressiveEnabled = expressiveEnabled
             ) {
+                CompositionLocalProvider(
+                    LocalLiquidGlassEnabled provides liquidGlassEnabled,
+                    LocalLiquidGlassButtons provides liquidButtons,
+                    LocalLiquidGlassTopBars provides liquidTopBars,
+                    LocalLiquidGlassNav provides liquidNav,
+                    LocalLiquidGlassBackdrop provides controlsBackdrop,
+                    LocalExpressiveEnabled provides expressiveEnabled,
+                ) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val status = hidStatus.value
                     val showKeyboard = showKeyboardScreen.value
@@ -399,7 +433,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                                 onBack = { finish() },
                                 transparent = true,
                                 actions = {
-                                    IconButton(onClick = { startDiscovery(adapter) }) {
+                                    DolphyIconButton(onClick = { startDiscovery(adapter) }) {
                                         if (scanning) DolphyCircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                                         else Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.hid_scan))
                                     }
@@ -518,7 +552,78 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) { Text(stringResource(R.string.hid_connect)) }
+
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val addr = selectedAddress ?: return@OutlinedButton
+                                        stopDiscoveryIfRunning()
+                                        saveLastTarget(addr, selectedName ?: addr, selectedKind)
+                                        userInitiatedSession = true
+                                        reconnectInProgress = false
+                                        reconnectAttemptCount = 0
+                                        controlScreenMode.value = if (isComputerSelected) ControlScreenMode.Pc else ControlScreenMode.Mobile
+                                        hidStatus.value = HidStatus.Connecting
+                                        scheduleLongConnectingWarning()
+                                        autoNavigateOnConnect = true
+                                        waitingForPcBond = false
+                                        waitingForPcBondUntilMs = 0L
+                                        Toast.makeText(
+                                            this@HidKeyboardActivity,
+                                            getString(R.string.hid_quiet_connect_toast),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                        keyboardService?.connectSilentBlueDucky(addr)
+                                    },
+                                    enabled = selectedAddress != null && status !is HidStatus.Connecting,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.tertiary,
+                                    ),
+                                ) {
+                                    Text(stringResource(R.string.hid_quiet_connect))
+                                }
+                                Surface(
+                                    onClick = { showBlueDuckyInfoDialog.value = true },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(top = 2.dp, end = 2.dp)
+                                        .size(22.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                    tonalElevation = 2.dp,
+                                ) {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Info,
+                                            contentDescription = "BlueDucky info",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        )
+                                    }
+                                }
+                            }
                         }
+                    }
+
+                    if (showBlueDuckyInfoDialog.value) {
+                        AlertDialog(
+                            onDismissRequest = { showBlueDuckyInfoDialog.value = false },
+                            title = {
+                                Text(
+                                    stringResource(R.string.hid_blueducky_info_title),
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(R.string.hid_blueducky_info_body))
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showBlueDuckyInfoDialog.value = false }) {
+                                    Text(stringResource(R.string.got_it))
+                                }
+                            },
+                        )
                     }
 
                     if (failedDialog) {
@@ -559,6 +664,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                             }
                         )
                     }
+                }
                 }
             }
         }
@@ -974,3 +1080,4 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
         BtDeviceKind.Other -> if (isSearching) Icons.Default.BluetoothSearching else Icons.Default.DevicesOther
     }
 }
+

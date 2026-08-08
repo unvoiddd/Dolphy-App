@@ -55,3 +55,4 @@ object PluginRegistry {
         _revision.update { it + 1 }
     }
 }
+

@@ -181,3 +181,4 @@ class Scanner(
 
     fun isCurrentlyScanning(): Boolean = isScanning
 }
+

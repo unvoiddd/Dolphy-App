@@ -1,5 +1,6 @@
 package com.droid.dolphy.plugin.js
 
+
 import com.droid.dolphy.plugin.model.UiNode
 import org.mozilla.javascript.BaseFunction
 import org.mozilla.javascript.Context
@@ -254,6 +255,28 @@ class JsUiBuilder {
             )
         }
         put("WebView") { c, s, a -> (ScriptableObject.getProperty(ui, "webView") as BaseFunction).call(c, s, ui, a) }
+        put("image") { _, _, args ->
+            val props = props(args, 0)
+            val source = strProp(props, "src", "")
+                .ifBlank { strProp(props, "source", "") }
+                .ifBlank { strProp(props, "asset", "") }
+                .ifBlank { strProp(props, "path", "") }
+            val w = optionalFloat(props, "width")
+            val h = optionalFloat(props, "height")
+            val size = optionalFloat(props, "size")
+            wrap(
+                UiNode.Image(
+                    source = source,
+                    width = w ?: size,
+                    height = h ?: size,
+                    scale = strProp(props, "scale", strProp(props, "contentScale", "fit")),
+                    cornerRadius = floatProp(props, "cornerRadius", floatProp(props, "radius", 0f)),
+                    fillMaxWidth = boolProp(props, "fillMaxWidth", false),
+                    contentDescription = strProp(props, "contentDescription", strProp(props, "alt", "")),
+                )
+            )
+        }
+        put("Image") { c, s, a -> (ScriptableObject.getProperty(ui, "image") as BaseFunction).call(c, s, ui, a) }
         put("logPanel") { _, _, args ->
             val props = props(args, 0)
             val text = if (args.isNotEmpty() && args[0] is CharSequence) str(args, 0, "") else strProp(props, "text", "")
@@ -295,7 +318,426 @@ class JsUiBuilder {
                 )
             )
         }
+
+        put("connectedButtonGroup") { _, _, args ->
+            wrap(buildConnectedButtonGroup(props(args, 0)))
+        }
+        put("tabRow") { _, _, args ->
+            wrap(buildTabRow(props(args, 0)))
+        }
+        put("bounceButton") { _, _, args ->
+            val props = props(args, 0)
+            wrap(
+                UiNode.BounceButton(
+                    text = strProp(props, "text", "Button"),
+                    onClickId = reg(props["onClick"]),
+                    enabled = boolProp(props, "enabled", true),
+                    fillMaxWidth = boolProp(props, "fillMaxWidth", true),
+                )
+            )
+        }
+        put("splitButton") { _, _, args ->
+            val props = props(args, 0)
+            wrap(
+                UiNode.SplitButton(
+                    primaryText = strProp(props, "text", strProp(props, "primaryText", "Action")),
+                    onPrimaryId = reg(props["onClick"] ?: props["onPrimary"] ?: props["onPrimaryClick"]),
+                    onSecondaryId = reg(props["onSecondary"] ?: props["onSecondaryClick"] ?: props["onMenu"]),
+                    enabled = boolProp(props, "enabled", true),
+                    fillMaxWidth = boolProp(props, "fillMaxWidth", true),
+                )
+            )
+        }
+        put("wavyProgress") { _, _, args ->
+            val props = props(args, 0)
+            val p = props["progress"]
+            wrap(
+                UiNode.WavyProgress(
+                    progress = if (p == null || p == Context.getUndefinedValue()) null else toFloat(p),
+                    size = floatProp(props, "size", 64f),
+                )
+            )
+        }
+        put("floatingToolbar") { _, _, args ->
+            wrap(buildFloatingToolbar(props(args, 0)))
+        }
+        put("checkbox") { _, _, args ->
+            val props = props(args, 0)
+            wrap(
+                UiNode.Checkbox(
+                    checked = boolProp(props, "checked", false),
+                    onChangeId = reg(props["onChange"] ?: props["onCheckedChange"]),
+                    title = strProp(props, "title", strProp(props, "text", strProp(props, "label", ""))),
+                    subtitle = strProp(props, "subtitle", ""),
+                    enabled = boolProp(props, "enabled", true),
+                )
+            )
+        }
+        put("radioGroup") { _, _, args ->
+            wrap(buildRadioGroup(props(args, 0)))
+        }
+        put("radio") { c, s, a -> (ScriptableObject.getProperty(ui, "radioGroup") as BaseFunction).call(c, s, ui, a) }
+        put("dropdown") { _, _, args ->
+            wrap(buildDropdown(props(args, 0)))
+        }
+        put("select") { c, s, a -> (ScriptableObject.getProperty(ui, "dropdown") as BaseFunction).call(c, s, ui, a) }
+        put("lazyRow") { _, _, args ->
+            wrap(UiNode.LazyRow(childrenOf(args), f(args, "padding", 0f), f(args, "spacing", 8f), b(args, "fillMaxWidth", true)))
+        }
+        put("LazyRow") { c, s, a -> (ScriptableObject.getProperty(ui, "lazyRow") as BaseFunction).call(c, s, ui, a) }
+
+        val m3 = buildMaterial3Pack(cx, scope, ui)
+        ScriptableObject.putProperty(ui, "m3", m3)
+        ScriptableObject.putProperty(ui, "material3", m3)
+        ScriptableObject.putProperty(ui, "Material3", m3)
+        ScriptableObject.putProperty(ui, "expressive", ScriptableObject.getProperty(m3, "expressive"))
+
         return ui
+    }
+
+    
+    private fun buildMaterial3Pack(cx: Context, scope: Scriptable, ui: Scriptable): Scriptable {
+        val m3 = cx.newObject(scope)
+
+        fun callUi(name: String, args: Array<Any?>): Any? {
+            val fn = ScriptableObject.getProperty(ui, name)
+            return if (fn is org.mozilla.javascript.Function) {
+                fn.call(cx, scope, ui, args)
+            } else null
+        }
+
+        fun put(name: String, body: (Array<Any?>) -> Any?) {
+            ScriptableObject.putProperty(m3, name, object : BaseFunction() {
+                override fun call(c: Context, s: Scriptable, thisObj: Scriptable, args: Array<Any?>): Any? {
+                    return body(args)
+                }
+            })
+        }
+
+        fun propsOf(args: Array<Any?>): Map<String, Any?> {
+            val a0 = args.getOrNull(0)
+            return if (a0 is Scriptable && isPlainObject(a0)) scriptableToMap(a0) else emptyMap()
+        }
+
+        fun mergeStyle(args: Array<Any?>, style: String): Array<Any?> {
+            val p = propsOf(args).toMutableMap()
+            if (!p.containsKey("style")) p["style"] = style
+            val obj = cx.newObject(scope)
+            p.forEach { (k, v) -> ScriptableObject.putProperty(obj, k, v) }
+            return arrayOf(obj)
+        }
+
+        put("filledButton") { callUi("button", mergeStyle(it, "filled")) }
+        put("tonalButton") { callUi("button", mergeStyle(it, "tonal")) }
+        put("outlinedButton") { callUi("button", mergeStyle(it, "outlined")) }
+        put("textButton") { callUi("button", mergeStyle(it, "text")) }
+        put("elevatedButton") { callUi("button", mergeStyle(it, "material")) }
+        put("button") { callUi("button", it) }
+        put("iconButton") { callUi("iconButton", it) }
+        put("fab") { args ->
+            val p = propsOf(args).toMutableMap()
+            if (p.containsKey("icon")) {
+                callUi("iconButton", args)
+            } else {
+                p["style"] = p["style"] ?: "filled"
+                p["fillMaxWidth"] = false
+                val obj = cx.newObject(scope)
+                p.forEach { (k, v) -> ScriptableObject.putProperty(obj, k, v) }
+                callUi("button", arrayOf(obj))
+            }
+        }
+
+        put("card") { callUi("materialCard", it) }
+        put("elevatedCard") { callUi("materialCard", it) }
+        put("filledCard") { callUi("materialCard", it) }
+        put("outlinedCard") { callUi("materialCard", it) }
+        put("materialCard") { callUi("materialCard", it) }
+
+        put("surface") { callUi("materialCard", it) }
+        put("column") { callUi("column", it) }
+        put("row") { callUi("row", it) }
+        put("box") { callUi("box", it) }
+        put("lazyColumn") { callUi("lazyColumn", it) }
+        put("scaffold") { callUi("scaffold", it) }
+        put("divider") { callUi("divider", it) }
+        put("spacer") { callUi("spacer", it) }
+
+        put("text") { callUi("text", it) }
+        fun styledText(args: Array<Any?>, defaultStyle: String): Any? {
+            val hasStr = args.isNotEmpty() && args[0] is CharSequence
+            val t = if (hasStr) {
+                Context.toString(args[0])
+            } else {
+                propsOf(args)["text"]?.toString() ?: ""
+            }
+            val props = if (hasStr) props(args, 1) else propsOf(args)
+            val obj = cx.newObject(scope)
+            ScriptableObject.putProperty(obj, "style", props["style"] ?: defaultStyle)
+            props["color"]?.let { ScriptableObject.putProperty(obj, "color", it) }
+            props["maxLines"]?.let { ScriptableObject.putProperty(obj, "maxLines", it) }
+            return callUi("text", arrayOf(t, obj))
+        }
+        put("title") { styledText(it, "titleMedium") }
+        put("label") { styledText(it, "labelMedium") }
+        put("body") { styledText(it, "bodyMedium") }
+
+        put("textField") { callUi("textField", it) }
+        put("switch") { callUi("switch", it) }
+        put("slider") { callUi("slider", it) }
+        put("chip") { callUi("chip", it) }
+        put("filterChip") { callUi("chip", it) }
+        put("assistChip") { callUi("chip", it) }
+        put("suggestionChip") { callUi("chip", it) }
+        put("checkbox") { callUi("checkbox", it) }
+        put("radioGroup") { callUi("radioGroup", it) }
+        put("radio") { callUi("radioGroup", it) }
+        put("dropdown") { callUi("dropdown", it) }
+        put("select") { callUi("dropdown", it) }
+        put("lazyRow") { callUi("lazyRow", it) }
+
+        put("linearProgress") { callUi("linearProgress", it) }
+        put("circularProgress") { callUi("circularProgress", it) }
+
+        put("listItem") { callUi("settingsRow", it) }
+        put("settingsRow") { callUi("settingsRow", it) }
+        put("functionRow") { callUi("functionRow", it) }
+        put("segmentedList") { callUi("segmentedList", it) }
+
+        put("topAppBar") { args ->
+            val p = propsOf(args)
+            if (p.containsKey("content")) {
+                callUi("scaffold", args)
+            } else {
+                val title = p["title"]?.toString() ?: ""
+                val obj = cx.newObject(scope)
+                ScriptableObject.putProperty(obj, "style", "titleLarge")
+                callUi("text", arrayOf(title, obj))
+            }
+        }
+        put("alertDialog") { callUi("alertDialog", it) }
+        put("icon") { callUi("icon", it) }
+        put("image") { callUi("image", it) }
+        put("webView") { callUi("webView", it) }
+        put("logPanel") { callUi("logPanel", it) }
+
+        val buttons = cx.newObject(scope)
+        ScriptableObject.putProperty(buttons, "filled", ScriptableObject.getProperty(m3, "filledButton"))
+        ScriptableObject.putProperty(buttons, "tonal", ScriptableObject.getProperty(m3, "tonalButton"))
+        ScriptableObject.putProperty(buttons, "outlined", ScriptableObject.getProperty(m3, "outlinedButton"))
+        ScriptableObject.putProperty(buttons, "text", ScriptableObject.getProperty(m3, "textButton"))
+        ScriptableObject.putProperty(buttons, "elevated", ScriptableObject.getProperty(m3, "elevatedButton"))
+        ScriptableObject.putProperty(m3, "buttons", buttons)
+
+        val cards = cx.newObject(scope)
+        ScriptableObject.putProperty(cards, "elevated", ScriptableObject.getProperty(m3, "elevatedCard"))
+        ScriptableObject.putProperty(cards, "filled", ScriptableObject.getProperty(m3, "filledCard"))
+        ScriptableObject.putProperty(cards, "outlined", ScriptableObject.getProperty(m3, "outlinedCard"))
+        ScriptableObject.putProperty(m3, "cards", cards)
+
+        put("connectedButtonGroup") { callUi("connectedButtonGroup", it) }
+        put("tabRow") { callUi("tabRow", it) }
+        put("bounceButton") { callUi("bounceButton", it) }
+        put("splitButton") { callUi("splitButton", it) }
+        put("wavyProgress") { callUi("wavyProgress", it) }
+        put("floatingToolbar") { callUi("floatingToolbar", it) }
+        put("ConnectedButtonGroup") { callUi("connectedButtonGroup", it) }
+        put("MaterialTabRow") { callUi("tabRow", it) }
+        put("ExpressiveBounceButton") { callUi("bounceButton", it) }
+        put("ExpressiveSplitButton") { callUi("splitButton", it) }
+        put("WavyCircularProgress") { callUi("wavyProgress", it) }
+        put("ExpressiveFloatingToolbar") { callUi("floatingToolbar", it) }
+
+        val expressive = cx.newObject(scope)
+        ScriptableObject.putProperty(expressive, "connectedButtonGroup", ScriptableObject.getProperty(m3, "connectedButtonGroup"))
+        ScriptableObject.putProperty(expressive, "buttonGroup", ScriptableObject.getProperty(m3, "connectedButtonGroup"))
+        ScriptableObject.putProperty(expressive, "tabRow", ScriptableObject.getProperty(m3, "tabRow"))
+        ScriptableObject.putProperty(expressive, "tabs", ScriptableObject.getProperty(m3, "tabRow"))
+        ScriptableObject.putProperty(expressive, "bounceButton", ScriptableObject.getProperty(m3, "bounceButton"))
+        ScriptableObject.putProperty(expressive, "splitButton", ScriptableObject.getProperty(m3, "splitButton"))
+        ScriptableObject.putProperty(expressive, "wavyProgress", ScriptableObject.getProperty(m3, "wavyProgress"))
+        ScriptableObject.putProperty(expressive, "floatingToolbar", ScriptableObject.getProperty(m3, "floatingToolbar"))
+        ScriptableObject.putProperty(expressive, "toolbar", ScriptableObject.getProperty(m3, "floatingToolbar"))
+        ScriptableObject.putProperty(expressive, "switch", ScriptableObject.getProperty(m3, "switch"))
+        ScriptableObject.putProperty(expressive, "slider", ScriptableObject.getProperty(m3, "slider"))
+        ScriptableObject.putProperty(expressive, "linearProgress", ScriptableObject.getProperty(m3, "linearProgress"))
+        ScriptableObject.putProperty(expressive, "circularProgress", ScriptableObject.getProperty(m3, "circularProgress"))
+        ScriptableObject.putProperty(expressive, "segmentedList", ScriptableObject.getProperty(m3, "segmentedList"))
+        ScriptableObject.putProperty(expressive, "materialButton", ScriptableObject.getProperty(m3, "elevatedButton"))
+        ScriptableObject.putProperty(m3, "expressive", expressive)
+        ScriptableObject.putProperty(m3, "exp", expressive)
+
+        return m3
+    }
+
+    private fun buildConnectedButtonGroup(props: Map<String, Any?>): UiNode.ConnectedButtonGroup {
+        val options = mutableListOf<Pair<String, String>>()
+        val raw = props["options"] ?: props["items"] ?: props["tabs"]
+        if (raw is Scriptable) {
+            val len = (ScriptableObject.getProperty(raw, "length") as? Number)?.toInt() ?: 0
+            for (i in 0 until len) {
+                val item = ScriptableObject.getProperty(raw, i)
+                when (item) {
+                    is Scriptable -> {
+                        val label = ScriptableObject.getProperty(item, "label")?.toString()
+                            ?: ScriptableObject.getProperty(item, "text")?.toString()
+                            ?: ScriptableObject.getProperty(item, "title")?.toString()
+                            ?: "Item $i"
+                        val value = ScriptableObject.getProperty(item, "value")?.toString()
+                            ?: ScriptableObject.getProperty(item, "id")?.toString()
+                            ?: label
+                        options += label to value
+                    }
+                    is CharSequence -> {
+                        val s = item.toString()
+                        options += s to s
+                    }
+                    else -> {
+                        val s = item?.toString() ?: continue
+                        if (s != "undefined" && s != "null") options += s to s
+                    }
+                }
+            }
+        }
+        if (options.isEmpty()) {
+            options += "A" to "a"
+            options += "B" to "b"
+        }
+        val selected = props["selected"]?.toString()
+            ?: props["selectedValue"]?.toString()
+            ?: props["value"]?.toString()
+            ?: options.first().second
+        return UiNode.ConnectedButtonGroup(
+            options = options,
+            selectedValue = selected,
+            onSelectId = reg(props["onSelect"] ?: props["onChange"] ?: props["onValueSelected"]),
+        )
+    }
+
+    private fun buildTabRow(props: Map<String, Any?>): UiNode.TabRow {
+        val tabs = mutableListOf<String>()
+        val raw = props["tabs"] ?: props["items"] ?: props["labels"]
+        if (raw is Scriptable) {
+            val len = (ScriptableObject.getProperty(raw, "length") as? Number)?.toInt() ?: 0
+            for (i in 0 until len) {
+                val item = ScriptableObject.getProperty(raw, i)
+                when (item) {
+                    is Scriptable -> {
+                        tabs += (
+                            ScriptableObject.getProperty(item, "label")?.toString()
+                                ?: ScriptableObject.getProperty(item, "text")?.toString()
+                                ?: ScriptableObject.getProperty(item, "title")?.toString()
+                                ?: "Tab $i"
+                            )
+                    }
+                    is CharSequence -> tabs += item.toString()
+                    else -> item?.toString()?.takeIf { it != "undefined" && it != "null" }?.let { tabs += it }
+                }
+            }
+        }
+        if (tabs.isEmpty()) tabs += listOf("Tab 1", "Tab 2")
+        val selected = (props["selected"] as? Number)?.toInt()
+            ?: (props["selectedIndex"] as? Number)?.toInt()
+            ?: (props["index"] as? Number)?.toInt()
+            ?: 0
+        return UiNode.TabRow(
+            tabs = tabs,
+            selectedIndex = selected.coerceIn(0, (tabs.size - 1).coerceAtLeast(0)),
+            onSelectId = reg(props["onSelect"] ?: props["onChange"] ?: props["onTabSelected"]),
+        )
+    }
+
+    private fun buildFloatingToolbar(props: Map<String, Any?>): UiNode.FloatingToolbar {
+        val items = mutableListOf<UiNode.ToolbarItem>()
+        val raw = props["items"] ?: props["tabs"]
+        if (raw is Scriptable) {
+            val len = (ScriptableObject.getProperty(raw, "length") as? Number)?.toInt() ?: 0
+            for (i in 0 until len) {
+                val item = ScriptableObject.getProperty(raw, i)
+                if (item is Scriptable) {
+                    items += UiNode.ToolbarItem(
+                        icon = ScriptableObject.getProperty(item, "icon")?.toString() ?: "extension",
+                        selected = when (val s = ScriptableObject.getProperty(item, "selected")) {
+                            is Boolean -> s
+                            else -> false
+                        },
+                        onClickId = reg(
+                            ScriptableObject.getProperty(item, "onClick")
+                                ?: ScriptableObject.getProperty(item, "onSelect"),
+                        ),
+                        label = ScriptableObject.getProperty(item, "label")?.toString()
+                            ?: ScriptableObject.getProperty(item, "text")?.toString()
+                            ?: "",
+                    )
+                }
+            }
+        }
+        if (items.isEmpty()) {
+            items += UiNode.ToolbarItem("bluetooth", true, null, "BT")
+            items += UiNode.ToolbarItem("extension", false, null, "Other")
+            items += UiNode.ToolbarItem("settings", false, null, "Settings")
+        }
+        return UiNode.FloatingToolbar(items)
+    }
+
+    private fun parseOptions(raw: Any?): List<Pair<String, String>> {
+        val options = mutableListOf<Pair<String, String>>()
+        if (raw is Scriptable) {
+            val len = (ScriptableObject.getProperty(raw, "length") as? Number)?.toInt() ?: 0
+            for (i in 0 until len) {
+                val item = ScriptableObject.getProperty(raw, i)
+                when (item) {
+                    is Scriptable -> {
+                        val label = ScriptableObject.getProperty(item, "label")?.toString()
+                            ?: ScriptableObject.getProperty(item, "text")?.toString()
+                            ?: ScriptableObject.getProperty(item, "title")?.toString()
+                            ?: "Item $i"
+                        val value = ScriptableObject.getProperty(item, "value")?.toString()
+                            ?: ScriptableObject.getProperty(item, "id")?.toString()
+                            ?: label
+                        options += label to value
+                    }
+                    is CharSequence -> {
+                        val s = item.toString()
+                        options += s to s
+                    }
+                    else -> item?.toString()?.takeIf { it != "undefined" && it != "null" }?.let {
+                        options += it to it
+                    }
+                }
+            }
+        }
+        return options
+    }
+
+    private fun buildRadioGroup(props: Map<String, Any?>): UiNode.RadioGroup {
+        val options = parseOptions(props["options"] ?: props["items"] ?: props["choices"])
+        val opts = options.ifEmpty { listOf("A" to "a", "B" to "b") }
+        val selected = props["selected"]?.toString()
+            ?: props["selectedValue"]?.toString()
+            ?: props["value"]?.toString()
+            ?: opts.first().second
+        return UiNode.RadioGroup(
+            options = opts,
+            selectedValue = selected,
+            onSelectId = reg(props["onSelect"] ?: props["onChange"] ?: props["onValueChange"]),
+            title = strProp(props, "title", ""),
+        )
+    }
+
+    private fun buildDropdown(props: Map<String, Any?>): UiNode.Dropdown {
+        val options = parseOptions(props["options"] ?: props["items"] ?: props["choices"])
+        val opts = options.ifEmpty { listOf("Option 1" to "1", "Option 2" to "2") }
+        val selected = props["selected"]?.toString()
+            ?: props["selectedValue"]?.toString()
+            ?: props["value"]?.toString()
+            ?: opts.first().second
+        return UiNode.Dropdown(
+            options = opts,
+            selectedValue = selected,
+            onSelectId = reg(props["onSelect"] ?: props["onChange"] ?: props["onValueChange"]),
+            label = strProp(props, "label", strProp(props, "title", "")),
+            enabled = boolProp(props, "enabled", true),
+        )
     }
 
     private val nodeBag = ConcurrentHashMap<String, UiNode>()
@@ -483,6 +925,12 @@ class JsUiBuilder {
         return toFloat(v)
     }
 
+    private fun optionalFloat(p: Map<String, Any?>, k: String): Float? {
+        val v = p[k] ?: return null
+        if (v == Context.getUndefinedValue() || v == null) return null
+        return toFloat(v)
+    }
+
     private fun intProp(p: Map<String, Any?>, k: String, def: Int): Int {
         val v = p[k] ?: return def
         if (v == Context.getUndefinedValue()) return def
@@ -501,3 +949,4 @@ class JsUiBuilder {
 
     private class UiNodeHolder(val node: UiNode)
 }
+

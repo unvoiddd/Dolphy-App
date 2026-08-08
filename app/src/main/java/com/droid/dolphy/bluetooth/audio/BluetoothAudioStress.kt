@@ -1,5 +1,7 @@
 package com.droid.dolphy.bluetooth.audio
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.app.Service
 import android.bluetooth.BluetoothAdapter
@@ -532,7 +534,7 @@ fun BtAudioStressScanScreen(navController: NavController) {
                             )
                         },
                         navigationIcon = {
-                            IconButton(onClick = { navController.popBackStack() }) {
+                            DolphyIconButton(onClick = { navController.popBackStack() }) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = stringResource(R.string.cd_back),
@@ -679,7 +681,7 @@ fun BtAudioStressRunScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        DolphyIconButton(onClick = { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = null,
@@ -759,3 +761,4 @@ fun BtAudioStressRunScreen(
         }
     }
 }
+

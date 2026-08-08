@@ -1,4 +1,4 @@
-ï»¿package com.droid.dolphy.nfc
+package com.droid.dolphy.nfc
 
 import android.content.Intent
 import android.nfc.NfcAdapter
@@ -64,7 +64,7 @@ object NfcTagAnalyzer {
         } else if(techSimple.contains("IsoDep")) {
             Triple("NFC Type 4 Tag", false, null)
         } else {
-            Triple("ÐœÐµÑ‚ÐºÐ°", false, null)
+            Triple("Ìåòêà", false, null)
         }
 
         val (passwordSupported, passwordEnabled) = if(ntag != null) {
@@ -78,25 +78,25 @@ object NfcTagAnalyzer {
             if(ntag != null) {
                 append("NTAG: ${ntag.name}")
             } else {
-                append("Ð¢Ð¸Ð¿ Ð¼ÐµÑ‚ÐºÐ¸: Ð½ÐµÐ¸Ð·Ð²ÐµÑÑ‚Ð½Ð¾")
+                append("Òèï ìåòêè: íåèçâåñòíî")
             }
 
-            if(isReadOnly == true) append(" â€¢ Read-only")
+            if(isReadOnly == true) append(" • Read-only")
             if(passwordSupported == true) {
                 when(passwordEnabled) {
-                    true -> append(" â€¢ Password: Ð²ÐºÐ»ÑŽÑ‡ÐµÐ½Ð¾")
-                    false -> append(" â€¢ Password: Ð²Ñ‹ÐºÐ»ÑŽÑ‡ÐµÐ½Ð¾")
-                    null -> append(" â€¢ Password: Ð½ÐµÐ¸Ð·Ð²ÐµÑÑ‚Ð½Ð¾")
+                    true -> append(" • Password: âêëþ÷åíî")
+                    false -> append(" • Password: âûêëþ÷åíî")
+                    null -> append(" • Password: íåèçâåñòíî")
                 }
             }
-            if(emvDetected) append(" â€¢ EMV")
+            if(emvDetected) append(" • EMV")
         }
 
         NfcScanEntity(
             scannedAtMillis = System.currentTimeMillis(),
-            uidHex = uidHex.ifBlank { "â€”" },
+            uidHex = uidHex.ifBlank { "—" },
             type = type,
-            techListCsv = techListCsv.ifBlank { "â€”" },
+            techListCsv = techListCsv.ifBlank { "—" },
             writable = writable,
             maxSizeBytes = maxSizeBytes,
             ndefRecordType = ndefRecordType,
@@ -166,7 +166,7 @@ object NfcTagAnalyzer {
         val isoDep = IsoDep.get(tag) ?: return null
         return try {
             isoDep.connect()
-            isoDep.timeout = 1200
+            isoDep.timeout = if (RootNfcHelper.hasRoot()) RootNfcHelper.isoDepTimeoutMs() else 1200
             val ppse = byteArrayOf(
                 0x00.toByte(), 0xA4.toByte(), 0x04.toByte(), 0x00.toByte(),
                 0x0E.toByte(),
@@ -187,16 +187,16 @@ object NfcTagAnalyzer {
                 val paymentSystem = detectPaymentSystem(aids, appLabels)
 
                 return buildString {
-                    appendLine("Ð¢Ð¸Ð¿: EMV Contactless")
-                    appendLine("Ð¡Ñ‚Ð°Ð½Ð´Ð°Ñ€Ñ‚: ISO 14443-4")
-                    appendLine("ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ° APDU: Ð”Ð°")
-                    appendLine("ÐŸÐ»Ð°Ñ‚ÐµÐ¶Ð½Ð°Ñ ÑÐ¸ÑÑ‚ÐµÐ¼Ð°: ${paymentSystem ?: "ÐÐµ Ð¾Ð¿Ñ€ÐµÐ´ÐµÐ»ÐµÐ½Ð°"}")
-                    appendLine("ÐŸÑ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ð¹ Ð½Ð° ÐºÐ°Ñ€Ñ‚Ðµ: ${aids.size}")
-                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "â€”"}")
+                    appendLine("Òèï: EMV Contactless")
+                    appendLine("Ñòàíäàðò: ISO 14443-4")
+                    appendLine("Ïîääåðæêà APDU: Äà")
+                    appendLine("Ïëàòåæíàÿ ñèñòåìà: ${paymentSystem ?: "Íå îïðåäåëåíà"}")
+                    appendLine("Ïðèëîæåíèé íà êàðòå: ${aids.size}")
+                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "—"}")
                     append("PPSE: 2PAY.SYS.DDF01")
                     if(appLabels.isNotEmpty()) {
                         appendLine()
-                        append("ÐœÐµÑ‚ÐºÐ° Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ: ${appLabels.joinToString(", ")}")
+                        append("Ìåòêà ïðèëîæåíèÿ: ${appLabels.joinToString(", ")}")
                     }
                 }
             }
@@ -215,7 +215,7 @@ object NfcTagAnalyzer {
         if(aidUpper.any { it.startsWith("A000000025") }) return "American Express"
         if(aidUpper.any { it.startsWith("A000000065") }) return "JCB"
         if(aidUpper.any { it.startsWith("A000000333") }) return "UnionPay"
-        if(aidUpper.any { it.startsWith("A000000658") }) return "ÐœÐ¸Ñ€"
+        if(aidUpper.any { it.startsWith("A000000658") }) return "Ìèð"
         if(aidUpper.any { it.startsWith("A000000524") }) return "RuPay"
         if(aidUpper.any { it.startsWith("A000000152") }) return "Discover"
 
@@ -226,7 +226,7 @@ object NfcTagAnalyzer {
             "AMEX" in labelText || "AMERICAN EXPRESS" in labelText -> "American Express"
             "JCB" in labelText -> "JCB"
             "UNIONPAY" in labelText -> "UnionPay"
-            "MIR" in labelText || "ÐœÐ˜Ð " in labelText -> "ÐœÐ¸Ñ€"
+            "MIR" in labelText || "ÌÈÐ" in labelText -> "Ìèð"
             "RUPAY" in labelText -> "RuPay"
             "DISCOVER" in labelText -> "Discover"
             else -> null
@@ -294,3 +294,4 @@ object NfcTagAnalyzer {
         return raw
     }
 }
+

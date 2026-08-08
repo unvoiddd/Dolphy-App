@@ -21,3 +21,4 @@ interface NfcScanDao {
     suspend fun getById(id: Long): NfcScanEntity?
 }
 
+

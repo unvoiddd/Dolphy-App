@@ -1,5 +1,7 @@
 package com.droid.dolphy.hid
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.annotation.SuppressLint
 import android.provider.OpenableColumns
 import android.widget.Toast
@@ -268,12 +270,12 @@ fun PcHidWorkspaceScreen(
                 TopAppBar(
                     title = { Text(stringResource(R.string.hid_pc_keyboard) + ": " + stringResource(section.titleRes)) },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        DolphyIconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                         }
                     },
                     actions = {
-                        IconButton(onClick = {
+                        DolphyIconButton(onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             scope.launch { drawerState.open() }
                         }) {
@@ -754,8 +756,6 @@ private fun PcKeyboardSection(hidConnection: Connection, capsLock: Boolean) {
             ) {
                 Column(
                     modifier = Modifier
-
-
                         .requiredWidth(keyboardLong)
                         .requiredHeight(keyboardShort)
                         .graphicsLayer {
@@ -828,7 +828,7 @@ private fun BadHidSection(
                 )
                 Spacer(Modifier.width(8.dp))
                 if (editMode && selectedScriptIds.isNotEmpty()) {
-                    IconButton(onClick = onDeleteSelected) {
+                    DolphyIconButton(onClick = onDeleteSelected) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = stringResource(R.string.hid_delete_selected),
@@ -836,7 +836,7 @@ private fun BadHidSection(
                         )
                     }
                 }
-                IconButton(onClick = onToggleEditMode) {
+                DolphyIconButton(onClick = onToggleEditMode) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = if (editMode) stringResource(R.string.hid_clear_selection) else stringResource(R.string.hid_select_scripts)
@@ -1226,3 +1226,4 @@ private fun loadPersistedScripts(prefs: android.content.SharedPreferences): List
         }
     }.getOrDefault(emptyList())
 }
+

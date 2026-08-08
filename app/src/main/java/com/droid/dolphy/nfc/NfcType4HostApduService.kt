@@ -148,3 +148,4 @@ class NfcType4HostApduService : HostApduService() {
         private val SW_WRONG_P1P2 = byteArrayOf(0x6B.toByte(), 0x00.toByte())
     }
 }
+

@@ -1,5 +1,7 @@
 package com.droid.dolphy.hid
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.content.Context
 import android.provider.OpenableColumns
@@ -677,7 +679,7 @@ private fun ScreenshotSpamScreen(
             )
 
             Card(
-                modifier = Modifier.fillMaxWidth().border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(28.dp)),
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
             ) {
@@ -845,7 +847,7 @@ private fun RowScope.ControlIconButton(
     contentDescription: String,
     onClick: () -> Unit
 ) {
-    IconButton(
+    DolphyIconButton(
         onClick = onClick,
         modifier = Modifier
             .weight(1f)
@@ -1588,4 +1590,5 @@ fun PlumMedia(
         content = content
     )
 }
+
 

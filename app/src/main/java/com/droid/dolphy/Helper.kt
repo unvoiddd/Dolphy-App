@@ -96,3 +96,4 @@ object Helper {
         android.util.Log.d("BLESpam", msg)
     }
 }
+

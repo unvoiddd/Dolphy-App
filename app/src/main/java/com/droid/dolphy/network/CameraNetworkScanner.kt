@@ -571,3 +571,4 @@ object CameraScanResultsStore {
         lastScanAt = 0L
     }
 }
+

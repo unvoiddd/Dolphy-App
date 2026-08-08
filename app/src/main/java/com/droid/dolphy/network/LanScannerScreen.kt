@@ -1,5 +1,7 @@
 package com.droid.dolphy.network
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
@@ -506,7 +508,7 @@ fun LanScannerScreen(navController: NavController) {
                                 Text(
                                     text = stringResource(R.string.lan_scanner_subnet, currentSubnet),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TextGray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
@@ -518,7 +520,7 @@ fun LanScannerScreen(navController: NavController) {
                                     color = accent
                                 )
                             } else {
-                                IconButton(onClick = { startScan() }) {
+                                DolphyIconButton(onClick = { startScan() }) {
                                     Icon(Icons.Default.Refresh, contentDescription = "Rescan", tint = accent)
                                 }
                             }
@@ -597,7 +599,7 @@ fun RouterControlPanel(device: LanDevice, accent: Color) {
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(device.hostname ?: vendorName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(device.ip, style = MaterialTheme.typography.bodyMedium, color = TextGray)
+                Text(device.ip, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
@@ -857,7 +859,7 @@ private fun DeviceCard(device: LanDevice, accent: Color) {
                 Text(
                     text = device.ip,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (device.brand != null) {
@@ -972,3 +974,4 @@ private fun guessDeviceType(hostname: String?, ip: String, openPorts: List<Int>,
 
     return if (ports.isNotEmpty()) LanDeviceType.OTHER else LanDeviceType.OTHER
 }
+

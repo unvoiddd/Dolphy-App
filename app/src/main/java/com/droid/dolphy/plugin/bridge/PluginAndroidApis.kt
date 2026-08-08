@@ -58,6 +58,12 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothGattServer
+import android.bluetooth.BluetoothGattServerCallback
+import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothSocket
+import android.os.ParcelUuid
 
 
 
@@ -98,6 +104,11 @@ class PluginAndroidApis(
 
     private val sensorListeners = ConcurrentHashMap<String, SensorEventListener>()
     private val sensorSeq = AtomicInteger(0)
+
+    private val rfcommMap = ConcurrentHashMap<String, BluetoothSocket>()
+
+    private var gattServer: BluetoothGattServer? = null
+    private var gattServerCallback: ((String) -> Unit)? = null
 
     private val btAdapter: BluetoothAdapter?
         get() = (appCtx.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
@@ -347,6 +358,478 @@ class PluginAndroidApis(
             null
         }
     }
+
+    fun filesMkdir(path: String): Boolean {
+        val f = resolvePath(path, dirOnly = true) ?: return false
+        return try {
+            f.mkdirs() || f.isDirectory
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun filesStat(path: String): String {
+        val f = resolvePath(path) ?: return JSONObject().put("ok", false).put("error", "invalid").toString()
+        if (!f.exists()) return JSONObject().put("ok", false).put("exists", false).toString()
+        return try {
+            JSONObject()
+                .put("ok", true)
+                .put("exists", true)
+                .put("path", relativePath(f))
+                .put("name", f.name)
+                .put("isDir", f.isDirectory)
+                .put("isFile", f.isFile)
+                .put("size", if (f.isFile) f.length() else 0)
+                .put("modified", f.lastModified())
+                .put("absolute", f.absolutePath)
+                .put("canRead", f.canRead())
+                .put("canWrite", f.canWrite())
+                .toString()
+        } catch (e: Exception) {
+            JSONObject().put("ok", false).put("error", e.message).toString()
+        }
+    }
+
+    fun filesCopy(from: String, to: String): Boolean {
+        val src = resolvePath(from) ?: return false
+        val dst = resolvePath(to) ?: return false
+        if (!src.exists()) return false
+        return try {
+            dst.parentFile?.mkdirs()
+            if (src.isDirectory) {
+                src.copyRecursively(dst, overwrite = true)
+            } else {
+                src.copyTo(dst, overwrite = true)
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun filesMove(from: String, to: String): Boolean {
+        if (!filesCopy(from, to)) return false
+        return filesDelete(from)
+    }
+
+    fun filesAppend(path: String, content: String): Boolean = filesWrite(path, content, append = true)
+
+    fun filesAbsolute(path: String): String? = resolvePath(path)?.absolutePath
+
+    fun filesShare(path: String, mime: String? = null, title: String = "Share"): Boolean {
+        val f = resolvePath(path) ?: return false
+        if (!f.isFile) return false
+        return try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appCtx,
+                "${appCtx.packageName}.provider",
+                f,
+            )
+            val type = mime ?: guessMime(f.name)
+            val send = Intent(Intent.ACTION_SEND).apply {
+                this.type = type
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            appCtx.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "filesShare", e)
+            false
+        }
+    }
+
+    fun filesOpenWith(path: String, mime: String? = null): Boolean {
+        val f = resolvePath(path) ?: return false
+        if (!f.isFile) return false
+        return try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appCtx,
+                "${appCtx.packageName}.provider",
+                f,
+            )
+            val type = mime ?: guessMime(f.name)
+            val view = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, type)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            appCtx.startActivity(view)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "filesOpenWith", e)
+            false
+        }
+    }
+
+    fun exportSandboxToUri(sandboxPath: String, destUri: Uri): String {
+        val f = resolvePath(sandboxPath) ?: return JSONObject().put("ok", false).put("error", "not_found").toString()
+        if (!f.isFile) return JSONObject().put("ok", false).put("error", "not_file").toString()
+        return try {
+            appCtx.contentResolver.openOutputStream(destUri)?.use { out ->
+                f.inputStream().use { it.copyTo(out) }
+            } ?: return JSONObject().put("ok", false).put("error", "open_failed").toString()
+            JSONObject()
+                .put("ok", true)
+                .put("path", relativePath(f))
+                .put("uri", destUri.toString())
+                .put("size", f.length())
+                .toString()
+        } catch (e: Exception) {
+            JSONObject().put("ok", false).put("error", e.message).toString()
+        }
+    }
+
+    private fun guessMime(name: String): String {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "mp4" -> "video/mp4"
+            "mp3" -> "audio/mpeg"
+            "wav" -> "audio/wav"
+            "txt", "log", "md", "ir" -> "text/plain"
+            "json" -> "application/json"
+            "html", "htm" -> "text/html"
+            "pdf" -> "application/pdf"
+            "zip" -> "application/zip"
+            else -> "application/octet-stream"
+        }
+    }
+
+
+    fun cryptoHash(algo: String, text: String): String? = try {
+        val md = java.security.MessageDigest.getInstance(
+            when (algo.lowercase()) {
+                "md5" -> "MD5"
+                "sha1", "sha-1" -> "SHA-1"
+                "sha256", "sha-256" -> "SHA-256"
+                "sha512", "sha-512" -> "SHA-512"
+                else -> algo
+            },
+        )
+        md.digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    } catch (_: Exception) {
+        null
+    }
+
+    fun cryptoHashBytes(algo: String, bytes: ByteArray): String? = try {
+        val md = java.security.MessageDigest.getInstance(
+            when (algo.lowercase()) {
+                "md5" -> "MD5"
+                "sha1", "sha-1" -> "SHA-1"
+                "sha256", "sha-256" -> "SHA-256"
+                "sha512", "sha-512" -> "SHA-512"
+                else -> algo
+            },
+        )
+        md.digest(bytes).joinToString("") { "%02x".format(it) }
+    } catch (_: Exception) {
+        null
+    }
+
+    fun cryptoHashFile(algo: String, path: String): String? {
+        val f = resolvePath(path) ?: return null
+        if (!f.isFile || f.length() > 50_000_000) return null
+        return try {
+            val md = java.security.MessageDigest.getInstance(
+                when (algo.lowercase()) {
+                    "md5" -> "MD5"
+                    "sha1", "sha-1" -> "SHA-1"
+                    "sha256", "sha-256" -> "SHA-256"
+                    "sha512", "sha-512" -> "SHA-512"
+                    else -> algo
+                },
+            )
+            f.inputStream().use { input ->
+                val buf = ByteArray(8192)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n <= 0) break
+                    md.update(buf, 0, n)
+                }
+            }
+            md.digest().joinToString("") { "%02x".format(it) }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun cryptoBase64Encode(text: String): String =
+        Base64.encodeToString(text.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+
+    fun cryptoBase64Decode(b64: String): String? = try {
+        String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8)
+    } catch (_: Exception) {
+        null
+    }
+
+    fun cryptoHexEncode(text: String): String =
+        text.toByteArray(Charsets.UTF_8).joinToString("") { "%02x".format(it) }
+
+    fun cryptoHexDecode(hex: String): String? {
+        val clean = hex.trim().replace(" ", "").replace(":", "")
+        if (clean.isEmpty() || clean.length % 2 != 0) return null
+        return try {
+            String(ByteArray(clean.length / 2) { i ->
+                clean.substring(i * 2, i * 2 + 2).toInt(16).toByte()
+            }, Charsets.UTF_8)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun cryptoRandomHex(bytes: Int = 16): String {
+        val n = bytes.coerceIn(1, 1024)
+        val arr = ByteArray(n)
+        java.security.SecureRandom().nextBytes(arr)
+        return arr.joinToString("") { "%02x".format(it) }
+    }
+
+    fun cryptoUuid(): String = UUID.randomUUID().toString()
+
+    
+    fun pluginFilesDir(): File = filesDir
+
+    
+    fun importUriToSandbox(
+        uri: Uri,
+        destRelative: String? = null,
+        includeBase64: Boolean = false,
+        maxBytes: Long = 12_000_000L,
+    ): String {
+        return try {
+            val cr = appCtx.contentResolver
+            val mime = cr.getType(uri) ?: "application/octet-stream"
+            val displayName = queryDisplayName(uri)
+                ?: uri.lastPathSegment?.substringAfterLast('/')
+                ?: "import_${System.currentTimeMillis()}"
+            val safeName = displayName.replace(Regex("""[^\w.\- ()\[\]]+"""), "_").take(120)
+            val rel = when {
+                !destRelative.isNullOrBlank() -> destRelative.trim().removePrefix("/")
+                mime.startsWith("image/") -> "media/images/$safeName"
+                mime.startsWith("video/") -> "media/videos/$safeName"
+                mime.startsWith("audio/") -> "media/audio/$safeName"
+                else -> "media/files/$safeName"
+            }
+            val dest = resolvePath(rel) ?: return JSONObject()
+                .put("ok", false)
+                .put("error", "invalid dest")
+                .toString()
+            dest.parentFile?.mkdirs()
+            cr.openInputStream(uri)?.use { input ->
+                val bytes = input.readBytes()
+                if (bytes.size > maxBytes) {
+                    return JSONObject()
+                        .put("ok", false)
+                        .put("error", "file_too_large")
+                        .put("maxBytes", maxBytes)
+                        .toString()
+                }
+                dest.writeBytes(bytes)
+            } ?: return JSONObject().put("ok", false).put("error", "open_failed").toString()
+
+            val o = JSONObject()
+                .put("ok", true)
+                .put("path", relativePath(dest))
+                .put("name", dest.name)
+                .put("size", dest.length())
+                .put("mime", mime)
+                .put("uri", uri.toString())
+            if (includeBase64 && dest.length() <= 5_000_000) {
+                o.put("base64", Base64.encodeToString(dest.readBytes(), Base64.NO_WRAP))
+            }
+            o.toString()
+        } catch (e: Exception) {
+            Log.w(TAG, "importUriToSandbox", e)
+            JSONObject().put("ok", false).put("error", e.message ?: "import_failed").toString()
+        }
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        return try {
+            appCtx.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c ->
+                    if (c.moveToFirst()) {
+                        val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (idx >= 0) c.getString(idx) else null
+                    } else null
+                }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    
+    fun createCameraCaptureTarget(fileName: String? = null): Pair<File, Uri>? {
+        return try {
+            val name = (fileName ?: "camera_${System.currentTimeMillis()}.jpg")
+                .replace(Regex("""[^\w.\-]+"""), "_")
+            val dir = File(appCtx.cacheDir, "plugin_camera/$pluginId").apply { mkdirs() }
+            val file = File(dir, name)
+            if (file.exists()) file.delete()
+            file.createNewFile()
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appCtx,
+                "${appCtx.packageName}.provider",
+                file,
+            )
+            Pair(file, uri)
+        } catch (e: Exception) {
+            Log.w(TAG, "createCameraCaptureTarget", e)
+            null
+        }
+    }
+
+    
+    fun importCameraFile(
+        captureFile: File,
+        destRelative: String? = null,
+        includeBase64: Boolean = false,
+    ): String {
+        return try {
+            if (!captureFile.isFile || captureFile.length() == 0L) {
+                return JSONObject().put("ok", false).put("error", "empty_capture").toString()
+            }
+            val rel = destRelative?.trim()?.removePrefix("/")
+                ?: "media/camera/${captureFile.name}"
+            val dest = resolvePath(rel) ?: return JSONObject()
+                .put("ok", false)
+                .put("error", "invalid dest")
+                .toString()
+            dest.parentFile?.mkdirs()
+            captureFile.copyTo(dest, overwrite = true)
+            try {
+                captureFile.delete()
+            } catch (_: Exception) {
+            }
+            val o = JSONObject()
+                .put("ok", true)
+                .put("path", relativePath(dest))
+                .put("name", dest.name)
+                .put("size", dest.length())
+                .put("mime", "image/jpeg")
+                .put("source", "camera")
+            if (includeBase64 && dest.length() <= 5_000_000) {
+                o.put("base64", Base64.encodeToString(dest.readBytes(), Base64.NO_WRAP))
+            }
+            o.toString()
+        } catch (e: Exception) {
+            Log.w(TAG, "importCameraFile", e)
+            JSONObject().put("ok", false).put("error", e.message ?: "camera_import_failed").toString()
+        }
+    }
+
+    fun hasCamera(): Boolean = hasFeature(PackageManager.FEATURE_CAMERA_ANY)
+        || hasFeature(PackageManager.FEATURE_CAMERA)
+
+
+    
+    private fun sanitizeAssetPath(path: String): String {
+        return path.trim()
+            .replace('\\', '/')
+            .removePrefix("/")
+            .split('/')
+            .filter { it.isNotEmpty() && it != "." && it != ".." }
+            .joinToString("/")
+    }
+
+    fun assetsExists(path: String): Boolean {
+        val clean = sanitizeAssetPath(path)
+        if (clean.isEmpty()) return true
+        return try {
+            appCtx.assets.open(clean).use { true }
+        } catch (_: Exception) {
+            try {
+                appCtx.assets.list(clean)?.isNotEmpty() == true
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
+    fun assetsList(path: String = ""): String {
+        val clean = sanitizeAssetPath(path)
+        return try {
+            val names = appCtx.assets.list(clean).orEmpty().sorted()
+            val out = JSONArray()
+            for (name in names) {
+                val child = if (clean.isEmpty()) name else "$clean/$name"
+                val canOpen = runCatching {
+                    appCtx.assets.open(child).use { }
+                    true
+                }.getOrDefault(false)
+                val kids = runCatching { appCtx.assets.list(child) }.getOrNull()
+                val isDir = !canOpen && kids != null
+                out.put(
+                    JSONObject()
+                        .put("name", name)
+                        .put("path", child)
+                        .put("isDir", isDir),
+                )
+            }
+            out.toString()
+        } catch (_: Exception) {
+            "[]"
+        }
+    }
+
+    fun assetsReadText(path: String, maxBytes: Int = 2_000_000): String? {
+        val clean = sanitizeAssetPath(path)
+        if (clean.isEmpty()) return null
+        return try {
+            appCtx.assets.open(clean).use { input ->
+                val bytes = input.readBytes()
+                if (bytes.size > maxBytes) {
+                    String(bytes, 0, maxBytes, Charsets.UTF_8)
+                } else {
+                    String(bytes, Charsets.UTF_8)
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun assetsReadBase64(path: String, maxBytes: Int = 5_000_000): String? {
+        val clean = sanitizeAssetPath(path)
+        if (clean.isEmpty()) return null
+        return try {
+            appCtx.assets.open(clean).use { input ->
+                val bytes = input.readBytes()
+                if (bytes.size > maxBytes) return null
+                Base64.encodeToString(bytes, Base64.NO_WRAP)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    
+    fun assetsDataUri(path: String, maxBytes: Int = 5_000_000): String? {
+        val clean = sanitizeAssetPath(path)
+        if (clean.isEmpty()) return null
+        val b64 = assetsReadBase64(clean, maxBytes) ?: return null
+        val mime = when (clean.substringAfterLast('.', "").lowercase()) {
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "svg" -> "image/svg+xml"
+            "mp3" -> "audio/mpeg"
+            "wav" -> "audio/wav"
+            "ogg" -> "audio/ogg"
+            "html", "htm" -> "text/html"
+            "css" -> "text/css"
+            "js" -> "application/javascript"
+            "json" -> "application/json"
+            "txt", "ir", "md" -> "text/plain"
+            else -> "application/octet-stream"
+        }
+        return "data:$mime;base64,$b64"
+    }
+
 
     private fun resolvePath(path: String, dirOnly: Boolean = false): File? {
         val clean = path.trim().removePrefix("/").replace("..", "")
@@ -1116,10 +1599,498 @@ class PluginAndroidApis(
     }
 
 
+
+    @SuppressLint("MissingPermission")
+    fun btSetName(name: String): Boolean = try {
+        btAdapter?.name = name; true
+    } catch (_: Exception) { false }
+
+    @SuppressLint("MissingPermission")
+    fun btEnable(): Boolean = try {
+        @Suppress("DEPRECATION")
+        btAdapter?.enable() == true
+    } catch (_: Exception) { false }
+
+    @SuppressLint("MissingPermission")
+    fun btDisable(): Boolean = try {
+        @Suppress("DEPRECATION")
+        btAdapter?.disable() == true
+    } catch (_: Exception) { false }
+
+    @SuppressLint("MissingPermission")
+    fun btCreateBond(address: String): Boolean {
+        val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null } ?: return false
+        return try { device.createBond() } catch (_: Exception) { false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun btRemoveBond(address: String): Boolean {
+        val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null } ?: return false
+        return try {
+            val method = device.javaClass.getMethod("removeBond")
+            method.invoke(device) as? Boolean ?: false
+        } catch (_: Exception) { false }
+    }
+
+    fun btGetBondState(address: String): Int {
+        val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null } ?: return -1
+        return try { device.bondState } catch (_: Exception) { -1 }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun btIsEnabled(): Boolean = try { btAdapter?.isEnabled == true } catch (_: Exception) { false }
+
+    fun btScanMode(): Int = try {
+        @Suppress("MissingPermission")
+        btAdapter?.scanMode ?: -1
+    } catch (_: Exception) { -1 }
+
+    @SuppressLint("MissingPermission")
+    fun btDeviceInfoJson(address: String): String {
+        val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null }
+            ?: return JSONObject().put("ok", false).toString()
+        return try {
+            JSONObject()
+                .put("ok", true)
+                .put("name", device.name ?: "")
+                .put("address", device.address ?: "")
+                .put("bondState", device.bondState)
+                .put("type", device.type)
+                .put("deviceClass", device.bluetoothClass?.deviceClass ?: -1)
+                .put("majorClass", device.bluetoothClass?.majorDeviceClass ?: -1)
+                .put("uuids", JSONArray().also { arr ->
+                    device.uuids?.forEach { arr.put(it.uuid.toString()) }
+                })
+                .toString()
+        } catch (e: Exception) {
+            JSONObject().put("ok", false).put("error", e.message).toString()
+        }
+    }
+
+
+    @SuppressLint("MissingPermission")
+    fun btConnectRfcomm(address: String, uuidStr: String, onEvent: (String) -> Unit): Boolean {
+        btDisconnectRfcomm(address)
+        val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null } ?: return false
+        io.execute {
+            try {
+                val uuid = UUID.fromString(uuidStr)
+                val socket = device.createRfcommSocketToServiceRecord(uuid)
+                try { @Suppress("DEPRECATION") btAdapter?.cancelDiscovery() } catch (_: Exception) {}
+                socket.connect()
+                rfcommMap[address.uppercase()] = socket
+                mainHandler.post {
+                    onEvent(JSONObject().put("event", "connected").put("address", address).toString())
+                }
+                io.execute {
+                    try {
+                        val input = socket.inputStream
+                        val buf = ByteArray(4096)
+                        while (socket.isConnected) {
+                            val n = input.read(buf)
+                            if (n <= 0) break
+                            val hex = bytesToHex(buf.copyOf(n))
+                            val text = try { String(buf, 0, n, Charsets.UTF_8) } catch (_: Exception) { "" }
+                            mainHandler.post {
+                                onEvent(JSONObject()
+                                    .put("event", "data")
+                                    .put("hex", hex)
+                                    .put("text", text)
+                                    .put("size", n)
+                                    .put("address", address)
+                                    .toString())
+                            }
+                        }
+                    } catch (_: Exception) {}
+                    mainHandler.post {
+                        onEvent(JSONObject().put("event", "disconnected").put("address", address).toString())
+                    }
+                    rfcommMap.remove(address.uppercase())
+                }
+            } catch (e: Exception) {
+                mainHandler.post {
+                    onEvent(JSONObject().put("event", "error").put("error", e.message).put("address", address).toString())
+                }
+            }
+        }
+        return true
+    }
+
+    fun btSendRfcomm(address: String, hex: String): Boolean {
+        val socket = rfcommMap[address.uppercase()] ?: return false
+        val bytes = hexToBytes(hex) ?: return false
+        return try { socket.outputStream.write(bytes); socket.outputStream.flush(); true } catch (_: Exception) { false }
+    }
+
+    fun btSendRfcommText(address: String, text: String): Boolean {
+        val socket = rfcommMap[address.uppercase()] ?: return false
+        return try { socket.outputStream.write(text.toByteArray()); socket.outputStream.flush(); true } catch (_: Exception) { false }
+    }
+
+    fun btDisconnectRfcomm(address: String) {
+        val socket = rfcommMap.remove(address.uppercase()) ?: return
+        try { socket.close() } catch (_: Exception) {}
+    }
+
+    fun btRfcommConnectedJson(): String {
+        val arr = JSONArray()
+        rfcommMap.keys.forEach { arr.put(it) }
+        return arr.toString()
+    }
+
+
+    @SuppressLint("MissingPermission")
+    fun gattEnableNotifications(address: String, serviceUuid: String, charUuid: String, enable: Boolean = true): Boolean {
+        val gatt = gattMap[address.uppercase()] ?: return false
+        return try {
+            val svc = gatt.getService(UUID.fromString(serviceUuid)) ?: return false
+            val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
+            gatt.setCharacteristicNotification(ch, enable)
+            val cccUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+            val desc = ch.getDescriptor(cccUuid) ?: return true
+            @Suppress("DEPRECATION")
+            desc.value = if (enable) {
+                if (ch.properties and BluetoothGattCharacteristic.PROPERTY_INDICATE != 0)
+                    BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                else BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            } else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+            @Suppress("DEPRECATION")
+            gatt.writeDescriptor(desc)
+        } catch (e: Exception) { Log.w(TAG, "gattEnableNotifications", e); false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattRequestMtu(address: String, mtu: Int): Boolean {
+        val gatt = gattMap[address.uppercase()] ?: return false
+        return try { gatt.requestMtu(mtu.coerceIn(23, 517)) } catch (_: Exception) { false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattReadRssi(address: String): Boolean {
+        val gatt = gattMap[address.uppercase()] ?: return false
+        return try { gatt.readRemoteRssi() } catch (_: Exception) { false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattSetPreferredPhy(address: String, txPhy: Int, rxPhy: Int, phyOptions: Int = 0): Boolean {
+        if (Build.VERSION.SDK_INT < 26) return false
+        val gatt = gattMap[address.uppercase()] ?: return false
+        return try { gatt.setPreferredPhy(txPhy, rxPhy, phyOptions); true } catch (_: Exception) { false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattDiscoverServices(address: String): Boolean {
+        val gatt = gattMap[address.uppercase()] ?: return false
+        return try { gatt.discoverServices() } catch (_: Exception) { false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattServicesJson(address: String): String {
+        val gatt = gattMap[address.uppercase()] ?: return "[]"
+        val arr = JSONArray()
+        gatt.services?.forEach { s ->
+            val chars = JSONArray()
+            s.characteristics?.forEach { c ->
+                val descs = JSONArray()
+                c.descriptors?.forEach { d -> descs.put(JSONObject().put("uuid", d.uuid.toString())) }
+                chars.put(JSONObject()
+                    .put("uuid", c.uuid.toString())
+                    .put("props", c.properties)
+                    .put("permissions", c.permissions)
+                    .put("propsStr", charPropsStr(c.properties))
+                    .put("descriptors", descs))
+            }
+            arr.put(JSONObject()
+                .put("uuid", s.uuid.toString())
+                .put("type", s.type)
+                .put("characteristics", chars))
+        }
+        return arr.toString()
+    }
+
+    private fun charPropsStr(props: Int): String {
+        val list = mutableListOf<String>()
+        if (props and BluetoothGattCharacteristic.PROPERTY_READ != 0) list += "READ"
+        if (props and BluetoothGattCharacteristic.PROPERTY_WRITE != 0) list += "WRITE"
+        if (props and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0) list += "WRITE_NR"
+        if (props and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) list += "NOTIFY"
+        if (props and BluetoothGattCharacteristic.PROPERTY_INDICATE != 0) list += "INDICATE"
+        if (props and BluetoothGattCharacteristic.PROPERTY_BROADCAST != 0) list += "BROADCAST"
+        if (props and BluetoothGattCharacteristic.PROPERTY_SIGNED_WRITE != 0) list += "SIGNED_WRITE"
+        return list.joinToString("|")
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattWriteDescriptor(address: String, serviceUuid: String, charUuid: String, descUuid: String, hex: String): Boolean {
+        val gatt = gattMap[address.uppercase()] ?: return false
+        val bytes = hexToBytes(hex) ?: return false
+        return try {
+            val svc = gatt.getService(UUID.fromString(serviceUuid)) ?: return false
+            val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
+            val desc = ch.getDescriptor(UUID.fromString(descUuid)) ?: return false
+            @Suppress("DEPRECATION") desc.value = bytes
+            @Suppress("DEPRECATION") gatt.writeDescriptor(desc)
+        } catch (e: Exception) { Log.w(TAG, "gattWriteDescriptor", e); false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattReadDescriptor(address: String, serviceUuid: String, charUuid: String, descUuid: String): Boolean {
+        val gatt = gattMap[address.uppercase()] ?: return false
+        return try {
+            val svc = gatt.getService(UUID.fromString(serviceUuid)) ?: return false
+            val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
+            val desc = ch.getDescriptor(UUID.fromString(descUuid)) ?: return false
+            gatt.readDescriptor(desc)
+        } catch (_: Exception) { false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun gattWriteNoResponse(address: String, serviceUuid: String, charUuid: String, hex: String): Boolean {
+        val gatt = gattMap[address.uppercase()] ?: return false
+        val bytes = hexToBytes(hex) ?: return false
+        return try {
+            val svc = gatt.getService(UUID.fromString(serviceUuid)) ?: return false
+            val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
+            @Suppress("DEPRECATION") ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            @Suppress("DEPRECATION") ch.value = bytes
+            @Suppress("DEPRECATION") gatt.writeCharacteristic(ch)
+        } catch (e: Exception) { Log.w(TAG, "gattWriteNoResponse", e); false }
+    }
+
+
+    @SuppressLint("MissingPermission")
+    fun bleAdvertiseCustom(
+        manufacturerId: Int?, manufacturerData: String?,
+        serviceUuids: List<String>?, serviceDataUuid: String?, serviceData: String?,
+        includeName: Boolean = false, includeTxPower: Boolean = false,
+        connectable: Boolean = false,
+        mode: Int = AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY,
+        txPower: Int = AdvertiseSettings.ADVERTISE_TX_POWER_HIGH,
+    ): Boolean {
+        bleAdvertiseStop()
+        val advertiser = btAdapter?.bluetoothLeAdvertiser ?: return false
+        val dataBuilder = AdvertiseData.Builder()
+            .setIncludeDeviceName(includeName)
+            .setIncludeTxPowerLevel(includeTxPower)
+        if (manufacturerId != null && manufacturerData != null) {
+            dataBuilder.addManufacturerData(manufacturerId, hexToBytes(manufacturerData) ?: ByteArray(0))
+        }
+        serviceUuids?.forEach { u -> try { dataBuilder.addServiceUuid(ParcelUuid(UUID.fromString(u))) } catch (_: Exception) {} }
+        if (serviceDataUuid != null && serviceData != null) {
+            try { dataBuilder.addServiceData(ParcelUuid(UUID.fromString(serviceDataUuid)), hexToBytes(serviceData) ?: ByteArray(0)) } catch (_: Exception) {}
+        }
+        val settings = AdvertiseSettings.Builder()
+            .setAdvertiseMode(mode).setTxPowerLevel(txPower).setConnectable(connectable).setTimeout(0).build()
+        val cb = object : AdvertiseCallback() {
+            override fun onStartFailure(errorCode: Int) { Log.w(TAG, "advertise custom fail $errorCode") }
+        }
+        advertiseCallback = cb
+        return try { advertiser.startAdvertising(settings, dataBuilder.build(), cb); true
+        } catch (e: Exception) { Log.w(TAG, "bleAdvertiseCustom", e); advertiseCallback = null; false }
+    }
+
+
+    @SuppressLint("MissingPermission")
+    fun bleServerStart(servicesJson: String, onEvent: (String) -> Unit): Boolean {
+        bleServerStop()
+        val bm = appCtx.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return false
+        gattServerCallback = onEvent
+        val cb = object : BluetoothGattServerCallback() {
+            override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+                val state = when (newState) {
+                    BluetoothProfile.STATE_CONNECTED -> "connected"
+                    BluetoothProfile.STATE_DISCONNECTED -> "disconnected"
+                    else -> "state_$newState"
+                }
+                mainHandler.post { onEvent(JSONObject()
+                    .put("event", "connection").put("state", state)
+                    .put("address", device.address).put("status", status).toString()) }
+            }
+            override fun onCharacteristicReadRequest(device: BluetoothDevice, requestId: Int, offset: Int, ch: BluetoothGattCharacteristic) {
+                mainHandler.post { onEvent(JSONObject()
+                    .put("event", "readRequest").put("address", device.address)
+                    .put("uuid", ch.uuid.toString()).put("requestId", requestId).put("offset", offset).toString()) }
+                try { gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, ch.value ?: ByteArray(0)) } catch (_: Exception) {}
+            }
+            override fun onCharacteristicWriteRequest(device: BluetoothDevice, requestId: Int, ch: BluetoothGattCharacteristic, preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray?) {
+                mainHandler.post { onEvent(JSONObject()
+                    .put("event", "writeRequest").put("address", device.address)
+                    .put("uuid", ch.uuid.toString()).put("hex", bytesToHex(value ?: ByteArray(0)))
+                    .put("requestId", requestId).toString()) }
+                if (responseNeeded) try { gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null) } catch (_: Exception) {}
+            }
+            override fun onDescriptorWriteRequest(device: BluetoothDevice, requestId: Int, desc: BluetoothGattDescriptor, preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray?) {
+                mainHandler.post { onEvent(JSONObject()
+                    .put("event", "descriptorWrite").put("address", device.address)
+                    .put("uuid", desc.uuid.toString())
+                    .put("charUuid", desc.characteristic?.uuid?.toString() ?: "")
+                    .put("hex", bytesToHex(value ?: ByteArray(0))).toString()) }
+                if (responseNeeded) try { gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null) } catch (_: Exception) {}
+            }
+        }
+        val server = bm.openGattServer(appCtx, cb) ?: return false
+        gattServer = server
+        try {
+            val arr = JSONArray(servicesJson)
+            for (i in 0 until arr.length()) {
+                val sObj = arr.getJSONObject(i)
+                val service = BluetoothGattService(UUID.fromString(sObj.getString("uuid")),
+                    sObj.optInt("type", BluetoothGattService.SERVICE_TYPE_PRIMARY))
+                val chars = sObj.optJSONArray("characteristics") ?: JSONArray()
+                for (j in 0 until chars.length()) {
+                    val cObj = chars.getJSONObject(j)
+                    val props = cObj.optInt("properties",
+                        BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_NOTIFY)
+                    val perms = cObj.optInt("permissions",
+                        BluetoothGattCharacteristic.PERMISSION_READ or BluetoothGattCharacteristic.PERMISSION_WRITE)
+                    val ch = BluetoothGattCharacteristic(UUID.fromString(cObj.getString("uuid")), props, perms)
+                    if (props and (BluetoothGattCharacteristic.PROPERTY_NOTIFY or BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) {
+                        ch.addDescriptor(BluetoothGattDescriptor(
+                            UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"),
+                            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE))
+                    }
+                    service.addCharacteristic(ch)
+                }
+                server.addService(service)
+            }
+        } catch (e: Exception) { Log.w(TAG, "bleServerStart parse", e) }
+        return true
+    }
+
+    @SuppressLint("MissingPermission")
+    fun bleServerStop() {
+        try { gattServer?.close() } catch (_: Exception) {}
+        gattServer = null; gattServerCallback = null
+    }
+
+    @SuppressLint("MissingPermission")
+    fun bleServerNotify(address: String, serviceUuid: String, charUuid: String, hex: String): Boolean {
+        val server = gattServer ?: return false
+        val bytes = hexToBytes(hex) ?: return false
+        val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null } ?: return false
+        return try {
+            val svc = server.getService(UUID.fromString(serviceUuid)) ?: return false
+            val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
+            @Suppress("DEPRECATION") ch.value = bytes
+            @Suppress("DEPRECATION") server.notifyCharacteristicChanged(device, ch, false)
+            true
+        } catch (e: Exception) { Log.w(TAG, "bleServerNotify", e); false }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun bleServerSendResponse(address: String, requestId: Int, status: Int, offset: Int, hex: String?): Boolean {
+        val server = gattServer ?: return false
+        val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null } ?: return false
+        return try { server.sendResponse(device, requestId, status, offset, if (hex != null) hexToBytes(hex) else null); true } catch (_: Exception) { false }
+    }
+
+
+    @SuppressLint("MissingPermission")
+    fun wifiDetailedInfoJson(): String {
+        val wm = wifiManager ?: return "{}"
+        return try {
+            @Suppress("DEPRECATION")
+            val info = wm.connectionInfo
+            val dhcp = wm.dhcpInfo
+            val cm = appCtx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+            JSONObject()
+                .put("ssid", info?.ssid?.trim('"') ?: "")
+                .put("bssid", info?.bssid ?: "")
+                .put("rssi", info?.rssi ?: 0)
+                .put("linkSpeed", info?.linkSpeed ?: 0)
+                .put("frequency", if (Build.VERSION.SDK_INT >= 21) info?.frequency ?: 0 else 0)
+                .put("channel", freqToChannel(info?.frequency ?: 0))
+                .put("ip", intToIpLocal(info?.ipAddress ?: 0))
+                .put("gateway", intToIpLocal(dhcp?.gateway ?: 0))
+                .put("netmask", intToIpLocal(dhcp?.netmask ?: 0))
+                .put("dns1", intToIpLocal(dhcp?.dns1 ?: 0))
+                .put("dns2", intToIpLocal(dhcp?.dns2 ?: 0))
+                .put("serverAddress", intToIpLocal(dhcp?.serverAddress ?: 0))
+                .put("leaseDuration", dhcp?.leaseDuration ?: 0)
+                .put("networkId", info?.networkId ?: -1)
+                .put("isWifi", caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true)
+                .put("downKbps", caps?.linkDownstreamBandwidthKbps ?: 0)
+                .put("upKbps", caps?.linkUpstreamBandwidthKbps ?: 0)
+                .put("macAddress", wifiMacAddress())
+                .toString()
+        } catch (e: Exception) { Log.w(TAG, "wifiDetailedInfoJson", e); "{}" }
+    }
+
+    fun wifiDhcpInfoJson(): String {
+        val wm = wifiManager ?: return "{}"
+        return try {
+            val dhcp = wm.dhcpInfo ?: return "{}"
+            JSONObject()
+                .put("ip", intToIpLocal(dhcp.ipAddress))
+                .put("gateway", intToIpLocal(dhcp.gateway))
+                .put("netmask", intToIpLocal(dhcp.netmask))
+                .put("dns1", intToIpLocal(dhcp.dns1))
+                .put("dns2", intToIpLocal(dhcp.dns2))
+                .put("serverAddress", intToIpLocal(dhcp.serverAddress))
+                .put("leaseDuration", dhcp.leaseDuration)
+                .toString()
+        } catch (_: Exception) { "{}" }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun wifiChannelsJson(): String {
+        val wm = wifiManager ?: return "[]"
+        return try {
+            @Suppress("DEPRECATION")
+            val results = wm.scanResults.orEmpty()
+            val channels = results.groupBy { freqToChannel(it.frequency) }
+            val arr = JSONArray()
+            channels.entries.sortedBy { it.key }.forEach { (ch, aps) ->
+                val freq = aps.firstOrNull()?.frequency ?: 0
+                arr.put(JSONObject()
+                    .put("channel", ch)
+                    .put("frequency", freq)
+                    .put("band", if (freq < 3000) "2.4GHz" else if (freq < 6000) "5GHz" else "6GHz")
+                    .put("networkCount", aps.size)
+                    .put("strongestRssi", aps.maxOfOrNull { it.level } ?: -100)
+                    .put("ssids", JSONArray(aps.mapNotNull { it.SSID?.takeIf { s -> s.isNotEmpty() } }.distinct())))
+            }
+            arr.toString()
+        } catch (_: Exception) { "[]" }
+    }
+
+    @SuppressLint("MissingPermission", "HardwareIds")
+    fun wifiMacAddress(): String = try {
+        val ifaces = NetworkInterface.getNetworkInterfaces()?.toList() ?: emptyList()
+        val wlan = ifaces.firstOrNull { it.name.startsWith("wlan") }
+        if (wlan != null) {
+            val mac = wlan.hardwareAddress
+            if (mac != null && mac.isNotEmpty()) mac.joinToString(":") { "%02X".format(it) }
+            else ""
+        } else {
+            @Suppress("DEPRECATION")
+            wifiManager?.connectionInfo?.macAddress ?: ""
+        }
+    } catch (_: Exception) { "" }
+
+    fun wifiIsEnabled(): Boolean = try { wifiManager?.isWifiEnabled == true } catch (_: Exception) { false }
+
+    private fun freqToChannel(freq: Int): Int = when {
+        freq in 2412..2472 -> (freq - 2412) / 5 + 1
+        freq == 2484 -> 14
+        freq in 5170..5825 -> (freq - 5000) / 5
+        freq in 5955..7115 -> (freq - 5955) / 5 + 1
+        else -> 0
+    }
+
+    private fun intToIpLocal(value: Int): String {
+        if (value == 0) return ""
+        return "${value and 0xff}.${value shr 8 and 0xff}.${value shr 16 and 0xff}.${value shr 24 and 0xff}"
+    }
+
+
     fun release() {
         btStopDiscovery()
         bleAdvertiseStop()
+        bleServerStop()
         gattMap.keys.toList().forEach { gattDisconnect(it) }
+        rfcommMap.keys.toList().forEach { btDisconnectRfcomm(it) }
         audioStop()
         nsdStop()
         sensorStopAll()
@@ -1148,3 +2119,4 @@ class PluginAndroidApis(
             bytes.joinToString("") { "%02X".format(it) }
     }
 }
+

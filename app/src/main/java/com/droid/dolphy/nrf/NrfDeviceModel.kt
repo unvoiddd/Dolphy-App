@@ -186,3 +186,4 @@ fun getCharacteristicProperties(characteristic: BluetoothGattCharacteristic): Li
 
     return properties
 }
+

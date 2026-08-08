@@ -154,3 +154,4 @@ class EasySetupSpam(private val type: EasySetupDevice.Type) : Spammer {
 
     override fun getBlinkRunnable(): Runnable? = blinkRunnable
 }
+

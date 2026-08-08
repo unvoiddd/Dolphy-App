@@ -218,7 +218,7 @@ private fun WaitingBlock(nfcReady: Boolean, accent: Color, waitMessage: String) 
         Text(
             text = if (nfcReady) stringResource(R.string.nfc_waiting) else stringResource(R.string.nfc_enable_instruction),
             style = MaterialTheme.typography.bodyMedium,
-            color = TextGray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -292,7 +292,7 @@ fun NfcWriteMenuScreen(navController: NavController, viewModel: NfcViewModel) {
                 Text(
                     text = stringResource(R.string.nfc_write_pick_type),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 WriteTypeCard(
                     title = stringResource(R.string.nfc_write_type_contact),
@@ -359,7 +359,7 @@ private fun WriteTypeCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(description, style = MaterialTheme.typography.bodySmall, color = TextGray)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -427,7 +427,7 @@ fun NfcWriteContactScreen(navController: NavController, viewModel: NfcViewModel)
                         Icon(Icons.Outlined.Nfc, null, tint = accent)
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(R.string.nfc_write_add_phone), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.nfc_write_add_phone_desc), style = MaterialTheme.typography.bodySmall, color = TextGray)
+                            Text(stringResource(R.string.nfc_write_add_phone_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -447,7 +447,7 @@ fun NfcWriteContactScreen(navController: NavController, viewModel: NfcViewModel)
                         Icon(Icons.Outlined.ContactPage, null, tint = accent)
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(R.string.nfc_write_add_from_contacts), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.nfc_write_add_from_contacts_desc), style = MaterialTheme.typography.bodySmall, color = TextGray)
+                            Text(stringResource(R.string.nfc_write_add_from_contacts_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -635,3 +635,4 @@ private fun readContactNameAndPhone(context: Context, contactUri: Uri): Pair<Str
         }
     return null
 }
+

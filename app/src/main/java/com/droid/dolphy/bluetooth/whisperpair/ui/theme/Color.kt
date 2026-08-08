@@ -35,3 +35,4 @@ val SignalStrong = Color(0xFF4CAF50)
 val SignalMedium = Color(0xFFFFEB3B)
 val SignalWeak = Color(0xFFFF5722)
 
+

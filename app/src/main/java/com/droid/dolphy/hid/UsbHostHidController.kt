@@ -284,3 +284,4 @@ class UsbHostHidController(private val context: Context) : HidController {
         return usbConnection != null && usbEndpoint != null
     }
 }
+

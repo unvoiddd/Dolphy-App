@@ -49,3 +49,4 @@ class FastPairSingleSpam(private val device: FastPairDevice) : Spammer {
 
     override fun getBlinkRunnable(): Runnable? = blinkRunnable
 }
+

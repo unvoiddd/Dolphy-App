@@ -1,5 +1,7 @@
 package com.droid.dolphy.qr
 
+import com.droid.dolphy.DolphyIconButton
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,9 +42,12 @@ import kotlinx.serialization.json.Json
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.border
+import com.droid.dolphy.M3SegmentedListItem
+import com.droid.dolphy.M3SegmentedListItemSpacing
 import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.OrangeAccent
 import com.droid.dolphy.SectionTopBar
+import com.droid.dolphy.m3SegmentedItems
 import androidx.activity.result.contract.ActivityResultContracts
 
 @Serializable
@@ -113,26 +118,33 @@ fun QrToolsScreen(navController: NavController) {
                     onBack = { navController.popBackStack() }
                 )
 
+                val tools = listOf(
+                    Triple(
+                        Icons.Default.Audiotrack,
+                        stringResource(R.string.qr_audio_spoofer),
+                        stringResource(R.string.qr_audio_spoofer_desc),
+                    ) to "other/qr_audio_spoofer",
+                    Triple(
+                        Icons.Default.QrCode,
+                        stringResource(R.string.qr_generator_title),
+                        stringResource(R.string.qr_generator_desc),
+                    ) to "other/qr_generator_main",
+                )
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    item {
-                        QrToolFullCard(
-                            title = stringResource(R.string.qr_audio_spoofer),
-                            description = stringResource(R.string.qr_audio_spoofer_desc),
-                            icon = Icons.Default.Audiotrack,
-                        onClick = { navController.navigate("other/qr_audio_spoofer") }
-                        )
-                    }
-
-                    item {
-                        QrToolFullCard(
-                            title = stringResource(R.string.qr_generator_title),
-                            description = stringResource(R.string.qr_generator_desc),
-                            icon = Icons.Default.QrCode,
-                        onClick = { navController.navigate("other/qr_generator_main") }
+                    m3SegmentedItems(tools) { index, count, entry ->
+                        val (meta, route) = entry
+                        M3SegmentedListItem(
+                            index = index,
+                            count = count,
+                            headline = meta.second,
+                            supporting = meta.third,
+                            leadingIcon = meta.first,
+                            leadingIconTint = accentColor,
+                            onClick = { navController.navigate(route) },
                         )
                     }
                 }
@@ -159,7 +171,7 @@ fun QrGeneratorMainScreen(navController: NavController) {
                     title = stringResource(R.string.qr_generator_main_title),
                     onBack = { navController.popBackStack() },
                     actions = {
-                        IconButton(onClick = { showAddDialog = true }) {
+                        DolphyIconButton(onClick = { showAddDialog = true }) {
                             Icon(Icons.Default.Add, contentDescription = "Add QR", tint = accentColor)
                         }
                     }
@@ -167,7 +179,7 @@ fun QrGeneratorMainScreen(navController: NavController) {
 
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     if (savedQrs.isEmpty()) {
@@ -177,10 +189,21 @@ fun QrGeneratorMainScreen(navController: NavController) {
                             }
                         }
                     } else {
-                        items(savedQrs) { qr ->
-                            QrSavedCard(qr, onDelete = { viewModel.deleteQr(qr.id) }, onClick = {
-                            navController.navigate("other/qr_detail/${qr.id}")
-                            })
+                        m3SegmentedItems(savedQrs, key = { it.id }) { index, count, qr ->
+                            M3SegmentedListItem(
+                                index = index,
+                                count = count,
+                                headline = qr.name,
+                                supporting = qr.content,
+                                leadingIcon = Icons.Default.QrCode,
+                                leadingIconTint = accentColor,
+                                trailingContent = {
+                                    DolphyIconButton(onClick = { viewModel.deleteQr(qr.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF5252))
+                                    }
+                                },
+                                onClick = { navController.navigate("other/qr_detail/${qr.id}") },
+                            )
                         }
                     }
                 }
@@ -248,9 +271,8 @@ fun QrToolFullCard(title: String, description: String, icon: ImageVector, onClic
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(24.dp)),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
         shape = RoundedCornerShape(24.dp)
     ) {
         Row(
@@ -287,8 +309,7 @@ fun QrSavedCard(qr: SavedQrCode, onDelete: () -> Unit, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp)),
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(20.dp)
     ) {
@@ -329,7 +350,7 @@ fun QrSavedCard(qr: SavedQrCode, onDelete: () -> Unit, onClick: () -> Unit) {
                     maxLines = 1
                 )
             }
-            IconButton(onClick = onDelete) {
+            DolphyIconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
             }
         }
@@ -495,17 +516,17 @@ fun QrAudioSpooferScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.qr_audio_spoofer), color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    DolphyIconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
                     if (!isStarted) {
-                        IconButton(onClick = { viewModel.startServer() }) {
+                        DolphyIconButton(onClick = { viewModel.startServer() }) {
                             Icon(Icons.Default.PlayArrow, "Start", tint = accentColor)
                         }
                     } else {
-                        IconButton(onClick = { viewModel.stopServer() }) {
+                        DolphyIconButton(onClick = { viewModel.stopServer() }) {
                             Icon(Icons.Default.Stop, "Stop", tint = Color.Red)
                         }
                     }
@@ -560,7 +581,7 @@ fun QrAudioSpooferScreen(
                 if (isStarted && serverIp != null) {
                     val clipboardManager = LocalClipboardManager.current
                     val context = LocalContext.current
-                    IconButton(
+                    DolphyIconButton(
                         onClick = {
                             clipboardManager.setText(AnnotatedString(qrUrl))
                             Toast.makeText(context, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
@@ -584,7 +605,7 @@ fun QrAudioSpooferScreen(
             Box(modifier = Modifier.fillMaxWidth()) {
                 Card(
                     onClick = { expanded = true },
-                    modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), CardDefaults.shape),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
                 ) {
                     Row(
@@ -622,13 +643,6 @@ fun QrAudioSpooferScreen(
                             }
                         )
                     }
-                    DropdownMenuItem(
-                        text = { Text("Выбрать HTML-файл…", color = accentColor) },
-                        onClick = {
-                            expanded = false
-                            htmlPickerLauncher.launch("*/*")
-                        }
-                    )
                 }
             }
 
@@ -767,7 +781,7 @@ fun QrAudioSpooferScreen(
 fun RowScope.SoundButton(label: String, icon: ImageVector?, color: Color, emoji: String? = null, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = Modifier.height(80.dp).weight(1f).border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(20.dp)),
+        modifier = Modifier.height(80.dp).weight(1f),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
         shape = RoundedCornerShape(20.dp)
     ) {
@@ -788,3 +802,4 @@ fun RowScope.SoundButton(label: String, icon: ImageVector?, color: Color, emoji:
         }
     }
 }
+

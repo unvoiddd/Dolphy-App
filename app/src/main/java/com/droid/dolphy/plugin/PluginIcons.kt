@@ -75,3 +75,4 @@ object PluginIcons {
         }
     }
 }
+

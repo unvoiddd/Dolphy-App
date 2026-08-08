@@ -1,5 +1,7 @@
 package com.droid.dolphy.chat
 
+import com.droid.dolphy.DolphyIconButton
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -116,7 +118,7 @@ fun GlobalChatScreen(navController: NavController) {
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(messages) { message ->
+                items(messages, key = { it.id }) { message ->
                     GlobalMessageBubble(
                         message = message,
                         isFromMe = message.userName == currentUser.value,
@@ -147,7 +149,7 @@ fun GlobalChatScreen(navController: NavController) {
                     )
                 )
 
-                IconButton(
+                DolphyIconButton(
                     onClick = {
                         if (messageText.isNotBlank()) {
                             val success = chatManager.sendMessage(messageText)
@@ -247,3 +249,4 @@ fun GlobalMessageBubble(
         }
     }
 }
+

@@ -84,3 +84,4 @@ object KnownDevices {
     fun isKnownVulnerable(modelId: String?): Boolean = getDeviceInfo(modelId)?.knownVulnerable ?: false
 }
 
+

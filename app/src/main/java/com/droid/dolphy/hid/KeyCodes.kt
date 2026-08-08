@@ -103,3 +103,4 @@ val keyCodes = mapOf<String, Byte>(
     "TRACKPREVIOUS" to 0x20,
     "POWER" to 0x40,
 )
+

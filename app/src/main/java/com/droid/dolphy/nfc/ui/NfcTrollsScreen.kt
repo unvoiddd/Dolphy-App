@@ -145,8 +145,9 @@ private fun TrollCard(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = TextGray
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
+

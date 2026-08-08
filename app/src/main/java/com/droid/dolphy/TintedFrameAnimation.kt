@@ -54,3 +54,4 @@ fun TintedFrameAnimation(
         colorFilter = currentFilter
     )
 }
+

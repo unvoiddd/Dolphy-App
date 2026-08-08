@@ -58,3 +58,4 @@ object NfcNdefWriter {
         throw IOException("Tag does not support NDEF")
     }
 }
+

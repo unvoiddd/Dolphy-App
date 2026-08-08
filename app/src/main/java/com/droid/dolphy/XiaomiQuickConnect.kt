@@ -134,3 +134,4 @@ class XiaomiQuickConnect : Spammer {
         return blinkRunnable
     }
 }
+

@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.droid.dolphy.RootUtils
 import com.droid.dolphy.trackNfcRead
 import com.droid.dolphy.nfc.db.NfcDatabase
 import com.droid.dolphy.nfc.db.NfcScanEntity
@@ -64,31 +65,56 @@ class NfcViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private var masterKeyJob: kotlinx.coroutines.Job? = null
 
+    
     fun startMasterKey() {
         if (_masterKeyRunning.value) return
+        if (!RootNfcHelper.hasRoot()) {
+            addMasterKeyLog("Root required — Master Key works only with root")
+            return
+        }
         _masterKeyRunning.value = true
         _masterKeyLogs.value = emptyList()
         masterKeyJob = viewModelScope.launch {
-            val protocols = listOf("Mifare Classic", "Mifare Ultralight", "ISO 14443-4 (Type A)", "ISO 14443-4 (Type B)", "FeliCa", "ISO 15693")
-            val commonKeys = listOf("FFFFFFFFFFFF", "000000000000", "A0A1A2A3A4A5", "B0B1B2B3B4B5", "4D3A99C351DD", "1A2B3C4D5E6F")
+            withContext(Dispatchers.IO) {
+                RootNfcHelper.prepareForRead(app)
+                RootUtils.executeRootCommand("cmd nfc enable")
+                RootUtils.executeRootCommand("svc nfc enable")
+            }
+            addMasterKeyLog("Root OK — NFC forced on, brute intercom/NFC locks")
 
-            addMasterKeyLog("Initializing Master Key protocol...")
-            delay(1000)
+            val keys = listOf(
+                "FFFFFFFFFFFF", "000000000000", "A0A1A2A3A4A5", "B0B1B2B3B4B5",
+                "4D3A99C351DD", "1A2B3C4D5E6F", "AABBCCDDEEFF", "AABBCCDDEE11",
+                "D3F7D3F7D3F7", "A0B0C0D0E0F0", "A1B1C1D1E1F1", "0123456789AB",
+                "B0B1B2B3B4B5", "4D3A99C351DD", "1A982C7E459A", "EE9BD361B01B",
+                "A0A1A2A3A4A5", "B0B1B2B3B4B5", "C0C1C2C3C4C5", "D0D1D2D3D4D5",
+                "AABBCCDDEEFF", "FFFFFFFFFFFF", "000000000001", "AFAFAFAFAFAF",
+                "010203040506", "111111111111", "222222222222", "123456789ABC",
+                "ABCDEF123456", "FEEDFEEDFEED", "DEADBEEF0000", "CAFEBABE0000",
+            ).distinct()
+            val targets = listOf(
+                "Mifare Classic sector",
+                "Intercom lock (Classic)",
+                "NFC door reader",
+                "Ultralight auth",
+                "Type A crypto1",
+            )
+            var keyIndex = 0
+            var targetIndex = 0
 
             while (_masterKeyRunning.value) {
-                val proto = protocols.random()
-                addMasterKeyLog("Testing protocol: $proto")
-                delay(800)
-
-                repeat(3) {
-                    val key = commonKeys.random()
+                val target = targets[targetIndex % targets.size]
+                addMasterKeyLog("Target: $target")
+                repeat(8) {
+                    if (!_masterKeyRunning.value) return@repeat
+                    val key = keys[keyIndex % keys.size]
+                    keyIndex++
                     _currentKey.value = key
-                    addMasterKeyLog("Trying key: $key")
-                    delay(600)
+                    addMasterKeyLog("Brute key $key")
+                    delay(180)
                 }
-
-                addMasterKeyLog("No response, switching protocol...")
-                delay(1200)
+                targetIndex++
+                delay(250)
             }
         }
     }
@@ -97,7 +123,7 @@ class NfcViewModel(private val app: Application) : AndroidViewModel(app) {
         _masterKeyRunning.value = false
         _currentKey.value = ""
         masterKeyJob?.cancel()
-        addMasterKeyLog("Master Key stopped.")
+        addMasterKeyLog("Stopped")
     }
 
     private fun addMasterKeyLog(msg: String) {
@@ -145,6 +171,13 @@ class NfcViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun handleNfcIntent(intent: Intent) {
+        extractTag(intent)?.let { tag ->
+            try {
+                com.droid.dolphy.plugin.PluginManager.dispatchNfcTag(tag)
+            } catch (t: Throwable) {
+                android.util.Log.w("NfcViewModel", "plugin NFC dispatch", t)
+            }
+        }
         viewModelScope.launch {
             if (tryProcessWriterIntent(intent)) return@launch
             ingestReadIntent(intent)
@@ -178,6 +211,9 @@ class NfcViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun ingestReadIntent(intent: Intent) {
+        if (RootNfcHelper.hasRoot()) {
+            withContext(Dispatchers.IO) { RootNfcHelper.prepareForRead(app) }
+        }
         val analyzed = NfcTagAnalyzer.analyzeIntent(intent) ?: return
         vibrateNfcSuccess(app)
         val id = dao.insert(analyzed)
@@ -204,3 +240,4 @@ class NfcViewModelFactory(private val application: Application) : ViewModelProvi
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+

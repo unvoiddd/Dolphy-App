@@ -74,6 +74,11 @@ val TextPrimary = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xFFB0B0B0)
 val TextTertiary = Color(0xFF808080)
 
+fun contrastingContentColor(color: Color): Color {
+    val luminance = 0.299f * color.red + 0.587f * color.green + 0.114f * color.blue
+    return if (luminance > 0.56f) Color(0xFF18120D) else Color.White
+}
+
 
 
 
@@ -175,3 +180,4 @@ fun getSplashGradientColors(accentColor: Color): List<Color> {
         )
     }
 }
+

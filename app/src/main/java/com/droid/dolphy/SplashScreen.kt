@@ -210,3 +210,4 @@ private fun MatrixSplashContent() {
         )
     }
 }
+

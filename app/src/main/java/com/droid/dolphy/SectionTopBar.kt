@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,8 +31,12 @@ fun SectionTopBar(
     onBack: (() -> Unit)? = null,
     transparent: Boolean = false,
     accentColor: Color = MaterialTheme.colorScheme.primary,
+    
+    showRootBadge: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
+    val liquid = isLiquidGlassTopBarChrome()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -43,36 +46,85 @@ fun SectionTopBar(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (onBack != null) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .border(1.5.dp, accentColor, CircleShape),
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.cd_back),
-                    tint = accentColor,
-                )
+            if (liquid) {
+                DolphyIconButton(
+                    onClick = onBack,
+                    liquidTint = accentColor,
+                    forTopBar = true,
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.cd_back),
+                        tint = Color.Black,
+                    )
+                }
+            } else {
+                DolphyIconButton(
+                    onClick = onBack,
+                    forTopBar = true,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, accentColor, CircleShape),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.cd_back),
+                        tint = accentColor,
+                    )
+                }
             }
         }
 
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .border(1.5.dp, accentColor, RoundedCornerShape(50.dp))
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = title,
-                color = accentColor,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleMedium,
-            )
+        if (liquid) {
+            DolphyLiquidTitlePill(
+                modifier = Modifier.weight(1f),
+                tint = accentColor,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = title,
+                        color = Color.Black,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                    )
+                    if (showRootBadge) {
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+                        RootBadge(accentColor = accentColor)
+                    }
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .border(1.5.dp, accentColor, RoundedCornerShape(50.dp))
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        color = accentColor,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                    )
+                    if (showRootBadge) {
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+                        RootBadge(accentColor = accentColor)
+                    }
+                }
+            }
         }
 
         actions()
     }
 }
+

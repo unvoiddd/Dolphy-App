@@ -25,3 +25,4 @@ data class NfcScanEntity(
     val emvInfo: String?,
 )
 
+

@@ -414,3 +414,4 @@ class NrfScannerViewModel : ViewModel() {
         super.onCleared()
     }
 }
+

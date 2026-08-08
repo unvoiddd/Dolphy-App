@@ -7,3 +7,4 @@ data class ContinuityDevice(
     val name: String,
     val deviceType: ContinuityType
 )
+

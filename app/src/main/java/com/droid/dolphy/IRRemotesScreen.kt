@@ -51,6 +51,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.List as ListIcon
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -85,7 +86,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
 
+import com.droid.dolphy.M3SegmentedListItem
+import com.droid.dolphy.M3SegmentedListItemSpacing
 import com.droid.dolphy.MaterialCard
+import com.droid.dolphy.m3SegmentedItems
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -140,6 +144,115 @@ data class UserIrRemote(
     val fileName: String,
     val commands: List<IrButton>
 )
+
+data class IrFavoriteRemote(
+    val key: String,
+    val title: String,
+    val subtitle: String,
+    val route: String
+)
+
+object IrFavoriteStore {
+    private const val PREFS_NAME = "DolphyPrefs"
+    private const val KEY_FAVORITES_JSON = "ir_favorite_remotes_json"
+    private val favoriteList = mutableStateListOf<IrFavoriteRemote>()
+    private var loaded = false
+
+    fun favorites(): List<IrFavoriteRemote> = favoriteList
+
+    fun ensureLoaded(context: Context) {
+        if (loaded) return
+        val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val array = runCatching {
+            JSONArray(prefs.getString(KEY_FAVORITES_JSON, "[]") ?: "[]")
+        }.getOrElse { JSONArray() }
+        val restored = buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val favorite = IrFavoriteRemote(
+                    key = item.optString("key"),
+                    title = item.optString("title"),
+                    subtitle = item.optString("subtitle"),
+                    route = item.optString("route")
+                )
+                if (favorite.key.isNotBlank() && favorite.title.isNotBlank() && favorite.route.isNotBlank()) {
+                    add(favorite)
+                }
+            }
+        }
+        favoriteList.clear()
+        favoriteList.addAll(restored)
+        loaded = true
+    }
+
+    fun contains(context: Context, key: String): Boolean {
+        ensureLoaded(context)
+        return favoriteList.any { it.key == key }
+    }
+
+    fun toggle(context: Context, favorite: IrFavoriteRemote) {
+        ensureLoaded(context)
+        val index = favoriteList.indexOfFirst { it.key == favorite.key }
+        if (index >= 0) favoriteList.removeAt(index) else favoriteList.add(0, favorite)
+        persist(context)
+    }
+
+    fun remove(context: Context, keys: Set<String>) {
+        ensureLoaded(context)
+        if (favoriteList.removeAll { it.key in keys }) persist(context)
+    }
+
+    fun updateTitle(context: Context, key: String, title: String) {
+        ensureLoaded(context)
+        val index = favoriteList.indexOfFirst { it.key == key }
+        if (index < 0) return
+        favoriteList[index] = favoriteList[index].copy(title = title)
+        persist(context)
+    }
+
+    private fun persist(context: Context) {
+        val array = JSONArray()
+        favoriteList.forEach { favorite ->
+            array.put(JSONObject().apply {
+                put("key", favorite.key)
+                put("title", favorite.title)
+                put("subtitle", favorite.subtitle)
+                put("route", favorite.route)
+            })
+        }
+        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_FAVORITES_JSON, array.toString())
+            .apply()
+    }
+}
+
+@Composable
+private fun FavoriteRemoteButton(favorite: IrFavoriteRemote) {
+    val context = LocalContext.current
+    var selected by remember(favorite.key) { mutableStateOf(false) }
+
+    LaunchedEffect(favorite.key) {
+        selected = IrFavoriteStore.contains(context, favorite.key)
+    }
+
+    DolphyIconButton(
+        onClick = {
+            IrFavoriteStore.toggle(context, favorite)
+            selected = IrFavoriteStore.contains(context, favorite.key)
+        },
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+    ) {
+        Icon(
+            imageVector = if (selected) Icons.Default.Star else Icons.Default.StarBorder,
+            contentDescription = stringResource(if (selected) R.string.ir_remove_from_favorites else R.string.ir_add_to_favorites),
+            tint = MaterialTheme.colorScheme.primary
+        )
+    }
+}
 
 object UserIrRemoteStore {
     private const val PREFS_NAME = "DolphyPrefs"
@@ -246,6 +359,7 @@ object UserIrRemoteStore {
         ensureLoaded(context)
         if (ids.isEmpty()) return
         remoteList.removeAll { it.id in ids }
+        IrFavoriteStore.remove(context, ids.mapTo(mutableSetOf()) { "user:$it" })
         persist(context)
     }
 
@@ -254,6 +368,7 @@ object UserIrRemoteStore {
         val index = remoteList.indexOfFirst { it.id == id }
         if (index < 0) return
         remoteList[index] = remoteList[index].copy(fileName = newFileName)
+        IrFavoriteStore.updateTitle(context, "user:$id", newFileName)
         persist(context)
     }
 }
@@ -1065,21 +1180,24 @@ fun IRTvHome(navController: NavController) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             contentPadding = PaddingValues(bottom = bottomScrollPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
         ) {
             item {
                 TextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
                     placeholder = { Text(stringResource(R.string.ir_search_brand)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search)) },
                     singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
                     colors = androidx.compose.material3.TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        errorContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        errorContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
@@ -1094,20 +1212,13 @@ fun IRTvHome(navController: NavController) {
                     )
                 }
             } else {
-                items(filteredBrands) { brand ->
-                    MaterialCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                    .clickable { navController.navigate("other/tv_brand/${Uri.encode(brand)}") },
-                        accentColor = accent,
-                        cornerRadius = 12.dp
-                    ) {
-                        Text(
-                            text = brand,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                m3SegmentedItems(filteredBrands) { index, count, brand ->
+                    M3SegmentedListItem(
+                        index = index,
+                        count = count,
+                        headline = brand,
+                        onClick = { navController.navigate("other/tv_brand/${Uri.encode(brand)}") },
+                    )
                 }
             }
         }
@@ -1155,129 +1266,122 @@ fun IRFlipperHome(navController: NavController) {
         return
     }
     val accent = MaterialTheme.colorScheme.primary
+    val favTitle = stringResource(R.string.ir_favorites)
+    val userRemotesTitle = stringResource(R.string.ir_user_remotes_title)
+    val resultsLabel = stringResource(R.string.ir_label_results)
+    val notFound = stringResource(R.string.ir_not_found)
+    val flipperTitle = stringResource(R.string.ir_flipper_remotes)
+    val smartSearch = stringResource(R.string.ir_smart_search)
+    val searchCd = stringResource(R.string.cd_search)
+
+    val quickLinks = listOf(
+        Triple(Icons.Default.Star, favTitle, "other/ir_favorites"),
+        Triple(Icons.Default.FolderOpen, userRemotesTitle, "other/user_ir_remotes"),
+    )
+    val catRows = buildList {
+        add(Triple(Icons.Default.Tv, "Телевизоры", "other/ir_tv_home"))
+        categories!!.forEach { catId ->
+            add(
+                Triple(
+                    categoryIcon(catId),
+                    localizeFlipperCategory(res, catId),
+                    if (catId.equals("ик глушилка", ignoreCase = true)) {
+                        "other/ir_jammer"
+                    } else {
+                        "other/flipper_cat/${Uri.encode(catId)}"
+                    },
+                ),
+            )
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        SectionTopBar(title = stringResource(R.string.ir_flipper_remotes), onBack = { navController.popBackStack() }, transparent = true)
+        SectionTopBar(title = flipperTitle, onBack = { navController.popBackStack() }, transparent = true)
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             contentPadding = PaddingValues(bottom = bottomScrollPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
         ) {
             item {
                 TextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.ir_smart_search)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    placeholder = { Text(smartSearch) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = searchCd) },
                     singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
                     colors = androidx.compose.material3.TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        errorContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        errorContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
                 )
             }
-            item {
-                MaterialCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                    .clickable { navController.navigate("other/user_ir_remotes") },
-                    accentColor = accent,
-                    cornerRadius = 12.dp
-                ) {
-                    Text(
-                        text = stringResource(R.string.ir_user_remotes_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+            m3SegmentedItems(quickLinks) { index, count, link ->
+                M3SegmentedListItem(
+                    index = index,
+                    count = count,
+                    headline = link.second,
+                    leadingIcon = link.first,
+                    leadingIconTint = accent,
+                    onClick = { navController.navigate(link.third) },
+                )
             }
+
             if (searchQuery.isNotBlank()) {
                 if (searchResults.isNotEmpty()) {
-                    item { SectionLabel(stringResource(R.string.ir_label_results)) }
-                    items(searchResults) { item ->
-                        MaterialCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    navController.navigate(
-                                        "flipper_remote/${Uri.encode(item.category)}/${Uri.encode(item.brand)}/${Uri.encode(item.model)}"
-                                    )
-                                },
-                            accentColor = accent,
-                            cornerRadius = 12.dp
-                        ) {
-                            Column {
-                                Text(
-                                    text = item.model,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
+                    item {
+                        Spacer(Modifier.height(12.dp))
+                        SectionLabel(resultsLabel)
+                    }
+                    m3SegmentedItems(searchResults) { index, count, item ->
+                        M3SegmentedListItem(
+                            index = index,
+                            count = count,
+                            headline = item.model,
+                            supporting = "${localizeFlipperCategory(res, item.category)} • ${item.brand}",
+                            onClick = {
+                                navController.navigate(
+                                    "flipper_remote/${Uri.encode(item.category)}/${Uri.encode(item.brand)}/${Uri.encode(item.model)}"
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "${localizeFlipperCategory(res, item.category)} • ${item.brand}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextGray
-                                )
-                            }
-                        }
+                            },
+                        )
                     }
                 } else {
                     item {
                         Text(
-                            text = stringResource(R.string.ir_not_found),
+                            text = notFound,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
                 }
             } else {
-
                 item {
-                    MaterialCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { navController.navigate("other/ir_tv_home") },
-                        accentColor = accent,
-                        cornerRadius = 12.dp
-                    ) {
-                        FlipperCategoryRow(
-                            icon = Icons.Default.Tv,
-                            title = "Телевизоры",
-                            accent = accent
-                        )
-                    }
+                    Spacer(Modifier.height(12.dp))
+                    SectionLabel(flipperTitle)
                 }
-                items(categories!!) { catId ->
-                    val icon = categoryIcon(catId)
-                    val title = localizeFlipperCategory(res, catId)
-                    MaterialCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (catId.equals("ик глушилка", ignoreCase = true)) {
-                                    navController.navigate("other/ir_jammer")
-                                } else {
-                                    navController.navigate("other/flipper_cat/${Uri.encode(catId)}")
-                                }
-                            },
-                        accentColor = accent,
-                        cornerRadius = 12.dp
-                    ) {
-                        FlipperCategoryRow(
-                            icon = icon,
-                            title = title,
-                            accent = accent
-                        )
-                    }
+                m3SegmentedItems(catRows) { index, count, row ->
+                    M3SegmentedListItem(
+                        index = index,
+                        count = count,
+                        headline = row.second,
+                        leadingIcon = row.first,
+                        leadingIconTint = accent,
+                        onClick = { navController.navigate(row.third) },
+                    )
                 }
             }
         }
@@ -1498,6 +1602,26 @@ private object UniversalRemotesRepository {
         "flipperzero-firmware-dev/applications/main/infrared/resources/infrared/assets"
 
     fun getCategories(context: Context): List<UniversalCategoryConfig> {
+        val flipperIndex = IrRepository.getFlipperIndex(context)
+        fun stackedFiles(category: String): List<String> = flipperIndex
+            .filterKeys { it.substringBefore('/').equals(category, ignoreCase = true) }
+            .values
+            .flatMap { it.values }
+            .distinct()
+
+        fun stackedCategory(
+            id: String,
+            sourceCategory: String,
+            title: String,
+            actionNames: List<String>
+        ) = UniversalCategoryConfig(
+            id = id,
+            title = title,
+            description = context.getString(R.string.universal_desc_stacked, title),
+            assetFiles = stackedFiles(sourceCategory),
+            actions = actionNames.distinct().map { UniversalSignalAction(it, it.replace('_', ' ')) }
+        )
+
         val tvActions = listOf(
             UniversalSignalAction(signalName = "Power", displayName = "Power"),
             UniversalSignalAction(signalName = "Ch_next", displayName = "CH+"),
@@ -1561,6 +1685,37 @@ private object UniversalRemotesRepository {
                 description = context.getString(R.string.universal_desc_projector_ir),
                 assetFiles = listOf("$BASE_PATH/projector.ir"),
                 actions = projectorActions
+            ),
+            stackedCategory(
+                id = "stacked_led_lighting",
+                sourceCategory = "LED_Lighting",
+                title = context.getString(R.string.ir_cat_led_lighting),
+                actionNames = listOf(
+                    "Power", "On", "Off", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                    "Red", "Green", "Blue", "White", "Yellow", "Orange", "Pink", "Purple",
+                    "Brighter", "Dimmer", "Bright_up", "Bright_down", "Flash", "Strobe", "Fade", "Smooth", "Auto"
+                )
+            ),
+            stackedCategory(
+                id = "stacked_fans",
+                sourceCategory = "Fans",
+                title = context.getString(R.string.ir_cat_fans),
+                actionNames = listOf(
+                    "Power", "On", "Off", "1", "2", "3", "4", "5", "6", "Speed", "Speed_Up",
+                    "Speed_Down", "Mode", "Timer", "Swing", "Osc", "Oscillate", "Rotate", "Auto"
+                )
+            ),
+            stackedCategory(
+                id = "stacked_heaters",
+                sourceCategory = "Heaters",
+                title = context.getString(R.string.ir_cat_heaters),
+                actionNames = listOf("Power", "On", "Off", "TEMP+", "TEMP-", "Temp_up", "Temp_dn", "Mode", "Timer", "Oscillate", "Fan")
+            ),
+            stackedCategory(
+                id = "stacked_fireplaces",
+                sourceCategory = "Fireplaces",
+                title = context.getString(R.string.ir_cat_fireplaces),
+                actionNames = listOf("Power", "On", "Off", "Heat", "Flame", "Temp_up", "Temp_down", "Timer")
             )
         )
     }
@@ -1623,29 +1778,77 @@ fun UniversalRemotesHomeScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             contentPadding = PaddingValues(bottom = irListsBottomPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
         ) {
-            items(categories) { category ->
-                MaterialCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                    .clickable { navController.navigate("other/universal_remote/${category.id}") },
-                    accentColor = MaterialTheme.colorScheme.primary,
-                    cornerRadius = 12.dp
-                ) {
-                    Column {
-                        Text(
-                            text = category.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = category.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextGray
-                        )
-                    }
+            m3SegmentedItems(categories) { index, count, category ->
+                M3SegmentedListItem(
+                    index = index,
+                    count = count,
+                    headline = category.title,
+                    supporting = category.description,
+                    onClick = { navController.navigate("other/universal_remote/${category.id}") },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun IrFavoritesScreen(navController: NavController) {
+    val context = LocalContext.current
+    val favorites = IrFavoriteStore.favorites()
+    var storeReady by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        IrFavoriteStore.ensureLoaded(context)
+        storeReady = true
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        SectionTopBar(
+            title = stringResource(R.string.ir_favorites),
+            onBack = { navController.popBackStack() },
+            transparent = true
+        )
+
+        if (!storeReady) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                DolphyCircularProgressIndicator()
+            }
+        } else if (favorites.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.ir_no_favorites),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(bottom = irListsBottomPadding),
+                verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
+            ) {
+                m3SegmentedItems(favorites, key = { it.key }) { index, count, favorite ->
+                    M3SegmentedListItem(
+                        index = index,
+                        count = count,
+                        headline = favorite.title,
+                        supporting = favorite.subtitle.takeIf { it.isNotBlank() },
+                        leadingIcon = Icons.Default.Star,
+                        leadingIconTint = MaterialTheme.colorScheme.primary,
+                        onClick = { navController.navigate(favorite.route) },
+                    )
                 }
             }
         }
@@ -1686,6 +1889,30 @@ private fun UniversalActionButton(
     onClick: (UniversalSignalAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val liquidBackdrop = LocalLiquidGlassBackdrop.current
+    if (LocalLiquidGlassEnabled.current && liquidBackdrop != null && enabled) {
+        com.kyant.backdrop.catalog.components.LiquidButton(
+            onClick = { onClick(action) },
+            backdrop = liquidBackdrop,
+            modifier = modifier.heightIn(min = 58.dp).fillMaxWidth(),
+            tint = accent,
+            applyDefaultHeight = false,
+            contentPaddingHorizontal = 12.dp,
+        ) {
+            val icon = actionIcon(action)
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = Color.Black)
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                action.displayName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = Color.Black,
+            )
+        }
+        return
+    }
     Button(
         onClick = { onClick(action) },
         enabled = enabled,
@@ -1903,7 +2130,21 @@ fun UniversalRemoteCategoryScreen(navController: NavController, categoryIdEnc: S
         modifier = Modifier
             .fillMaxSize()
     ) {
-        SectionTopBar(title = stringResource(R.string.ir_universal_remotes) + ": ${category.title}", onBack = { navController.popBackStack() }, transparent = true)
+        SectionTopBar(
+            title = stringResource(R.string.ir_universal_remotes) + ": ${category.title}",
+            onBack = { navController.popBackStack() },
+            transparent = true,
+            actions = {
+                FavoriteRemoteButton(
+                    IrFavoriteRemote(
+                        key = "universal:${category.id}",
+                        title = category.title,
+                        subtitle = stringResource(R.string.ir_universal_remotes),
+                        route = "other/universal_remote/${Uri.encode(category.id)}"
+                    )
+                )
+            }
+        )
 
         Column(
             modifier = Modifier
@@ -2123,7 +2364,7 @@ fun UserIrRemotesScreen(navController: NavController) {
                 onBack = { navController.popBackStack() },
                 transparent = true,
                 actions = {
-                    IconButton(onClick = {
+                    DolphyIconButton(onClick = {
                         editMode = !editMode
                         selectedIds = emptySet()
                     }) {
@@ -2134,7 +2375,7 @@ fun UserIrRemotesScreen(navController: NavController) {
                         )
                     }
                     if (editMode) {
-                        IconButton(
+                        DolphyIconButton(
                             onClick = { UserIrRemoteStore.removeByIds(context = context, ids = selectedIds); selectedIds = emptySet() },
                             enabled = selectedIds.isNotEmpty()
                         ) {
@@ -2144,9 +2385,9 @@ fun UserIrRemotesScreen(navController: NavController) {
                                 tint = if (selectedIds.isNotEmpty()) Color.White else Color.Gray
                             )
                         }
-                        IconButton(
+                        DolphyIconButton(
                             onClick = {
-                                val id = selectedSingle ?: return@IconButton
+                                val id = selectedSingle ?: return@DolphyIconButton
                                 renameText = UserIrRemoteStore.getRemote(id)?.fileName ?: ""
                                 renameDialogVisible = true
                             },
@@ -2219,14 +2460,35 @@ fun UserIrRemotesScreen(navController: NavController) {
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 if (!editMode) {
-                                    Button(
-                    onClick = { navController.navigate("other/user_ir_remote/${remote.id}") },
-                                        shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier
-                                            .height(40.dp)
-                                            .width(116.dp)
-                                    ) {
-                                        Text(stringResource(R.string.open), maxLines = 1, overflow = TextOverflow.Clip)
+                                    val liquidBd = LocalLiquidGlassBackdrop.current
+                                    if (LocalLiquidGlassEnabled.current && liquidBd != null) {
+                                        com.kyant.backdrop.catalog.components.LiquidButton(
+                                            onClick = { navController.navigate("other/user_ir_remote/${remote.id}") },
+                                            backdrop = liquidBd,
+                                            modifier = Modifier
+                                                .height(40.dp)
+                                                .width(116.dp),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            applyDefaultHeight = false,
+                                            contentPaddingHorizontal = 8.dp,
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.open),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Clip,
+                                                color = Color.Black,
+                                            )
+                                        }
+                                    } else {
+                                        Button(
+                                            onClick = { navController.navigate("other/user_ir_remote/${remote.id}") },
+                                            shape = RoundedCornerShape(10.dp),
+                                            modifier = Modifier
+                                                .height(40.dp)
+                                                .width(116.dp)
+                                        ) {
+                                            Text(stringResource(R.string.open), maxLines = 1, overflow = TextOverflow.Clip)
+                                        }
                                     }
                                 }
                             }
@@ -2245,16 +2507,30 @@ fun UserIrRemotesScreen(navController: NavController) {
             }
         }
 
-        FloatingActionButton(
-            onClick = { importLauncher.launch(arrayOf("*/*")) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 24.dp, bottom = 112.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.ir_import))
+        val liquidBackdrop = LocalLiquidGlassBackdrop.current
+        if (LocalLiquidGlassEnabled.current && liquidBackdrop != null) {
+            com.kyant.backdrop.catalog.components.LiquidButton(
+                backdrop = liquidBackdrop,
+                onClick = { importLauncher.launch(arrayOf("*/*")) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 24.dp, bottom = 112.dp)
+            ) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.ir_import))
+            }
+        } else {
+            FloatingActionButton(
+                onClick = { importLauncher.launch(arrayOf("*/*")) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 24.dp, bottom = 112.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.ir_import))
+            }
         }
     }
 }
@@ -2286,7 +2562,21 @@ fun UserIrRemoteScreen(navController: NavController, remoteIdArg: String) {
         modifier = Modifier
             .fillMaxSize()
     ) {
-        SectionTopBar(title = remote.fileName, onBack = { navController.popBackStack() }, transparent = true)
+        SectionTopBar(
+            title = remote.fileName,
+            onBack = { navController.popBackStack() },
+            transparent = true,
+            actions = {
+                FavoriteRemoteButton(
+                    IrFavoriteRemote(
+                        key = "user:${remote.id}",
+                        title = remote.fileName,
+                        subtitle = stringResource(R.string.ir_user_remotes),
+                        route = "other/user_ir_remote/${remote.id}"
+                    )
+                )
+            }
+        )
         IrRemoteControlLayout(
             buttons = remote.commands,
             metaLines = emptyList(),
@@ -2382,7 +2672,21 @@ fun TVRemoteScreen(navController: NavController, brandEnc: String, remoteEnc: St
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SectionTopBar(title = displayName, onBack = { navController.popBackStack() }, transparent = true)
+        SectionTopBar(
+            title = displayName,
+            onBack = { navController.popBackStack() },
+            transparent = true,
+            actions = {
+                FavoriteRemoteButton(
+                    IrFavoriteRemote(
+                        key = "tv:$brand:$model",
+                        title = displayName,
+                        subtitle = brand,
+                        route = "other/tv_remote/${Uri.encode(brand)}/${Uri.encode(model)}"
+                    )
+                )
+            }
+        )
 
         IrRemoteControlLayout(
             buttons = buttons!!,
@@ -2497,7 +2801,21 @@ fun FlipperRemoteScreen(navController: NavController, catEnc: String, brandEnc: 
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SectionTopBar(title = displayName, onBack = { navController.popBackStack() }, transparent = true)
+        SectionTopBar(
+            title = displayName,
+            onBack = { navController.popBackStack() },
+            transparent = true,
+            actions = {
+                FavoriteRemoteButton(
+                    IrFavoriteRemote(
+                        key = "flipper:$cat:$brand:$model",
+                        title = displayName,
+                        subtitle = "$brand · ${localizeFlipperCategory(context.resources, cat)}",
+                        route = "other/flipper_remote/${Uri.encode(cat)}/${Uri.encode(brand)}/${Uri.encode(model)}"
+                    )
+                )
+            }
+        )
 
         IrRemoteControlLayout(
             buttons = buttons!!,
@@ -2813,12 +3131,32 @@ private fun RemoteDpadButton(
     modifier: Modifier = Modifier
 ) {
     val res = LocalContext.current.resources
+    val accent = MaterialTheme.colorScheme.primary
+    val liquidBackdrop = LocalLiquidGlassBackdrop.current
+    if (LocalLiquidGlassEnabled.current && liquidBackdrop != null) {
+        com.kyant.backdrop.catalog.components.LiquidButton(
+            onClick = { onPress(button) },
+            backdrop = liquidBackdrop,
+            modifier = modifier.size(54.dp),
+            tint = accent,
+            applyDefaultHeight = false,
+            contentPaddingHorizontal = 0.dp,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = prettyLabel(res, button),
+                modifier = Modifier.size(30.dp),
+                tint = Color.Black,
+            )
+        }
+        return
+    }
     Button(
         onClick = { onPress(button) },
         modifier = modifier.size(54.dp),
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.96f),
+            containerColor = accent.copy(alpha = 0.96f),
             contentColor = MaterialTheme.colorScheme.onPrimary
         ),
         contentPadding = PaddingValues(0.dp)
@@ -2839,12 +3177,31 @@ private fun RemoteIconButton(
     modifier: Modifier = Modifier
 ) {
     val res = LocalContext.current.resources
+    val accent = MaterialTheme.colorScheme.primary
+    val liquidBackdrop = LocalLiquidGlassBackdrop.current
+    if (LocalLiquidGlassEnabled.current && liquidBackdrop != null) {
+        com.kyant.backdrop.catalog.components.LiquidButton(
+            onClick = { onPress(button) },
+            backdrop = liquidBackdrop,
+            modifier = modifier.size(54.dp),
+            tint = accent,
+            applyDefaultHeight = false,
+            contentPaddingHorizontal = 0.dp,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = prettyLabel(res, button),
+                tint = Color.Black,
+            )
+        }
+        return
+    }
     Button(
         onClick = { onPress(button) },
         modifier = modifier,
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.96f),
+            containerColor = accent.copy(alpha = 0.96f),
             contentColor = MaterialTheme.colorScheme.onPrimary
         )
     ) {
@@ -2862,12 +3219,42 @@ private fun RemoteTextButton(
     rounded: Boolean = false,
     icon: ImageVector? = null
 ) {
+    val accent = MaterialTheme.colorScheme.primary
+    val liquidBackdrop = LocalLiquidGlassBackdrop.current
+    if (LocalLiquidGlassEnabled.current && liquidBackdrop != null) {
+        com.kyant.backdrop.catalog.components.LiquidButton(
+            onClick = { onPress(button) },
+            backdrop = liquidBackdrop,
+            modifier = modifier.heightIn(min = if (small) 38.dp else 50.dp),
+            tint = accent.copy(alpha = if (small) 0.85f else 1f),
+            applyDefaultHeight = false,
+            contentPaddingHorizontal = if (small) 10.dp else 14.dp,
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    modifier = Modifier.size(if (small) 18.dp else 24.dp),
+                    tint = Color.Black,
+                )
+            } else {
+                Text(
+                    text = label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = if (small) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
+                    color = Color.Black,
+                )
+            }
+        }
+        return
+    }
     Button(
         onClick = { onPress(button) },
         modifier = modifier.heightIn(min = if (small) 38.dp else 50.dp),
         shape = if (rounded) CircleShape else RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = if (small) 0.78f else 0.93f),
+            containerColor = accent.copy(alpha = if (small) 0.78f else 0.93f),
             contentColor = MaterialTheme.colorScheme.onPrimary
         )
     ) {
@@ -3282,6 +3669,62 @@ object IrStormRepository {
     }
 }
 
+
+@Composable
+fun IrExpressivePowerButton(
+    active: Boolean,
+    progress: Float?,
+    accentColor: Color,
+    activeTint: Color,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 160.dp,
+) {
+    Box(
+        modifier = modifier.size(size),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (active) {
+            WavyCircularProgressIndicator(
+                modifier = Modifier.fillMaxSize(),
+                progress = progress,
+                color = accentColor,
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(size * 0.62f)
+                    .clip(CircleShape)
+                    .background(Color.Gray.copy(alpha = 0.22f)),
+            )
+        }
+
+        DolphyIconButton(
+            onClick = onClick,
+            enabled = enabled,
+            liquidTint = accentColor,
+            modifier = Modifier
+                .size(size * 0.62f)
+                .clip(CircleShape)
+                .background(
+                    if (active) activeTint.copy(alpha = 0.18f) else Color.Transparent,
+                ),
+        ) {
+            Icon(
+                imageVector = Icons.Default.PowerSettingsNew,
+                contentDescription = null,
+                modifier = Modifier.size(size * 0.35f),
+                tint = when {
+                    isLiquidGlassChrome() -> Color.Black
+                    active -> activeTint
+                    else -> Color.White
+                },
+            )
+        }
+    }
+}
+
 @Composable
 fun IRStormScreen(navController: NavController? = null) {
     val context = LocalContext.current
@@ -3468,42 +3911,17 @@ fun IRStormScreen(navController: NavController? = null) {
             Spacer(modifier = Modifier.height(32.dp))
 
 
-            Box(
-                modifier = Modifier.size(160.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isRunning || isLoading) {
-                    WavyCircularProgressIndicator(
-                        modifier = Modifier.size(160.dp),
-                        progress = if (totalCommands > 0) progress.toFloat() / totalCommands else null,
-                        color = accentColor
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (isRunning) stopIrStorm() else startIrStorm()
-                    },
-                    enabled = !isLoading,
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(
-                            when {
-                                isRunning -> Color.Red.copy(alpha = 0.2f)
-                                else -> Color.Gray.copy(alpha = 0.2f)
-                            }
-                        )
-                ) {
-                    Icon(
-                        imageVector = if (isRunning) Icons.Default.PowerSettingsNew else Icons.Default.PowerSettingsNew,
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint = if (isRunning) Color.Red else Color.White
-                    )
-                }
-            }
+            IrExpressivePowerButton(
+                active = isRunning || isLoading,
+                progress = if (totalCommands > 0) progress.toFloat() / totalCommands else null,
+                accentColor = accentColor,
+                activeTint = Color.Red,
+                enabled = !isLoading || isRunning,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (isRunning) stopIrStorm() else startIrStorm()
+                },
+            )
 
             Spacer(modifier = Modifier.height(48.dp))
 
@@ -3631,15 +4049,12 @@ fun IRJammerScreen(navController: NavController? = null) {
                     modifier = Modifier.size(160.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isSending) {
-                        WavyCircularProgressIndicator(
-                            modifier = Modifier.size(160.dp),
-                            progress = progressPercent / 100f,
-                            color = accentColor
-                        )
-                    }
-
-                    IconButton(
+                    IrExpressivePowerButton(
+                        active = isSending,
+                        progress = if (isSending) progressPercent / 100f else null,
+                        accentColor = accentColor,
+                        activeTint = accentColor,
+                        enabled = buttons!!.isNotEmpty(),
                         onClick = {
                             if (isSending) {
                                 jammerJob?.cancel()
@@ -3684,19 +4099,7 @@ fun IRJammerScreen(navController: NavController? = null) {
                                 }
                             }
                         },
-                        enabled = buttons!!.isNotEmpty(),
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(if (isSending) accentColor.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.2f))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PowerSettingsNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(56.dp),
-                            tint = if (isSending) accentColor else Color.White
-                        )
-                    }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -3743,6 +4146,7 @@ fun IRJammerScreen(navController: NavController? = null) {
         }
     }
 }
+
 
 
 

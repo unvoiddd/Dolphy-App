@@ -1,5 +1,7 @@
 package com.droid.dolphy.nfc.ui
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.Intent
@@ -66,170 +68,160 @@ import com.droid.dolphy.TintedFrameAnimation
 import com.droid.dolphy.nfc.EmulatedNfcTag
 import com.droid.dolphy.nfc.NfcTagEmulationStore
 import com.droid.dolphy.nfc.NfcViewModel
+import com.droid.dolphy.nfc.RootNfcHelper
 import com.droid.dolphy.nfc.db.NfcScanEntity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun NfcMasterKeyScreen(navController: NavController, viewModel: NfcViewModel) {
-    val context = LocalContext.current
-    val activity = context as? Activity
     val isRunning by viewModel.masterKeyRunning.collectAsState()
     val currentKey by viewModel.currentKey.collectAsState()
+    val logs by viewModel.masterKeyLogs.collectAsState()
     val accent = MaterialTheme.colorScheme.primary
-
-
-    val adapter = remember(activity) { activity?.let { NfcAdapter.getDefaultAdapter(it) } }
-    val nfcEnabled = adapter != null && adapter.isEnabled
-    var showNfcDialog by remember { mutableStateOf(false) }
+    val hasRoot = remember { RootNfcHelper.hasRoot() }
 
     val infinite = rememberInfiniteTransition(label = "nfc_master_key")
     val scale by infinite.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse),
+        initialValue = 0.96f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(animation = tween(900), repeatMode = RepeatMode.Reverse),
         label = "master_key_scale",
     )
 
     DisposableEffect(Unit) {
-        onDispose {
-            viewModel.stopMasterKey()
-        }
+        onDispose { viewModel.stopMasterKey() }
     }
 
     MaterialBackground(accentColor = accent) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                SectionTopBar(
-                    transparent = true,
-                    title = stringResource(R.string.nfc_master_key_title),
-                    onBack = { navController.popBackStack() }
-                )
+        Column(Modifier.fillMaxSize()) {
+            SectionTopBar(
+                transparent = true,
+                title = stringResource(R.string.nfc_master_key_title),
+                onBack = { navController.popBackStack() },
+                accentColor = accent,
+                showRootBadge = true,
+            )
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(12.dp))
+                MaterialCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = 14.dp,
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        if (isRunning) {
-                            Image(
-                                painter = painterResource(id = R.drawable.nfc_dolphin_emulation_51x64_transparent),
-                                contentDescription = "Master Key Running",
-                                modifier = Modifier
-                                    .size(width = 153.dp, height = 192.dp)
-                                    .graphicsLayer(scaleX = scale, scaleY = scale),
-                                colorFilter = ColorFilter.tint(accent),
-                            )
+                    Text(
+                        text = stringResource(R.string.nfc_master_key_root_only_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = if (hasRoot) {
+                            accent.copy(alpha = 0.18f)
                         } else {
-                            Image(
-                                painter = painterResource(id = R.drawable.passport_bad2_46x49),
-                                contentDescription = "Ready to Start",
-                                modifier = Modifier
-                                    .size(width = 138.dp, height = 147.dp)
-                                    .graphicsLayer(scaleX = scale, scaleY = scale),
-                                colorFilter = ColorFilter.tint(
-                                    color = accent,
-                                    blendMode = BlendMode.Modulate
-                                ),
+                            MaterialTheme.colorScheme.errorContainer
+                        },
+                    ) {
+                        Text(
+                            text = if (hasRoot) {
+                                stringResource(R.string.nfc_master_key_status_root)
+                            } else {
+                                stringResource(R.string.nfc_master_key_status_no_root)
+                            },
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (hasRoot) accent else MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+                Icon(
+                    imageVector = Icons.Default.Key,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .graphicsLayer(scaleX = scale, scaleY = scale),
+                    tint = accent,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = if (isRunning && currentKey.isNotEmpty()) currentKey else "——————",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black,
+                    ),
+                    color = accent,
+                )
+                if (isRunning) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.nfc_master_key_scanning),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+                MaterialCard(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .fillMaxWidth()
+                        .heightIn(max = 160.dp),
+                    contentPadding = 12.dp,
+                ) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(logs.take(12)) { line ->
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
                             )
                         }
-
-                        if (isRunning && currentKey.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text(
-                                text = currentKey,
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = accent
-                            )
+                        if (logs.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "…",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
 
-
-                Button(
+                Spacer(Modifier.height(12.dp))
+                com.droid.dolphy.MaterialButton(
+                    text = if (isRunning) {
+                        stringResource(R.string.nfc_master_key_stop)
+                    } else {
+                        stringResource(R.string.nfc_master_key_start)
+                    },
                     onClick = {
-                        if (isRunning) {
-                            viewModel.stopMasterKey()
-                        } else {
-                            if (nfcEnabled) {
-                                viewModel.startMasterKey()
-                            } else {
-                                showNfcDialog = true
-                            }
-                        }
+                        if (isRunning) viewModel.stopMasterKey()
+                        else if (hasRoot) viewModel.startMasterKey()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isRunning) MaterialTheme.colorScheme.error else accent,
-                        contentColor = if (isRunning) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text(
-                        text = if (isRunning) "Стоп" else "Начать подбор",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                        .padding(bottom = 120.dp),
+                    accentColor = if (isRunning) MaterialTheme.colorScheme.error else accent,
+                    enabled = hasRoot || isRunning,
+                    isActive = isRunning,
+                )
             }
-        }
-    }
-
-
-    if (showNfcDialog) {
-        AlertDialog(
-            onDismissRequest = { },
-            title = {
-                Text(
-                    text = "NFC выключен",
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            text = {
-                Text(
-                    text = "Для работы функции Мастер ключ необходимо включить NFC в настройках устройства.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-
-                        val intent = Intent(Settings.ACTION_NFC_SETTINGS).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                    }
-                ) {
-                    Text(
-                        text = "Настройки",
-                        color = accent,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    }
-
-
-    LaunchedEffect(nfcEnabled) {
-        if (nfcEnabled && showNfcDialog) {
-            showNfcDialog = false
         }
     }
 }
@@ -240,9 +232,20 @@ fun NfcWaitScreen(navController: NavController, viewModel: NfcViewModel) {
     val activity = context as? Activity
     val accent = MaterialTheme.colorScheme.primary
     val adapter = remember(activity) { activity?.let { NfcAdapter.getDefaultAdapter(it) } }
-    val nfcReady = adapter != null && adapter.isEnabled
+    var nfcReady by remember {
+        mutableStateOf(adapter != null && adapter.isEnabled)
+    }
+    var rootMode by remember { mutableStateOf(false) }
 
-    DisposableEffect(activity) {
+    LaunchedEffect(Unit) {
+        val mode = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            RootNfcHelper.prepareForRead(context)
+        }
+        rootMode = mode == "root"
+        nfcReady = adapter != null && (adapter.isEnabled || RootNfcHelper.isNfcEnabled(context))
+    }
+
+    DisposableEffect(activity, nfcReady) {
         if(activity != null && nfcReady) {
             enableNfcForegroundDispatch(activity, enabled = true)
         }
@@ -303,9 +306,13 @@ fun NfcWaitScreen(navController: NavController, viewModel: NfcViewModel) {
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = if(nfcReady) "Ожидание NFC..." else "Включите NFC в настройках телефона",
+                            text = if(nfcReady) {
+                                if (rootMode) "Ожидание NFC… (root)" else "Ожидание NFC..."
+                            } else {
+                                "Включите NFC в настройках телефона"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextGray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
@@ -516,7 +523,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                             Text(
                                 text = "Эту метку эмулировать не получится",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TextGray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                             )
                         }
@@ -596,7 +603,7 @@ private fun NfcTopBar(
         onBack = onBack,
         actions = {
             if(onHistory != null) {
-                IconButton(onClick = onHistory) {
+                DolphyIconButton(onClick = onHistory) {
                     Icon(Icons.Outlined.History, contentDescription = "История")
                 }
             }
@@ -628,7 +635,7 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun KeyValue(key: String, value: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(text = key, style = MaterialTheme.typography.labelMedium, color = TextGray)
+        Text(text = key, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(2.dp))
         Text(text = value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(8.dp))
@@ -649,12 +656,12 @@ private fun HistoryRow(item: NfcScanEntity, onClick: () -> Unit) {
         Column {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(item.type, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text(df.format(Date(item.scannedAtMillis)), style = MaterialTheme.typography.bodySmall, color = TextGray)
+                Text(df.format(Date(item.scannedAtMillis)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text("UID: ${item.uidHex}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(item.analysisVerdict, style = MaterialTheme.typography.bodySmall, color = TextGray)
+            Text(item.analysisVerdict, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -722,3 +729,4 @@ private fun buildEmulationUrl(scan: NfcScanEntity?): String {
     val uid = scan?.uidHex?.replace(" ", "")?.lowercase(Locale.getDefault()).orEmpty().ifBlank { "unknown" }
     return "https://dolphy.tag/$uid"
 }
+

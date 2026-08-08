@@ -1,5 +1,7 @@
 package com.droid.dolphy.tvcast
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
@@ -96,43 +98,72 @@ enum class CastType {
 
 class VideoHttpServer(
     private val videoFile: File,
-    port: Int = 8080
+    port: Int = 8080,
 ) : NanoHTTPD(port) {
 
-    private var rangeStart: Long = 0
-    private var rangeEnd: Long = 0
+    private val mime: String = when (videoFile.extension.lowercase()) {
+        "mp4", "m4v" -> "video/mp4"
+        "webm" -> "video/webm"
+        "mkv" -> "video/x-matroska"
+        "avi" -> "video/x-msvideo"
+        "mov" -> "video/quicktime"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "gif" -> "image/gif"
+        "webp" -> "image/webp"
+        else -> "video/mp4"
+    }
 
     override fun serve(session: IHTTPSession): Response {
-        val videoLength = videoFile.length()
-
-        val rangeHeader = session.headers["range"]
-        if (rangeHeader != null) {
-            val rangeValues = rangeHeader.replace("bytes=", "").split("-")
-            rangeStart = rangeValues[0].toLongOrNull() ?: 0
-            rangeEnd = rangeValues.getOrNull(1)?.toLongOrNull() ?: videoLength - 1
-
-            val contentLength = rangeEnd - rangeStart + 1
-
-            return newChunkedResponse(
-                Response.Status.PARTIAL_CONTENT,
-                "video/mp4",
-                FileInputStream(videoFile).apply { skip(rangeStart) }
-            ).apply {
-                addHeader("Content-Range", "bytes $rangeStart-$rangeEnd/$videoLength")
-                addHeader("Accept-Ranges", "bytes")
-                addHeader("Content-Length", contentLength.toString())
-                addHeader("Content-Type", "video/mp4")
+        val uri = session.uri ?: "/"
+        if (uri == "/" || uri == "/index.html" || uri == "/play") {
+            val html = """
+                <!DOCTYPE html><html><head><meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width,initial-scale=1"/>
+                <title>Dolphy Cast</title>
+                <style>body{margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh}
+                video,img{max-width:100%;max-height:100vh}</style></head><body>
+                ${if (mime.startsWith("image/")) "<img src='/video' autoplay/>"
+                else "<video src='/video' controls autoplay playsinline></video>"}
+                </body></html>
+            """.trimIndent()
+            return newFixedLengthResponse(Response.Status.OK, "text/html", html).apply {
+                addHeader("Access-Control-Allow-Origin", "*")
             }
         }
 
-        return newChunkedResponse(
+        val videoLength = videoFile.length()
+        val rangeHeader = session.headers["range"] ?: session.headers["Range"]
+        if (rangeHeader != null) {
+            val rangeValues = rangeHeader.replace("bytes=", "", ignoreCase = true).split("-")
+            val rangeStart = rangeValues[0].toLongOrNull() ?: 0L
+            val rangeEnd = rangeValues.getOrNull(1)?.toLongOrNull() ?: (videoLength - 1)
+            val contentLength = (rangeEnd - rangeStart + 1).coerceAtLeast(0)
+
+            val stream = FileInputStream(videoFile).apply { skip(rangeStart) }
+            return newFixedLengthResponse(
+                Response.Status.PARTIAL_CONTENT,
+                mime,
+                stream,
+                contentLength,
+            ).apply {
+                addHeader("Content-Range", "bytes $rangeStart-$rangeEnd/$videoLength")
+                addHeader("Accept-Ranges", "bytes")
+                addHeader("Access-Control-Allow-Origin", "*")
+                addHeader("Content-Type", mime)
+            }
+        }
+
+        return newFixedLengthResponse(
             Response.Status.OK,
-            "video/mp4",
-            FileInputStream(videoFile)
+            mime,
+            FileInputStream(videoFile),
+            videoLength,
         ).apply {
-            addHeader("Content-Length", videoLength.toString())
             addHeader("Accept-Ranges", "bytes")
-            addHeader("Content-Type", "video/mp4")
+            addHeader("Access-Control-Allow-Origin", "*")
+            addHeader("Content-Type", mime)
+            addHeader("Content-Length", videoLength.toString())
         }
     }
 }
@@ -172,24 +203,26 @@ fun SmartTvCastScreen(navController: NavController) {
         }
     }
 
-    fun startServer(videoFile: File) {
-        try {
-            val newServer = VideoHttpServer(videoFile, 8080)
-            newServer.start()
-            server = newServer
-            val ip = getLocalIpAddress()
-            serverUrl = "http://$ip:8080/video.mp4"
-            isPlaying = true
-        } catch (e: Exception) {
-            Log.e("SmartTvCast", "Failed to start server", e)
-        }
-    }
-
     fun stopServer() {
         server?.stop()
         server = null
         serverUrl = null
         isPlaying = false
+    }
+
+    fun startServer(videoFile: File) {
+        try {
+            stopServer()
+            val newServer = VideoHttpServer(videoFile, 8080)
+            newServer.start()
+            server = newServer
+            val ip = getLocalIpAddress()
+            serverUrl = "http://$ip:8080/video"
+            isPlaying = true
+            Log.i("SmartTvCast", "Server up: $serverUrl  (html http://$ip:8080/play)")
+        } catch (e: Exception) {
+            Log.e("SmartTvCast", "Failed to start server", e)
+        }
     }
 
     fun startDiscovery() {
@@ -285,10 +318,14 @@ fun SmartTvCastScreen(navController: NavController) {
     }
 
     fun castToDevice(device: CastDevice) {
-        serverUrl?.let { url ->
-            scope.launch {
-                sendCastRequest(device, url)
-            }
+        val url = serverUrl
+        if (url == null) {
+            Log.e("SmartTvCast", "castToDevice: no serverUrl — pick a file first")
+            return
+        }
+        scope.launch(Dispatchers.IO) {
+            Log.i("SmartTvCast", "Casting $url → ${device.name} (${device.type}) ${device.host}:${device.port}")
+            sendCastRequest(device, url)
         }
     }
 
@@ -373,7 +410,7 @@ fun SmartTvCastScreen(navController: NavController) {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clickable {
-                                    videoPickerLauncher.launch("video/*")
+                                    videoPickerLauncher.launch("*/*")
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -444,7 +481,7 @@ fun SmartTvCastScreen(navController: NavController) {
                             }
 
 
-                            IconButton(
+                            DolphyIconButton(
                                 onClick = {
                                     stopServer()
                                     selectedVideo?.delete()
@@ -586,7 +623,7 @@ private fun CastDeviceRow(
                 )
             }
 
-            IconButton(
+            DolphyIconButton(
                 onClick = onCastClick,
                 enabled = canCast
             ) {
@@ -667,88 +704,125 @@ private fun sendDialRequest(device: CastDevice, videoUrl: String) {
 }
 
 private fun sendDlnaRequest(device: CastDevice, videoUrl: String) {
-    try {
+    val controlPaths = listOf(
+        "/upnp/control/AVTransport1",
+        "/AVTransport/control",
+        "/MediaRenderer/AVTransport/Control",
+        "/_urn:schemas-upnp-org:service:AVTransport_control",
+        "/dmr/AVTransport/control",
+        "/control/AVTransport1",
+        "/AVTransport1/ctrl",
+    )
+    val meta = buildDlnaMetaData(videoUrl)
+    val escapedUri = videoUrl
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
 
-        val soapUrl = "http://${device.host}:${device.port}/upnp/control/AVTransport1"
-        val connection = java.net.URL(soapUrl).openConnection() as java.net.HttpURLConnection
+    for (path in controlPaths) {
+        try {
+            val soapUrl = "http://${device.host}:${device.port}$path"
+            val setOk = dlnaSoap(
+                soapUrl,
+                "urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI",
+                """
+                <u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
+                  <InstanceID>0</InstanceID>
+                  <CurrentURI>$escapedUri</CurrentURI>
+                  <CurrentURIMetaData>$meta</CurrentURIMetaData>
+                </u:SetAVTransportURI>
+                """.trimIndent(),
+            )
+            Log.d("SmartTvCast", "DLNA SetURI $path → $setOk")
+            if (setOk !in 200..299 && setOk != 0) continue
+
+            val playOk = dlnaSoap(
+                soapUrl,
+                "urn:schemas-upnp-org:service:AVTransport:1#Play",
+                """
+                <u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
+                  <InstanceID>0</InstanceID>
+                  <Speed>1</Speed>
+                </u:Play>
+                """.trimIndent(),
+            )
+            Log.d("SmartTvCast", "DLNA Play $path → $playOk")
+            if (playOk in 200..299) return
+        } catch (e: Exception) {
+            Log.w("SmartTvCast", "DLNA path $path failed: ${e.message}")
+        }
+    }
+    sendGenericCastRequest(device, videoUrl.replace("/video", "/play"))
+}
+
+private fun buildDlnaMetaData(videoUrl: String): String {
+    val title = "Dolphy Cast"
+    val didl = """
+        <DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">
+          <item id="1" parentID="0" restricted="1">
+            <dc:title>$title</dc:title>
+            <upnp:class>object.item.videoItem</upnp:class>
+            <res protocolInfo="http-get:*:video/mp4:*">$videoUrl</res>
+          </item>
+        </DIDL-Lite>
+    """.trimIndent()
+    return didl
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+}
+
+private fun dlnaSoap(url: String, soapAction: String, bodyInner: String): Int {
+    return try {
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
         connection.requestMethod = "POST"
         connection.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"")
-        connection.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"")
+        connection.setRequestProperty("SOAPACTION", "\"$soapAction\"")
         connection.doOutput = true
-        connection.connectTimeout = 5000
-        connection.readTimeout = 5000
-
+        connection.connectTimeout = 4000
+        connection.readTimeout = 6000
         val soapBody = """<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-  <s:Body>
-    <u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
-      <InstanceID>0</InstanceID>
-      <CurrentURI>$videoUrl</CurrentURI>
-      <CurrentURIMetaData></CurrentURIMetaData>
-    </u:SetAVTransportURI>
-  </s:Body>
+<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+ xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>$bodyInner</s:Body>
 </s:Envelope>"""
-
-        connection.outputStream.use { os ->
-            os.write(soapBody.toByteArray())
-        }
-
-        val responseCode = connection.responseCode
-        Log.d("SmartTvCast", "DLNA SetURI response: $responseCode")
-
-        if (responseCode == 200) {
-
-            val playConnection = java.net.URL(soapUrl).openConnection() as java.net.HttpURLConnection
-            playConnection.requestMethod = "POST"
-            playConnection.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"")
-            playConnection.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:AVTransport:1#Play\"")
-            playConnection.doOutput = true
-            playConnection.connectTimeout = 5000
-            playConnection.readTimeout = 5000
-
-            val playSoapBody = """<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-  <s:Body>
-    <u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
-      <InstanceID>0</InstanceID>
-      <Speed>1</Speed>
-    </u:Play>
-  </s:Body>
-</s:Envelope>"""
-
-            playConnection.outputStream.use { os ->
-                os.write(playSoapBody.toByteArray())
-            }
-
-            val playResponse = playConnection.responseCode
-            Log.d("SmartTvCast", "DLNA Play response: $playResponse")
-            playConnection.disconnect()
-        }
+        connection.outputStream.use { it.write(soapBody.toByteArray(Charsets.UTF_8)) }
+        val code = connection.responseCode
         connection.disconnect()
+        code
     } catch (e: Exception) {
-        Log.e("SmartTvCast", "DLNA request failed: ${e.message}", e)
+        Log.w("SmartTvCast", "dlnaSoap $url: ${e.message}")
+        -1
     }
 }
 
 private fun sendGoogleCastRequest(device: CastDevice, videoUrl: String) {
     try {
-
-        val castUrl = "http://${device.host}:8008/apps/YouTube"
-        val connection = java.net.URL(castUrl).openConnection() as java.net.HttpURLConnection
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/json")
-        connection.doOutput = true
-        connection.connectTimeout = 5000
-        connection.readTimeout = 5000
-
-        val json = """{"v":"$videoUrl"}"""
-        connection.outputStream.use { os ->
-            os.write(json.toByteArray())
+        val playPage = videoUrl.replace("/video", "/play")
+        for (app in listOf("YouTube", "ChromeCast", "DefaultMediaReceiver")) {
+            try {
+                val castUrl = "http://${device.host}:8008/apps/$app"
+                val connection = java.net.URL(castUrl).openConnection() as java.net.HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "text/plain")
+                connection.doOutput = true
+                connection.connectTimeout = 3000
+                connection.readTimeout = 3000
+                connection.outputStream.use { it.write(playPage.toByteArray()) }
+                val code = connection.responseCode
+                Log.d("SmartTvCast", "Cast $app → $code")
+                connection.disconnect()
+                if (code in 200..299) return
+            } catch (e: Exception) {
+                Log.w("SmartTvCast", "Cast app $app: ${e.message}")
+            }
         }
-
-        val responseCode = connection.responseCode
-        Log.d("SmartTvCast", "Google Cast response: $responseCode")
-        connection.disconnect()
+        sendDialRequest(device, playPage)
+        sendGenericCastRequest(device, playPage)
     } catch (e: Exception) {
         Log.e("SmartTvCast", "Google Cast request failed: ${e.message}", e)
     }
@@ -793,3 +867,4 @@ private fun sendGenericCastRequest(device: CastDevice, videoUrl: String) {
         Log.e("SmartTvCast", "Generic cast request failed: ${e.message}", e)
     }
 }
+

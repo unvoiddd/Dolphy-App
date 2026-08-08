@@ -8,6 +8,10 @@ data class PluginManifest(
     val version: String = "1.0",
     val description: String = "",
     val author: String = "",
+    
+    val isLibrary: Boolean = false,
+    
+    val isDesignLibrary: Boolean = false,
 )
 
 
@@ -115,3 +119,4 @@ fun interface PluginScreenContent {
     @Composable
     fun Content(onBack: () -> Unit)
 }
+

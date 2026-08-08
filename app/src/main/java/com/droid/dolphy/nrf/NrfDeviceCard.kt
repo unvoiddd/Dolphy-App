@@ -42,8 +42,7 @@ fun NrfDeviceCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize()
-            .clickable { expanded = !expanded }
-            .border(1.dp, iconColor.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+            .clickable { expanded = !expanded },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -569,3 +568,4 @@ private fun DetailRow(
         }
     }
 }
+

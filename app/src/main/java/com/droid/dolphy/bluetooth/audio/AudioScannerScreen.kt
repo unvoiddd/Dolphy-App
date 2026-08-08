@@ -1,5 +1,7 @@
 package com.droid.dolphy.bluetooth.audio
 
+import com.droid.dolphy.DolphyIconButton
+
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothClass
@@ -52,12 +54,17 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.navigation.NavController
+import com.droid.dolphy.M3SegmentedListItemContainer
+import com.droid.dolphy.M3SegmentedListItemSpacing
 import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
 import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.bluetooth.whisperpair.BluetoothAudioManager
+import com.droid.dolphy.bluetooth.whisperpair.DolphyPairExploit
 import com.droid.dolphy.bluetooth.whisperpair.FastPairExploit
+import com.droid.dolphy.bluetooth.whisperpair.hasGoogleFastPair
+import com.droid.dolphy.m3SegmentedItems
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -69,7 +76,9 @@ enum class ConnectionStatus {
 data class ScannerDeviceUi(
     val name: String,
     val address: String,
-    val rssi: Int
+    val rssi: Int,
+    
+    val hasFastPair: Boolean = false,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,6 +102,7 @@ fun AudioScannerScreen(navController: NavController) {
 
     val audioManager = remember { BluetoothAudioManager(context) }
     val exploitManager = remember { FastPairExploit(context) }
+    val dolphyPair = remember { DolphyPairExploit(context) }
     var listeningDevice by remember { mutableStateOf<ScannerDeviceUi?>(null) }
     val connectingDeviceAddress = remember { mutableStateOf<String?>(null) }
 
@@ -116,22 +126,42 @@ fun AudioScannerScreen(navController: NavController) {
         }
     }
 
-    fun addOrUpdateDevice(device: BluetoothDevice, rssi: Int, btClass: BluetoothClass? = null) {
+    fun addOrUpdateDevice(
+        device: BluetoothDevice,
+        rssi: Int,
+        btClass: BluetoothClass? = null,
+        hasFastPair: Boolean = false,
+    ) {
         val name = try { device.name } catch (_: SecurityException) { null } ?: "Unknown Device"
         val majorClass = btClass?.majorDeviceClass ?: BluetoothClass.Device.Major.UNCATEGORIZED
 
+        val n = name.lowercase()
         val isAudio = majorClass == BluetoothClass.Device.Major.AUDIO_VIDEO ||
-                name.lowercase().let { n ->
-                    n.contains("buds") || n.contains("airpods") || n.contains("head") ||
-                    n.contains("ear") || n.contains("audio") || n.contains("speaker") ||
-                    n.contains("sony") || n.contains("jbl") || n.contains("beat")
-                }
+            n.contains("buds") || n.contains("airpods") || n.contains("head") ||
+            n.contains("ear") || n.contains("audio") || n.contains("speaker") ||
+            n.contains("sony") || n.contains("jbl") || n.contains("beat") ||
+            n.contains("marshall") || n.contains("bose") || n.contains("sennheiser") ||
+            n.contains("galaxy") || n.contains("pixel") || n.contains("soundcore") ||
+            n.contains("anker") || n.contains("huawei") || n.contains("xiaomi") ||
+            n.contains("redmi") || n.contains("oppo") || n.contains("realme") ||
+            n.contains("nothing") || n.contains("earfun") || n.contains("qcy") ||
+            n.contains("tozo") || n.contains("skullcandy") || n.contains("jabra") ||
+            n.contains("wh-") || n.contains("wf-") || n.contains("linkbuds")
 
-        if (isAudio) {
+        if (isAudio || hasFastPair) {
+            val prev = devices[device.address]
+            val displayName = when {
+                name.isNotBlank() && name != "Unknown Device" -> name
+                hasFastPair || prev?.hasFastPair == true -> prev?.name?.takeIf {
+                    it.isNotBlank() && it != "Unknown Device"
+                } ?: "Fast Pair audio"
+                else -> prev?.name ?: "Unknown Audio"
+            }
             devices[device.address] = ScannerDeviceUi(
-                name = if (name.isBlank()) "Unknown Audio" else name,
+                name = displayName,
                 address = device.address,
-                rssi = rssi
+                rssi = if (rssi == Int.MIN_VALUE) (prev?.rssi ?: rssi) else rssi,
+                hasFastPair = (prev?.hasFastPair == true) || hasFastPair,
             )
             if (!connectionStates.containsKey(device.address)) {
                 connectionStates[device.address] = ConnectionStatus.IDLE
@@ -142,7 +172,11 @@ fun AudioScannerScreen(navController: NavController) {
     val bleCallback = remember {
         object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
-                addOrUpdateDevice(result.device, result.rssi)
+                addOrUpdateDevice(
+                    result.device,
+                    result.rssi,
+                    hasFastPair = result.hasGoogleFastPair(),
+                )
             }
         }
     }
@@ -288,7 +322,7 @@ fun AudioScannerScreen(navController: NavController) {
                         transparent = true,
                         actions = {
                             if (selectedTab == 0) {
-                                IconButton(onClick = { startScan() }, enabled = !isScanning) {
+                                DolphyIconButton(onClick = { startScan() }, enabled = !isScanning) {
                                     Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cd_refresh))
                                 }
                             }
@@ -358,7 +392,7 @@ fun AudioScannerScreen(navController: NavController) {
                         }
                     } else if (devices.isEmpty() && !isScanning) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            IconButton(
+                            DolphyIconButton(
                                 onClick = { startScan() },
                                 modifier = Modifier
                                     .size(100.dp)
@@ -374,15 +408,18 @@ fun AudioScannerScreen(navController: NavController) {
                         }
                     } else {
                         Column {
+                            val deviceList = devices.values.toList().sortedByDescending { it.rssi }
                             LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
                                 contentPadding = PaddingValues(bottom = 88.dp)
                             ) {
-                                items(devices.values.toList().sortedByDescending { it.rssi }) { device ->
+                                m3SegmentedItems(deviceList, key = { it.address }) { index, count, device ->
                                     AudioDeviceRow(
                                         device = device,
                                         status = connectionStates[device.address] ?: ConnectionStatus.IDLE,
                                         accentColor = accentColor,
+                                        segmentedIndex = index,
+                                        segmentedCount = count,
                                         onConnect = {
                                             connectingDeviceAddress.value = device.address
                                             connectionStates[device.address] = ConnectionStatus.CONNECTING
@@ -392,47 +429,87 @@ fun AudioScannerScreen(navController: NavController) {
                                                 })
                                             } catch (_: Exception) { }
                                         },
-                                        onQuietConnect = {
-                                            val prefs = context.getSharedPreferences("audio_scanner_prefs", Context.MODE_PRIVATE)
-                                            val isFirstTime = prefs.getBoolean("quiet_connect_first_time", true)
-
-                                            if (isFirstTime) {
-                                                showQuietConnectDialog = true
-                                                prefs.edit().putBoolean("quiet_connect_first_time", false).apply()
-                                            } else {
-
-                                                connectingDeviceAddress.value = device.address
-                                                connectionStates[device.address] = ConnectionStatus.EXPLOITING
-                                                exploitLogs[device.address] = context.getString(R.string.audio_starting_success)
-                                                exploitManager.exploitWithAudio(
-                                                    device.address,
-                                                    audioManager,
-                                                    onProgress = { msg ->
-                                                        exploitLogs[device.address] = msg
-                                                    },
-                                                    onResult = { result ->
-                                                        when (result) {
-                                                            is FastPairExploit.ExploitResult.AudioConnected,
-                                                            is FastPairExploit.ExploitResult.Success,
-                                                            is FastPairExploit.ExploitResult.PartialSuccess -> {
-                                                                connectionStates[device.address] = ConnectionStatus.SUCCESS
-                                                                exploitLogs[device.address] = context.getString(R.string.audio_connected_successfully)
-                                                                if (result is FastPairExploit.ExploitResult.AudioConnected) {
-                                                                    listeningDevice = device
-                                                                }
-                                                            }
-                                                            is FastPairExploit.ExploitResult.Failed -> {
-                                                                connectionStates[device.address] = ConnectionStatus.FAILED
-                                                                exploitLogs[device.address] = "${context.getString(R.string.audio_error_label)}: ${result.reason}"
-                                                            }
-                                                            else -> {
-                                                                connectionStates[device.address] = ConnectionStatus.FAILED
-                                                                exploitLogs[device.address] = context.getString(R.string.audio_error_label)
-                                                            }
+                                        onDolphyPair = {
+                                            connectingDeviceAddress.value = device.address
+                                            connectionStates[device.address] = ConnectionStatus.EXPLOITING
+                                            exploitLogs[device.address] =
+                                                context.getString(R.string.audio_hijack_starting)
+                                            dolphyPair.hijack(
+                                                device.address,
+                                                audioManager,
+                                                onProgress = { msg ->
+                                                    exploitLogs[device.address] = msg
+                                                },
+                                                onResult = { r ->
+                                                    when (r) {
+                                                        is DolphyPairExploit.Result.Success -> {
+                                                            connectionStates[device.address] =
+                                                                ConnectionStatus.SUCCESS
+                                                            exploitLogs[device.address] =
+                                                                context.getString(
+                                                                    R.string.audio_hijack_ok,
+                                                                    r.method,
+                                                                )
+                                                            listeningDevice = device
+                                                        }
+                                                        is DolphyPairExploit.Result.Failed -> {
+                                                            connectionStates[device.address] =
+                                                                ConnectionStatus.FAILED
+                                                            exploitLogs[device.address] =
+                                                                context.getString(
+                                                                    R.string.audio_hijack_fail,
+                                                                    r.reason,
+                                                                )
                                                         }
                                                     }
-                                                )
-                                            }
+                                                },
+                                            )
+                                        },
+                                        onWhisperPair = {
+                                            connectingDeviceAddress.value = device.address
+                                            connectionStates[device.address] = ConnectionStatus.EXPLOITING
+                                            exploitLogs[device.address] =
+                                                context.getString(R.string.audio_hijack_starting)
+                                            exploitManager.exploitWithAudio(
+                                                device.address,
+                                                audioManager,
+                                                onProgress = { msg ->
+                                                    exploitLogs[device.address] = msg
+                                                },
+                                                onResult = { result ->
+                                                    when (result) {
+                                                        is FastPairExploit.ExploitResult.AudioConnected,
+                                                        is FastPairExploit.ExploitResult.Success,
+                                                        is FastPairExploit.ExploitResult.PartialSuccess -> {
+                                                            connectionStates[device.address] =
+                                                                ConnectionStatus.SUCCESS
+                                                            exploitLogs[device.address] =
+                                                                context.getString(
+                                                                    R.string.audio_hijack_ok,
+                                                                    "WhisperPair/FastPair",
+                                                                )
+                                                            if (result is FastPairExploit.ExploitResult.AudioConnected) {
+                                                                listeningDevice = device
+                                                            }
+                                                        }
+                                                        is FastPairExploit.ExploitResult.Failed -> {
+                                                            connectionStates[device.address] =
+                                                                ConnectionStatus.FAILED
+                                                            exploitLogs[device.address] =
+                                                                context.getString(
+                                                                    R.string.audio_hijack_fail,
+                                                                    result.reason,
+                                                                )
+                                                        }
+                                                        else -> {
+                                                            connectionStates[device.address] =
+                                                                ConnectionStatus.FAILED
+                                                            exploitLogs[device.address] =
+                                                                context.getString(R.string.audio_error_label)
+                                                        }
+                                                    }
+                                                },
+                                            )
                                         },
                                         exploitStatus = exploitLogs[device.address],
                                         onListen = { listeningDevice = device }
@@ -512,10 +589,10 @@ fun RecordingsList(context: Context, accentColor: Color) {
         }
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)) {
-            items(recordings) { file ->
+            items(recordings, key = { it.absolutePath }) { file ->
                 MaterialCard {
                     Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = {
+                        DolphyIconButton(onClick = {
                             if (playingFile == file) {
                                 mediaPlayer?.pause()
                                 playingFile = null
@@ -550,7 +627,7 @@ fun RecordingsList(context: Context, accentColor: Color) {
                         }
 
                         Row {
-                            IconButton(onClick = {
+                            DolphyIconButton(onClick = {
                                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                                     type = "audio/*"
@@ -559,7 +636,7 @@ fun RecordingsList(context: Context, accentColor: Color) {
                                 }, "Поделиться"))
                             }) { Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp)) }
 
-                            IconButton(onClick = {
+                            DolphyIconButton(onClick = {
                                 if (playingFile == file) {
                                     mediaPlayer?.stop()
                                     playingFile = null
@@ -583,20 +660,30 @@ fun AudioDeviceRow(
     status: ConnectionStatus,
     accentColor: Color,
     exploitStatus: String? = null,
+    segmentedIndex: Int = 0,
+    segmentedCount: Int = 1,
     onConnect: () -> Unit,
-    onQuietConnect: () -> Unit,
-    onListen: () -> Unit
+    onDolphyPair: () -> Unit,
+    onWhisperPair: () -> Unit,
+    onListen: () -> Unit,
 ) {
-    MaterialCard {
+    val dolphyColor = Color(0xFFE91E63)
+    val whisperColor = Color(0xFF7C4DFF)
+    val busy = status == ConnectionStatus.CONNECTING || status == ConnectionStatus.EXPLOITING
+
+    M3SegmentedListItemContainer(
+        index = segmentedIndex,
+        count = segmentedCount,
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier.size(48.dp).clip(CircleShape).background(accentColor.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Default.Headphones, contentDescription = null, tint = accentColor)
             }
@@ -604,11 +691,28 @@ fun AudioDeviceRow(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(device.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(device.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    device.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    device.address,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (device.hasFastPair) {
+                    Text(
+                        "Fast Pair",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = whisperColor,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
-
 
                 if (status == ConnectionStatus.SUCCESS) {
                     Box(
@@ -617,65 +721,129 @@ fun AudioDeviceRow(
                             .background(accentColor)
                             .clickable { onListen() }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Center,
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White,
+                            )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(R.string.audio_listen), color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
+                            Text(
+                                stringResource(R.string.audio_listen),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
                         }
                     }
                 } else {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Box(
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxWidth()
                                 .clip(RoundedCornerShape(50))
                                 .background(accentColor)
-                                .clickable(enabled = status != ConnectionStatus.CONNECTING && status != ConnectionStatus.EXPLOITING) { onConnect() }
-                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                            contentAlignment = Alignment.Center
+                                .clickable(enabled = !busy) { onConnect() }
+                                .padding(vertical = 10.dp, horizontal = 14.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = if (status == ConnectionStatus.CONNECTING) stringResource(R.string.audio_waiting) else stringResource(R.string.audio_connect),
+                                text = if (status == ConnectionStatus.CONNECTING) {
+                                    stringResource(R.string.audio_waiting)
+                                } else {
+                                    stringResource(R.string.audio_connect)
+                                },
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Visible
                             )
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .width(60.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color.Red.copy(alpha = 0.8f))
-                                .clickable(enabled = status != ConnectionStatus.CONNECTING && status != ConnectionStatus.EXPLOITING) { onQuietConnect() }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (status == ConnectionStatus.EXPLOITING) {
+                        if (status == ConnectionStatus.EXPLOITING) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(50))
+                                    .background(dolphyColor.copy(alpha = 0.75f))
+                                    .padding(vertical = 10.dp, horizontal = 14.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.White,
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = stringResource(R.string.audio_hacking),
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(50)),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxSize()
+                                        .background(dolphyColor)
+                                        .clickable(enabled = !busy) { onDolphyPair() }
+                                        .padding(horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.audio_dolphy_pair),
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .fillMaxSize()
+                                        .background(Color.White.copy(alpha = 0.35f)),
                                 )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.AutoFixHigh,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxSize()
+                                        .background(whisperColor)
+                                        .clickable(enabled = !busy) { onWhisperPair() }
+                                        .padding(horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.audio_whisper_pair),
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                    )
+                                }
                             }
                         }
                     }
@@ -687,14 +855,18 @@ fun AudioDeviceRow(
                         text = exploitStatus,
                         style = MaterialTheme.typography.labelSmall,
                         color = if (status == ConnectionStatus.FAILED) Color.Red else accentColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
             Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp)) {
-                Text("${device.rssi} dBm", style = MaterialTheme.typography.labelSmall, color = accentColor.copy(alpha = 0.7f))
+                Text(
+                    "${device.rssi} dBm",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accentColor.copy(alpha = 0.7f),
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 val signalProgress = (device.rssi + 100).coerceIn(0, 100) / 100f
                 val signalColor = when {
@@ -706,12 +878,12 @@ fun AudioDeviceRow(
                     progress = { signalProgress },
                     modifier = Modifier.width(32.dp).height(4.dp).clip(CircleShape),
                     color = signalColor,
-                    trackColor = accentColor.copy(alpha = 0.1f)
+                    trackColor = accentColor.copy(alpha = 0.1f),
                 )
             }
         }
     }
-}
+    }
 
 @Composable
 fun ListeningDialog(
@@ -803,3 +975,4 @@ fun ListeningDialog(
         }
     }
 }
+

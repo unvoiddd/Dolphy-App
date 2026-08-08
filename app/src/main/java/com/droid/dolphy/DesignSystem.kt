@@ -15,7 +15,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +61,9 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.draw.scale
+import com.kyant.backdrop.catalog.components.LiquidBottomTab
+import com.kyant.backdrop.catalog.components.LiquidBottomTabs
+import com.kyant.backdrop.catalog.components.LiquidButton
 import kotlin.math.sin
 
 
@@ -173,6 +179,21 @@ fun VolumetricButton(
     icon: ImageVector? = null
 ) {
     val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
+    if (isLiquidGlassChrome() && enabled) {
+        LiquidButton(
+            onClick = onClick,
+            backdrop = LocalLiquidGlassBackdrop.current!!,
+            modifier = modifier.fillMaxWidth(),
+            tint = if (isActive) GreenSuccess else currentAccent,
+            surfaceColor = (if (isActive) GreenSuccess else currentAccent).copy(alpha = 0.92f),
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = Color.Black)
+            }
+            Text(text = text, fontWeight = FontWeight.Bold, color = Color.Black)
+        }
+        return
+    }
     val gradientColors = getGradientColors(currentAccent)
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -575,7 +596,7 @@ fun SettingsItem(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(16.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         content = content
     )
@@ -685,7 +706,7 @@ fun MaterialCard(
     modifier: Modifier = Modifier,
     accentColor: Color = Color.Unspecified,
     cornerRadius: Dp = 16.dp,
-    elevation: Dp = 2.dp,
+    elevation: Dp = 0.dp,
     containerType: String = "surface",
     contentPadding: Dp = 16.dp,
     shape: Shape? = null,
@@ -704,8 +725,7 @@ fun MaterialCard(
     val resolvedShape = shape ?: RoundedCornerShape(animatedRadius)
 
     Card(
-        modifier = (if (expressive) modifier.animateContentSize() else modifier)
-            .border(1.dp, (if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary).copy(alpha = 0.4f), resolvedShape),
+        modifier = if (expressive) modifier.animateContentSize() else modifier,
         shape = resolvedShape,
         colors = CardDefaults.cardColors(
             containerColor = colorScheme.surfaceContainerHighest
@@ -729,36 +749,18 @@ fun MaterialCardWithBorder(
     modifier: Modifier = Modifier,
     accentColor: Color = Color.Unspecified,
     cornerRadius: Dp = 16.dp,
-    elevation: Dp = 1.dp,
+    elevation: Dp = 0.dp,
     containerType: String = "surface",
     content: @Composable () -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    val resolvedRadius = if (cornerRadius < 20.dp) 20.dp else cornerRadius
-
-    val containerColor = when (containerType) {
-        "primary" -> colorScheme.primaryContainer
-        "secondary" -> colorScheme.secondaryContainer
-        else -> colorScheme.surfaceVariant
-    }
-
-    val outlineColor = colorScheme.outline
-
-    Card(
-        modifier = modifier
-            .border(1.dp, (if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary).copy(alpha = 0.5f), RoundedCornerShape(resolvedRadius)),
-        shape = RoundedCornerShape(resolvedRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surfaceContainerHighest
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = elevation
-        )
-    ) {
-        Box(modifier = Modifier.padding(16.dp)) {
-            content()
-        }
-    }
+    MaterialCard(
+        modifier = modifier,
+        accentColor = accentColor,
+        cornerRadius = cornerRadius,
+        elevation = elevation,
+        containerType = containerType,
+        content = content,
+    )
 }
 
 
@@ -775,31 +777,48 @@ fun MaterialButton(
 ) {
     val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
     val containerColor = if (isActive) GreenSuccess else currentAccent
-    val expressive = LocalExpressiveEnabled.current
-    val targetRadius = if (expressive) 30.dp else 24.dp
-    val animatedRadius by animateDpAsState(
-        targetValue = targetRadius,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 320f),
-        label = "button_radius"
-    )
+    if (isLiquidGlassChrome() && enabled) {
+        LiquidButton(
+            onClick = onClick,
+            backdrop = LocalLiquidGlassBackdrop.current!!,
+            modifier = modifier.fillMaxWidth(),
+            tint = containerColor,
+            surfaceColor = containerColor.copy(alpha = 0.92f),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+            )
+        }
+    } else {
+        val expressive = LocalExpressiveEnabled.current
+        val targetRadius = if (expressive) 30.dp else 24.dp
+        val animatedRadius by animateDpAsState(
+            targetValue = targetRadius,
+            animationSpec = spring(dampingRatio = 0.75f, stiffness = 320f),
+            label = "button_radius"
+        )
 
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(56.dp),
-        enabled = enabled,
-        shape = RoundedCornerShape(animatedRadius),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = Color.Black,
-            disabledContainerColor = Color.Gray.copy(alpha = 0.5f),
-            disabledContentColor = TextGray
-        )
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Button(
+            onClick = onClick,
+            modifier = modifier.height(56.dp),
+            enabled = enabled,
+            shape = RoundedCornerShape(animatedRadius),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = containerColor,
+                contentColor = contrastingContentColor(containerColor),
+                disabledContainerColor = Color.Gray.copy(alpha = 0.5f),
+                disabledContentColor = TextGray
+            )
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -815,26 +834,67 @@ fun MaterialOutlinedButton(
     enabled: Boolean = true
 ) {
     val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.height(56.dp),
-        enabled = enabled,
-        shape = RoundedCornerShape(24.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = currentAccent
-        )
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+    if (isLiquidGlassChrome() && enabled) {
+        LiquidButton(
+            onClick = onClick,
+            backdrop = LocalLiquidGlassBackdrop.current!!,
+            modifier = modifier.fillMaxWidth(),
+            tint = currentAccent,
+            surfaceColor = currentAccent.copy(alpha = 0.88f),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+            )
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier.height(56.dp),
+            enabled = enabled,
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = currentAccent
+            )
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
 
 
 
+
+
+@Composable
+fun RootBadge(
+    modifier: Modifier = Modifier,
+    accentColor: Color = Color.Unspecified,
+) {
+    val accent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
+    androidx.compose.material3.Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(4.dp),
+        color = accent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Text(
+            text = "root",
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            color = Color.Black,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Black,
+        )
+    }
+}
 
 @Composable
 fun MaterialBackground(
@@ -914,50 +974,71 @@ fun MaterialTabRow(
     accentColor: Color = Color.Unspecified
 ) {
     val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
-    Surface(
-        modifier = modifier.height(56.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        border = BorderStroke(1.dp, currentAccent.copy(alpha = 0.35f))
-    ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(4.dp)) {
-            val tabWidth = maxWidth / tabs.size
-            val indicatorOffset by animateDpAsState(
-                targetValue = tabWidth * selectedTabIndex,
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f),
-                label = "tabIndicator"
-            )
 
+    if (isLiquidGlassChrome() && tabs.isNotEmpty()) {
+        val labelStyle = MaterialTheme.typography.labelLarge.copy(
+            color = Color.White,
+            fontWeight = FontWeight.Black,
+        )
+        LiquidBottomTabs(
+            selectedTabIndex = { selectedTabIndex },
+            onTabSelected = onTabSelected,
+            backdrop = LocalLiquidGlassBackdrop.current!!,
+            tabsCount = tabs.size,
+            modifier = modifier.fillMaxWidth(),
+            barHeight = 46.dp,
+        ) {
+            tabs.forEachIndexed { index, title ->
+                LiquidBottomTab(onClick = { onTabSelected(index) }) {
+                    Text(text = title, style = labelStyle, maxLines = 1)
+                }
+            }
+        }
+    } else {
+        Surface(
+            modifier = modifier.height(56.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            border = BorderStroke(1.dp, currentAccent.copy(alpha = 0.35f))
+        ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(4.dp)) {
+                val tabWidth = maxWidth / tabs.size
+                val indicatorOffset by animateDpAsState(
+                    targetValue = tabWidth * selectedTabIndex,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f),
+                    label = "tabIndicator"
+                )
 
-            Box(
-                modifier = Modifier
-                    .offset(x = indicatorOffset)
-                    .width(tabWidth)
-                    .fillMaxHeight()
-                    .background(currentAccent, CircleShape)
-            )
+                Box(
+                    modifier = Modifier
+                        .offset(x = indicatorOffset)
+                        .width(tabWidth)
+                        .fillMaxHeight()
+                        .background(currentAccent, CircleShape)
+                )
 
-            Row(modifier = Modifier.fillMaxSize()) {
-                tabs.forEachIndexed { index, title ->
-                    val selected = selectedTabIndex == index
-                    val textColor by animateColorAsState(
-                        targetValue = if (selected) Color.Black else Color.White.copy(alpha = 0.6f),
-                        label = "tab_text"
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .clickable { onTabSelected(index) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Black,
-                            color = textColor
+                Row(modifier = Modifier.fillMaxSize()) {
+                    tabs.forEachIndexed { index, title ->
+                        val selected = selectedTabIndex == index
+                        val textColor by animateColorAsState(
+                            targetValue = if (selected) contrastingContentColor(currentAccent) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = "tab_text"
                         )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clip(CircleShape)
+                                .clickable { onTabSelected(index) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Black,
+                                color = textColor
+                            )
+                        }
                     }
                 }
             }
@@ -1011,14 +1092,35 @@ fun MaterialSettingsItem(
 
 
 
-fun getSegmentedShape(index: Int, count: Int, cornerRadius: Dp = 28.dp, innerRadius: Dp = 8.dp): RoundedCornerShape {
-    return when {
-        count == 1 -> RoundedCornerShape(cornerRadius)
-        index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = innerRadius, bottomEnd = innerRadius)
-        index == count - 1 -> RoundedCornerShape(topStart = innerRadius, topEnd = innerRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
+
+fun getSegmentedShape(
+    index: Int,
+    count: Int,
+    cornerRadius: Dp = 28.dp,
+    innerRadius: Dp = 8.dp,
+): RoundedCornerShape {
+    if (count <= 1) return RoundedCornerShape(cornerRadius)
+    return when (index) {
+        0 -> RoundedCornerShape(
+            topStart = cornerRadius,
+            topEnd = cornerRadius,
+            bottomStart = innerRadius,
+            bottomEnd = innerRadius,
+        )
+        count - 1 -> RoundedCornerShape(
+            topStart = innerRadius,
+            topEnd = innerRadius,
+            bottomStart = cornerRadius,
+            bottomEnd = cornerRadius,
+        )
         else -> RoundedCornerShape(innerRadius)
     }
 }
+
+
+val M3SegmentedListItemSpacing: Dp = 2.dp
+val M3SegmentedListOuterRadius: Dp = 28.dp
+val M3SegmentedListInnerRadius: Dp = 8.dp
 
 
 
@@ -1113,7 +1215,7 @@ fun MaterialProfileCard(
     val colorScheme = MaterialTheme.colorScheme
 
     Card(
-        modifier = modifier.border(1.dp, currentAccent.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = colorScheme.primaryContainer
@@ -1143,12 +1245,7 @@ fun MaterialThemeSelectorCard(
 
     Card(
         modifier = modifier
-            .clickable(onClick = onClick)
-            .border(
-                1.dp,
-                if (isSelected) colorScheme.primary else currentAccent.copy(alpha = 0.4f),
-                RoundedCornerShape(12.dp)
-            ),
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = colorScheme.surfaceVariant
@@ -1225,7 +1322,7 @@ fun SignalRow(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextGray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
@@ -1235,12 +1332,13 @@ fun SignalRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = TextGray.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
         }
     }
 }
+
 
 
 
@@ -1254,18 +1352,235 @@ fun ExpressiveSegmentedCardList(
     val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
     val colorScheme = MaterialTheme.colorScheme
     val expressive = LocalExpressiveEnabled.current
-    val cornerRadius = if (expressive) 32.dp else 16.dp
+    val cornerRadius = if (expressive) M3SegmentedListOuterRadius else 16.dp
 
     Card(
-        modifier = modifier.fillMaxWidth().border(1.dp, currentAccent.copy(alpha = 0.4f), RoundedCornerShape(cornerRadius)),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(cornerRadius),
         colors = CardDefaults.cardColors(
             containerColor = colorScheme.surfaceContainerHighest
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth(), content = content)
     }
+}
+
+
+
+@Composable
+fun <T> M3SegmentedList(
+    items: List<T>,
+    modifier: Modifier = Modifier,
+    spacing: Dp = M3SegmentedListItemSpacing,
+    itemContent: @Composable (index: Int, count: Int, item: T) -> Unit,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(spacing),
+    ) {
+        val count = items.size
+        items.forEachIndexed { index, item ->
+            itemContent(index, count, item)
+        }
+    }
+}
+
+
+@Composable
+fun M3SegmentedListItemContainer(
+    index: Int,
+    count: Int,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    enabled: Boolean = true,
+    onClick: (() -> Unit)? = null,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val shape = getSegmentedShape(
+        index = index,
+        count = count,
+        cornerRadius = M3SegmentedListOuterRadius,
+        innerRadius = M3SegmentedListInnerRadius,
+    )
+    val colorScheme = MaterialTheme.colorScheme
+    val containerColor = when {
+        selected -> colorScheme.secondaryContainer
+        else -> colorScheme.surfaceContainerHighest
+    }
+    val clickableMod = if (onClick != null && enabled) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(clickableMod),
+        shape = shape,
+        color = containerColor,
+        contentColor = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurface,
+        tonalElevation = if (selected) 2.dp else 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Box(content = content)
+    }
+}
+
+
+@Composable
+fun M3SegmentedListItem(
+    index: Int,
+    count: Int,
+    headline: String,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    overline: String? = null,
+    leadingIcon: ImageVector? = null,
+    leadingIconTint: Color = Color.Unspecified,
+    leadingContent: (@Composable () -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
+    selected: Boolean = false,
+    enabled: Boolean = true,
+    showChevron: Boolean = true,
+    onClick: (() -> Unit)? = null,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val iconTint = if (leadingIconTint != Color.Unspecified) {
+        leadingIconTint
+    } else {
+        colorScheme.primary
+    }
+
+    M3SegmentedListItemContainer(
+        index = index,
+        count = count,
+        modifier = modifier,
+        selected = selected,
+        enabled = enabled,
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .defaultMinSize(minHeight = 56.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            when {
+                leadingContent != null -> leadingContent()
+                leadingIcon != null -> {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(iconTint.copy(alpha = 0.12f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = leadingIcon,
+                            contentDescription = null,
+                            tint = iconTint,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                if (!overline.isNullOrBlank()) {
+                    Text(
+                        text = overline,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = headline,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurface,
+                    maxLines = 2,
+                )
+                if (!supporting.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = supporting,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            if (trailingContent != null) {
+                trailingContent()
+            } else if (showChevron && onClick != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+
+fun <T> LazyListScope.m3SegmentedItems(
+    items: List<T>,
+    key: ((item: T) -> Any)? = null,
+    itemContent: @Composable (index: Int, count: Int, item: T) -> Unit,
+) {
+    val count = items.size
+    items(
+        count = count,
+        key = if (key != null) { index: Int -> key(items[index]) } else null,
+    ) { index ->
+        itemContent(index, count, items[index])
+    }
+}
+
+
+@Composable
+fun M3SegmentedListSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Bold,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 6.dp),
+    )
+}
+
+
+@Composable
+fun M3SegmentedSignalRow(
+    index: Int,
+    count: Int,
+    title: String,
+    description: String,
+    icon: ImageVector,
+    accentColor: Color = Color.Unspecified,
+    onClick: () -> Unit,
+    trailingContent: @Composable (() -> Unit)? = null,
+) {
+    M3SegmentedListItem(
+        index = index,
+        count = count,
+        headline = title,
+        supporting = description,
+        leadingIcon = icon,
+        leadingIconTint = if (accentColor != Color.Unspecified) accentColor else Color.Unspecified,
+        trailingContent = trailingContent,
+        onClick = onClick,
+    )
 }
 
 
@@ -1355,12 +1670,22 @@ fun MaterialIconButton(
         else -> colorScheme.surfaceVariant
     }
 
-    IconButton(
-        onClick = onClick,
-        modifier = modifier.background(containerColor, CircleShape)
-    ) {
-        content()
+    val liquidTint = when (containerType) {
+        "primary" -> colorScheme.primary
+        "secondary" -> colorScheme.secondary
+        else -> colorScheme.primary
     }
+
+    DolphyIconButton(
+        onClick = onClick,
+        modifier = if (LocalLiquidGlassEnabled.current) {
+            modifier
+        } else {
+            modifier.background(containerColor, CircleShape)
+        },
+        liquidTint = liquidTint,
+        content = content,
+    )
 }
 
 @Composable
@@ -1435,40 +1760,51 @@ fun ExpressiveBounceButton(
     shape: Shape? = null,
     content: @Composable RowScope.() -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    if (isLiquidGlassChrome() && enabled) {
+        LiquidButton(
+            onClick = onClick,
+            backdrop = LocalLiquidGlassBackdrop.current!!,
+            modifier = modifier.fillMaxWidth(),
+            tint = containerColor,
+            surfaceColor = containerColor.copy(alpha = 0.92f),
+            content = content,
+        )
+    } else {
+        val interactionSource = remember { MutableInteractionSource() }
+        val isPressed by interactionSource.collectIsPressedAsState()
 
-    val expressive = LocalExpressiveEnabled.current
-    val baseRadius = if (shape is RoundedCornerShape) 28.dp else 28.dp
+        val cornerRadius by animateDpAsState(
+            targetValue = if (isPressed) 12.dp else 28.dp,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+            label = "corner"
+        )
 
-    val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 12.dp else 28.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "corner"
-    )
+        val scale by animateFloatAsState(
+            targetValue = if (isPressed) 0.94f else 1f,
+            label = "scale"
+        )
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
-        label = "scale"
-    )
+        val contentColorFinal =
+            if (containerColor == MaterialTheme.colorScheme.primary) contrastingContentColor(containerColor)
+            else contentColor
 
-    val contentColorFinal = if (containerColor == MaterialTheme.colorScheme.primary) Color.Black else contentColor
+        val buttonShape = shape ?: RoundedCornerShape(cornerRadius)
 
-    val buttonShape = shape ?: RoundedCornerShape(cornerRadius)
-
-    Button(
-        onClick = onClick,
-        modifier = modifier
-            .scale(scale)
-            .height(56.dp),
-        enabled = enabled,
-        interactionSource = interactionSource,
-        shape = buttonShape,
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor, contentColor = contentColorFinal),
-        contentPadding = PaddingValues(horizontal = 24.dp),
-        content = content
-    )
+        Button(
+            onClick = onClick,
+            modifier = modifier
+                .scale(scale)
+                .height(56.dp),
+            enabled = enabled,
+            interactionSource = interactionSource,
+            shape = buttonShape,
+            colors = ButtonDefaults.buttonColors(containerColor = containerColor, contentColor = contentColorFinal),
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            content = content
+        )
+    }
 }
+
 
 @Composable
 fun ExpressiveFloatingToolbar(
@@ -1479,81 +1815,98 @@ fun ExpressiveFloatingToolbar(
     settingsSelected: Boolean,
     onBluetoothClick: () -> Unit,
     onOtherClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
-    val selectedIndex = when {
-        bluetoothSelected -> 0
-        otherSelected -> 1
-        else -> 2
-    }
+    val colorScheme = MaterialTheme.colorScheme
+    val itemSize = 52.dp
+
+    val barColor = Color(
+        red = (colorScheme.surfaceContainerHighest.red * 0.28f + colorScheme.surface.red * 0.72f)
+            .coerceIn(0f, 1f),
+        green = (colorScheme.surfaceContainerHighest.green * 0.28f + colorScheme.surface.green * 0.72f)
+            .coerceIn(0f, 1f),
+        blue = (colorScheme.surfaceContainerHighest.blue * 0.28f + colorScheme.surface.blue * 0.72f)
+            .coerceIn(0f, 1f),
+        alpha = 1f,
+    )
+    val selectedSquare = Color(
+        red = (accentColor.red * 0.62f + 0.22f).coerceIn(0f, 1f),
+        green = (accentColor.green * 0.62f + 0.22f).coerceIn(0f, 1f),
+        blue = (accentColor.blue * 0.62f + 0.22f).coerceIn(0f, 1f),
+        alpha = 1f,
+    )
+    val selectedIcon = Color(
+        red = (accentColor.red * 0.38f + 0.62f).coerceIn(0f, 1f),
+        green = (accentColor.green * 0.38f + 0.62f).coerceIn(0f, 1f),
+        blue = (accentColor.blue * 0.38f + 0.62f).coerceIn(0f, 1f),
+        alpha = 1f,
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 24.dp),
-        contentAlignment = Alignment.Center
+            .navigationBarsPadding()
+            .padding(start = 96.dp, end = 96.dp, bottom = 6.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier
-                .height(72.dp)
-                .wrapContentWidth(),
-            shape = CircleShape,
-            color = accentColor,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                .wrapContentWidth()
+                .widthIn(max = 196.dp)
+                .fillMaxWidth()
+                .height(64.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = barColor,
             tonalElevation = 0.dp,
-            shadowElevation = 12.dp
+            shadowElevation = 5.dp,
         ) {
-            Box(modifier = Modifier.padding(horizontal = 12.dp)) {
-                val itemWidth = 64.dp
-                val spacing = 10.dp
-
-
-                val indicatorOffset = (itemWidth + spacing) * selectedIndex
-
-
-                Box(
-                    modifier = Modifier
-                        .offset(x = indicatorOffset)
-                        .padding(vertical = 10.dp)
-                        .size(itemWidth, 52.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black, CircleShape)
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 6.dp),
+            ) {
+                FloatingToolbarItem(
+                    selected = bluetoothSelected,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onBluetoothClick()
+                    },
+                    icon = Icons.Default.Bluetooth,
+                    selectedIconColor = selectedIcon,
+                    selectedSquareColor = selectedSquare,
+                    unselectedContentColor = colorScheme.onSurfaceVariant,
+                    itemSize = itemSize,
+                    contentDescription = "Bluetooth",
                 )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(spacing),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxHeight()
-                ) {
-                    FloatingToolbarItem(
-                        selected = bluetoothSelected,
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onBluetoothClick()
-                        },
-                        icon = Icons.Default.Bluetooth,
-                        accentColor = accentColor
-                    )
-                    FloatingToolbarItem(
-                        selected = otherSelected,
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onOtherClick()
-                        },
-                        icon = Icons.Default.Extension,
-                        accentColor = accentColor
-                    )
-                    FloatingToolbarItem(
-                        selected = settingsSelected,
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onSettingsClick()
-                        },
-                        icon = Icons.Default.Settings,
-                        accentColor = accentColor
-                    )
-                }
+                FloatingToolbarItem(
+                    selected = otherSelected,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onOtherClick()
+                    },
+                    icon = Icons.Default.Extension,
+                    selectedIconColor = selectedIcon,
+                    selectedSquareColor = selectedSquare,
+                    unselectedContentColor = colorScheme.onSurfaceVariant,
+                    itemSize = itemSize,
+                    contentDescription = "Other",
+                )
+                FloatingToolbarItem(
+                    selected = settingsSelected,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onSettingsClick()
+                    },
+                    icon = Icons.Default.Settings,
+                    selectedIconColor = selectedIcon,
+                    selectedSquareColor = selectedSquare,
+                    unselectedContentColor = colorScheme.onSurfaceVariant,
+                    itemSize = itemSize,
+                    contentDescription = "Settings",
+                )
             }
         }
     }
@@ -1564,27 +1917,36 @@ private fun FloatingToolbarItem(
     selected: Boolean,
     onClick: () -> Unit,
     icon: ImageVector,
-    accentColor: Color
+    selectedIconColor: Color,
+    selectedSquareColor: Color,
+    unselectedContentColor: Color,
+    itemSize: Dp,
+    contentDescription: String,
 ) {
-    val iconColor by animateColorAsState(
-        if (selected) accentColor else Color.Black,
-        label = "icon"
+    val squareColor by animateColorAsState(
+        targetValue = if (selected) selectedSquareColor else Color.Transparent,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f),
+        label = "nav_square",
     )
-    val scale by animateFloatAsState(if (selected) 1.15f else 1f, label = "scale")
+    val iconColor by animateColorAsState(
+        targetValue = if (selected) selectedIconColor else unselectedContentColor,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f),
+        label = "nav_icon",
+    )
 
     Box(
         modifier = Modifier
-            .size(64.dp)
-            .scale(scale)
-            .clip(CircleShape)
+            .size(itemSize)
+            .clip(RoundedCornerShape(13.dp))
+            .background(squareColor)
             .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = contentDescription,
             tint = iconColor,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(26.dp),
         )
     }
 }
@@ -1603,7 +1965,7 @@ fun ExpressiveDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        modifier = modifier.border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(28.dp)),
+        modifier = modifier,
         shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
@@ -1618,6 +1980,7 @@ fun ExpressiveDialog(
         dismissButton = dismissButton
     )
 }
+
 
 
 

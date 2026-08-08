@@ -66,6 +66,17 @@ object PluginManager {
 
     fun getManifest(pluginId: String): PluginManifest? = loaded[pluginId]?.manifest
 
+    
+    fun dispatchNfcTag(tag: android.nfc.Tag) {
+        sessions.values.forEach { session ->
+            try {
+                session.onNfcTag(tag)
+            } catch (t: Throwable) {
+                Log.w(TAG, "dispatchNfcTag ${session.manifest.id}", t)
+            }
+        }
+    }
+
     fun renderScreen(pluginId: String, screenId: String): UiNode {
         return sessions[pluginId]?.renderScreen(screenId)
             ?: UiNode.Column(
@@ -124,6 +135,7 @@ object PluginManager {
 
         sessions.remove(manifest.id)?.stop()
         PluginRegistry.clearPlugin(manifest.id)
+        PluginLibraryRegistry.clearPlugin(manifest.id)
 
         sourcesDir.mkdirs()
         metaDir.mkdirs()
@@ -131,7 +143,6 @@ object PluginManager {
         val saved = File(sourcesDir, "${manifest.id}.js")
         saved.writeText(raw, Charsets.UTF_8)
         saveMeta(manifest)
-
 
         if (!saved.exists() || saved.length() == 0L) {
             return Result.failure(IllegalStateException("Не удалось сохранить плагин на диск"))
@@ -161,7 +172,10 @@ object PluginManager {
         sessions[manifest.id] = session
         loaded[manifest.id] = LoadedJsPlugin(manifest, saved, raw, true)
         publish()
-        Log.i(TAG, "Installed plugin ${manifest.id} → ${saved.absolutePath}")
+        Log.i(
+            TAG,
+            "Installed plugin ${manifest.id} library=${manifest.isLibrary} → ${saved.absolutePath}",
+        )
         return Result.success(manifest)
     }
 
@@ -197,6 +211,7 @@ object PluginManager {
         saveDeletedIds()
 
         PluginRegistry.clearPlugin(pluginId)
+        PluginLibraryRegistry.clearPlugin(pluginId)
         publish()
         Log.i(TAG, "Permanently deleted plugin $pluginId")
     }
@@ -225,6 +240,7 @@ object PluginManager {
             } catch (t: Throwable) {
                 Log.w(TAG, "stop on disable", t)
             }
+            PluginLibraryRegistry.clearPlugin(pluginId)
             loaded[pluginId] = entry.copy(enabled = false)
             updateMetaEnabled(pluginId, false)
         }
@@ -236,23 +252,29 @@ object PluginManager {
         sessions.clear()
         loaded.clear()
         PluginRegistry.clearAll()
+        PluginLibraryRegistry.clearAll()
         loadAllFromDisk()
     }
 
-
-
-
+    private data class PendingPlugin(
+        val src: File,
+        val raw: String,
+        val manifest: PluginManifest,
+        val enabled: Boolean,
+    )
 
     private fun loadAllFromDisk() {
         sourcesDir.mkdirs()
         metaDir.mkdirs()
+        PluginLibraryRegistry.clearAll()
 
         val sourceFiles = sourcesDir.listFiles()
             ?.filter { it.isFile && (it.extension.equals("js", true) || it.extension.equals("plugin", true)) }
             .orEmpty()
 
-        for (src in sourceFiles) {
+        val pending = mutableListOf<PendingPlugin>()
 
+        for (src in sourceFiles) {
             try {
                 val raw = src.readText(Charsets.UTF_8)
                 if (raw.isBlank()) continue
@@ -264,23 +286,38 @@ object PluginManager {
                     try {
                         val serial = json.decodeFromString(SerializableManifest.serializer(), metaFile.readText())
                         enabled = serial.enabled
-                        serial.toManifest()
+                        serial.toManifest().copy(
+                            isLibrary = fromSource.isLibrary || serial.isLibrary || fromSource.isDesignLibrary,
+                            isDesignLibrary = fromSource.isDesignLibrary || serial.isDesignLibrary,
+                        )
                     } catch (_: Exception) {
                         fromSource
                     }
                 } else {
-
                     saveMeta(fromSource, enabled = true)
                     fromSource
                 }
 
                 if (manifest.id in permanentlyDeleted) {
-
                     src.delete()
                     metaFile.delete()
                     continue
                 }
 
+                pending += PendingPlugin(src, raw, manifest, enabled)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to parse ${src.name}", t)
+                quarantineBroken(src, t)
+            }
+        }
+
+        val ordered = pending.sortedByDescending {
+            it.manifest.isLibrary || it.manifest.isDesignLibrary
+        }
+
+        for (item in ordered) {
+            try {
+                val (src, raw, manifest, enabled) = item
                 if (enabled) {
                     val session = try {
                         JsPluginSession(appContext, manifest, raw).also { it.start() }
@@ -295,13 +332,15 @@ object PluginManager {
                     sessions[manifest.id] = session
                 }
                 loaded[manifest.id] = LoadedJsPlugin(manifest, src, raw, enabled)
-                Log.i(TAG, "Restored plugin ${manifest.id} enabled=$enabled")
+                Log.i(
+                    TAG,
+                    "Restored plugin ${manifest.id} enabled=$enabled library=${manifest.isLibrary}",
+                )
             } catch (t: Throwable) {
-                Log.e(TAG, "Failed to load ${src.name}", t)
-                quarantineBroken(src, t)
+                Log.e(TAG, "Failed to load ${item.src.name}", t)
+                quarantineBroken(item.src, t)
             }
         }
-
 
         metaDir.listFiles()?.forEach { f ->
             if (f.extension == "json") {
@@ -318,7 +357,11 @@ object PluginManager {
         }
 
         publish()
-        Log.i(TAG, "Loaded ${loaded.size} plugin(s) from disk")
+        Log.i(
+            TAG,
+            "Loaded ${loaded.size} plugin(s) from disk " +
+                "(libraries=${loaded.values.count { it.manifest.isLibrary }})",
+        )
     }
 
     private fun purgeAnyLegacyBundledHints() {
@@ -334,6 +377,8 @@ object PluginManager {
             description = manifest.description,
             author = manifest.author,
             enabled = enabled,
+            isLibrary = manifest.isLibrary || manifest.isDesignLibrary,
+            isDesignLibrary = manifest.isDesignLibrary,
         )
         metaDir.mkdirs()
         File(metaDir, "${manifest.id}.json").writeText(
@@ -406,7 +451,14 @@ object PluginManager {
         val description: String = "",
         val author: String = "",
         val enabled: Boolean = true,
+        val isLibrary: Boolean = false,
+        val isDesignLibrary: Boolean = false,
     ) {
-        fun toManifest() = PluginManifest(id, name, version, description, author)
+        fun toManifest() = PluginManifest(
+            id, name, version, description, author,
+            isLibrary = isLibrary || isDesignLibrary,
+            isDesignLibrary = isDesignLibrary,
+        )
     }
 }
+
