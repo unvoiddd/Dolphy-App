@@ -31,13 +31,6 @@ Dolphy releases telegram channel - https://t.me/Dolphy_app_official
 ### 📺 Media Protocols
 - SmartTV Cast: Native media streaming and broadcasting support using Chromecast, DIAL, DLNA, and UPnP protocols.
 
----
-
-## Development & Architecture
-
-The application is engineered from the ground up using a modern Java and Kotlin tech stack. To maintain high code quality, accelerate the implementation of complex network protocols, and optimize heavy cryptographic and hardware-emulation processes, advanced AI models are deeply integrated into the development workflow. 
----
-
 ## Credits & Special Thanks
 
 Special thanks to the developers and researchers who helped bring this project to life:
