@@ -36,13 +36,6 @@ Dolphy releases telegram channel - https://t.me/Dolphy_app_official
 ## Development & Architecture
 
 The application is engineered from the ground up using a modern Java and Kotlin tech stack. To maintain high code quality, accelerate the implementation of complex network protocols, and optimize heavy cryptographic and hardware-emulation processes, advanced AI models are deeply integrated into the development workflow. 
-
----
-
-## Project Status
-
-This repository serves as the official landing page and documentation hub for Dolphy. The core source code is currently maintained in a private repository.
-
 ---
 
 ## Credits & Special Thanks
@@ -89,14 +82,7 @@ Dolphy — это мощный Android-мультитул, созданный д
 
 ## Разработка и архитектура
 
-Приложение разработано с нуля с использованием современного стека Java и Kotlin. Для поддержания строгой архитектуры, ускорения реализации сетевых протоколов и оптимизации алгоритмов эмуляции железа в процесс разработки активно внедрены продвинутые нейросети.
-
----
-
-## Статус проекта
-
-Данный репозиторий является официальной веб-витриной и центром документации проекта Dolphy. Исходный код приложения на данный момент находится в приватном доступе.
-
+Приложение разработано с нуля с использованием современного стека Java и Kotlin.
 ---
 
 ## Благодарности / Credits
