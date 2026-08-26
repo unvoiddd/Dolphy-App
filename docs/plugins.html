@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff8a00">
+  <meta name="description" content="Documentation for creating Python .dolphyplugin extensions for Dolphy.">
+  <meta property="og:title" content="Dolphy Plugin Documentation">
+  <meta property="og:image" content="assets/dolphy-icon.png">
+  <title>Dolphy Plugin Documentation</title>
+  <link rel="icon" type="image/png" href="assets/dolphy-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/site.js" defer></script>
+  <script src="assets/plugin-api-reference.js" defer></script>
+</head>
+<body data-page="docs">
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Dolphy home"><img src="assets/dolphy-icon.png" alt="" width="44" height="44"><span>Dolphy</span></a>
+    <nav class="top-nav" aria-label="Main navigation">
+      <a class="nav-item" href="index.html"><span class="material-symbols-rounded">home</span><span data-i18n="navHome">Home</span></a>
+      <a class="nav-item active" href="plugins.html"><span class="material-symbols-rounded">extension</span><span data-i18n="navDocs">Plugin docs</span></a>
+    </nav>
+    <button class="language-button" type="button" data-language-toggle aria-label="Switch language"><span class="material-symbols-rounded">language</span><span data-language-label>RU</span></button>
+  </header>
+
+  <main id="main">
+    <section class="docs-hero section-shell reveal">
+      <div>
+        <div class="eyebrow"><span class="material-symbols-rounded">extension</span><span data-i18n="docsEyebrow">Developer documentation</span></div>
+        <h1 data-i18n="docsTitle">Build something powerful for Dolphy.</h1>
+        <p data-i18n="docsLead">A plugin is one readable Python file with the .dolphyplugin extension. It can create screens, integrate hardware and extend existing Dolphy features.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#quick-start"><span class="material-symbols-rounded">rocket_launch</span><span data-i18n="quickStart">Quick start</span></a><a class="button button-tonal" href="https://github.com/unvoiddd/Dolphy-App/tree/main/plugin-examples" target="_blank" rel="noopener"><span class="material-symbols-rounded">folder_code</span><span data-i18n="examples">Examples</span></a></div>
+      </div>
+      <div class="docs-hero-mark"><span class="material-symbols-rounded">deployed_code</span><i></i><i></i></div>
+    </section>
+
+    <div class="docs-layout section-shell">
+      <aside class="docs-toc">
+        <label class="docs-search"><span class="material-symbols-rounded">search</span><input type="search" data-doc-nav-search data-i18n-placeholder="docsSearch" placeholder="Search documentation"></label>
+        <div class="toc-title" data-i18n="tocStartGroup">Getting started</div>
+        <a href="#overview" class="active"><span class="material-symbols-rounded">home</span><span data-i18n="tocOverview">Overview</span></a>
+        <a href="#metadata"><span class="material-symbols-rounded">badge</span><span data-i18n="tocMetadata">Metadata</span></a>
+        <a href="#quick-start"><span class="material-symbols-rounded">rocket_launch</span><span data-i18n="tocQuick">Quick start</span></a>
+        <div class="toc-title" data-i18n="tocUiGroup">Interface</div>
+        <a href="#ui"><span class="material-symbols-rounded">widgets</span><span data-i18n="tocUi">Expressive UI</span></a>
+        <a href="#plugin-settings"><span class="material-symbols-rounded">tune</span><span data-i18n="tocPluginSettings">Plugin settings</span></a>
+        <div class="toc-title" data-i18n="tocIntegrationGroup">Integration</div>
+        <a href="#integration"><span class="material-symbols-rounded">conversion_path</span><span data-i18n="tocIntegration">App integration</span></a>
+        <a href="#screen-hooks"><span class="material-symbols-rounded">layers</span><span data-i18n="tocScreenHooks">Screen hooks</span></a>
+        <a href="#surface-hooks"><span class="material-symbols-rounded">toolbar</span><span data-i18n="tocSurfaceHooks">App surfaces</span></a>
+        <a href="#logic-hooks"><span class="material-symbols-rounded">bolt</span><span data-i18n="tocLogicHooks">Actions & services</span></a>
+        <a href="#hook-catalog"><span class="material-symbols-rounded">account_tree</span><span data-i18n="tocHookCatalog">Hook catalog</span></a>
+        <div class="toc-title" data-i18n="tocNativeGroup">Native code</div>
+        <a href="#dex-libraries"><span class="material-symbols-rounded">deployed_code</span><span data-i18n="tocDexLibraries">DEX & libraries</span></a>
+        <a href="#library-exports"><span class="material-symbols-rounded">hub</span><span data-i18n="tocLibraryExports">Library exports</span></a>
+        <a href="#reflection"><span class="material-symbols-rounded">manage_search</span><span data-i18n="tocReflection">Java reflection</span></a>
+        <div class="toc-title" data-i18n="tocReferenceGroup">Reference</div>
+        <a href="#apis"><span class="material-symbols-rounded">memory</span><span data-i18n="tocApis">Android & device APIs</span></a>
+        <a href="#sdk-reference"><span class="material-symbols-rounded">menu_book</span><span data-i18n="tocSdkReference">SDK reference</span></a>
+        <a href="#lifecycle"><span class="material-symbols-rounded">cycle</span><span data-i18n="tocLifecycle">Lifecycle</span></a>
+        <a href="#install"><span class="material-symbols-rounded">verified_user</span><span data-i18n="tocInstall">Install & safety</span></a>
+      </aside>
+
+      <article class="docs-content">
+        <section id="overview" class="doc-section reveal">
+          <div class="section-index">01</div><div class="doc-heading"><span class="material-symbols-rounded">auto_awesome</span><div><h2 data-i18n="overviewTitle">What a plugin can do</h2><p data-i18n="overviewLead">Plugins run inside Dolphy and use the same design system and hardware access layer as the app.</p></div></div>
+          <div class="capability-grid">
+            <div><span class="material-symbols-rounded">dashboard_customize</span><strong data-i18n="capScreens">Create complete screens</strong><p data-i18n="capScreensBody">Compose multi-screen Material 3 Expressive tools with state and callbacks.</p></div>
+            <div><span class="material-symbols-rounded">hub</span><strong data-i18n="capHooks">Extend Dolphy</strong><p data-i18n="capHooksBody">Add overlays, FABs, replace screens and hook named actions.</p></div>
+            <div><span class="material-symbols-rounded">usb</span><strong data-i18n="capHardware">Integrate hardware</strong><p data-i18n="capHardwareBody">Work with Bluetooth, Wi-Fi, NFC, USB, IR and Android services.</p></div>
+            <div><span class="material-symbols-rounded">terminal</span><strong data-i18n="capSystem">Use system access</strong><p data-i18n="capSystemBody">Call Java APIs and use Shell, Root or Shizuku when available.</p></div>
+          </div>
+          <div class="callout warning"><span class="material-symbols-rounded">warning</span><div><strong data-i18n="trustedTitle">Trusted-code model</strong><p data-i18n="trustedBody">Plugins are not sandboxed. Read the source and only install code you trust.</p></div></div>
+        </section>
+
+        <section id="metadata" class="doc-section reveal">
+          <div class="section-index">02</div><div class="doc-heading"><span class="material-symbols-rounded">badge</span><div><h2 data-i18n="metadataTitle">Plugin metadata</h2><p data-i18n="metadataLead">Put metadata at the beginning of the text file. Dolphy reads it before installation without executing Python.</p></div></div>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>my_plugin.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"my_wireless_lab"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"My Wireless Lab"</span>
+<span class="code-key">__version__</span> = <span class="code-string">"1.0.0"</span>
+<span class="code-key">__author__</span> = <span class="code-string">"Developer"</span>
+<span class="code-key">__description__</span> = <span class="code-string">"Wireless diagnostics"</span>
+<span class="code-key">__icon__</span> = <span class="code-string">"rounded:radar"</span>
+<span class="code-key">__library__</span> = <span class="code-key">False</span>
+<span class="code-key">__design_library__</span> = <span class="code-key">False</span>
+<span class="code-key">__dependencies__</span> = [<span class="code-string">"shared_radio_core"</span>]
+<span class="code-key">__permissions__</span> = [<span class="code-string">"ble_spam"</span>, <span class="code-string">"download"</span>, <span class="code-string">"files"</span>]</code></pre></div>
+          <div class="property-list">
+            <div><code>__id__</code><span data-i18n="metaId">Stable lowercase identifier</span></div><div><code>__name__</code><span data-i18n="metaName">Name shown in Dolphy</span></div><div><code>__version__</code><span data-i18n="metaVersion">Plugin version</span></div><div><code>__author__</code><span data-i18n="metaAuthor">Developer name</span></div><div><code>__description__</code><span data-i18n="metaDescription">Short description</span></div><div><code>__icon__</code><span data-i18n="metaIcon">Material Icon: filled, outlined, rounded, sharp or twotone</span></div><div><code>__library__</code><span data-i18n="metaLibrary">Load before regular plugins as a shared library</span></div><div><code>__design_library__</code><span data-i18n="metaDesignLibrary">Mark a shared design library</span></div><div><code>__dependencies__</code><span data-i18n="metaDependencies">Required plugin ids loaded before this plugin</span></div><div><code>__permissions__</code><span data-i18n="metaPermissions">Capabilities shown before installation; Dolphy also detects direct API usage in the source</span></div>
+          </div>
+          <div class="route-box"><strong data-i18n="manifestRulesTitle">Manifest parsing rules</strong><p data-i18n="manifestRulesBody">The file is UTF-8 text and may be at most 48 MiB. String fields must be top-level single- or double-quoted assignments. id is lowercased, invalid characters become underscores and the result is limited to 64 characters. Missing fields fall back to the filename, version 1.0 and icon extension.</p><div class="api-chips"><code>.dolphyplugin</code><code>application/x-dolphy-plugin</code><code>UTF-8</code><code>48 MiB max</code><code>[a-z0-9_-], 64 chars</code></div></div>
+          <div class="callout current"><span class="material-symbols-rounded">library_books</span><div><strong data-i18n="libraryTruthTitle">Library plugins and dependencies</strong><p data-i18n="libraryTruthBody">Library plugins start before consumers. __dependencies__ declares required plugin ids, determines startup order and prevents a consumer from starting while a dependency is missing or disabled. Java classes and objects may be exported by name and imported by dependent plugins.</p></div></div>
+          <div class="callout truth"><span class="material-symbols-rounded">code</span><div><strong data-i18n="runtimeTruthTitle">Public format and runtime</strong><p data-i18n="runtimeTruthBody">A file opened or shared as .dolphyplugin is always executed by the embedded Python runtime. The repository still contains an internal JavaScript compatibility runtime for previously stored .js plugins, but it is not the documented public .dolphyplugin authoring format.</p></div></div>
+        </section>
+
+        <section id="quick-start" class="doc-section reveal">
+          <div class="section-index">03</div><div class="doc-heading"><span class="material-symbols-rounded">rocket_launch</span><div><h2 data-i18n="quickTitle">Minimal working plugin</h2><p data-i18n="quickLead">Extend BasePlugin, register a module during load and return a UI tree from screen_main.</p></div></div>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>hello_dolphy.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"hello_dolphy"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"Hello Dolphy"</span>
+<span class="code-key">__version__</span> = <span class="code-string">"1.0.0"</span>
+<span class="code-key">__icon__</span> = <span class="code-string">"rounded:waving_hand"</span>
+
+<span class="code-key">class</span> HelloDolphy(BasePlugin):
+    <span class="code-key">def</span> on_plugin_load(self):
+        self.add_module(
+            title=<span class="code-string">"Hello Dolphy"</span>,
+            description=<span class="code-string">"My first plugin"</span>,
+            icon=<span class="code-string">"waving_hand"</span>,
+            screen=<span class="code-string">"main"</span>,
+            section=<span class="code-string">"PLUGINS"</span>
+        )
+
+    <span class="code-key">def</span> screen_main(self, ui, api, state):
+        <span class="code-key">return</span> ui.scaffold(
+            title=<span class="code-string">"Hello Dolphy"</span>,
+            content=ui.column([
+                ui.card([
+                    ui.text(<span class="code-string">"It works!"</span>, <span class="code-string">"headlineSmall"</span>),
+                    ui.button(<span class="code-string">"Say hello"</span>, self.say_hello)
+                ])
+            ], padding=<span class="code-number">16</span>, spacing=<span class="code-number">12</span>)
+        )
+
+    <span class="code-key">def</span> say_hello(self):
+        self.toast(<span class="code-string">"Hello from Python"</span>)</code></pre></div>
+          <div class="route-box"><strong data-i18n="baseSignatureTitle">Complete BasePlugin API</strong><p data-i18n="baseSignatureBody">These helpers delegate to the native bridge. api and ui are also available directly on self.</p><div class="api-chips"><code>add_module(title, description="", icon="extension", screen="main", section="PLUGINS", order=0)</code><code>navigate(screen)</code><code>navigate_app(route)</code><code>refresh()</code><code>get_setting(key, default=None)</code><code>set_setting(key, value)</code><code>toast(text)</code><code>hook_screen(route, screen="main", mode="overlay", priority=0)</code><code>hook_surface(surface, screen="main", mode="overlay", priority=0)</code><code>provide_service(service, priority=0)</code><code>hook_action(action, priority=0)</code><code>load_dex_base64(module, encoded, sha256="")</code><code>load_dex_file(module, path, sha256="")</code><code>dex_class(module, class_name)</code><code>new_dex_instance(module, class_name)</code><code>export_dex_class(name, module, class_name)</code><code>export_app_class(name, class_name)</code><code>export_java_class(name, java_class)</code><code>import_java_class(name)</code><code>export_java_object(name, value)</code><code>import_java_object(name)</code><code>java_exports()</code><code>root(command)</code><code>shizuku(command)</code><code>shell(command)</code></div></div>
+          <div class="callout current"><span class="material-symbols-rounded">view_module</span><div><strong data-i18n="moduleSectionsTitle">Where add_module can place a card</strong><p data-i18n="moduleSectionsBody">Built-in sections are INFRARED, BLUETOOTH, OTHER and PLUGINS. Aliases such as ir, bt, ble, misc and localized names are normalized; any other text creates a custom section. order sorts cards, screen chooses the plugin screen, and icon accepts Material icon syntax.</p></div></div>
+        </section>
+
+        <section id="ui" class="doc-section reveal">
+          <div class="section-index">04</div><div class="doc-heading"><span class="material-symbols-rounded">palette</span><div><h2 data-i18n="uiTitle">Material 3 Expressive UI</h2><p data-i18n="uiLead">Python describes a UI tree. Dolphy renders native Jetpack Compose components with the current theme and accent color.</p></div></div>
+          <div class="flow-diagram"><div><span class="material-symbols-rounded">code</span><strong>Python ui.*</strong></div><span class="material-symbols-rounded">arrow_forward</span><div><span class="material-symbols-rounded">account_tree</span><strong>UI tree</strong></div><span class="material-symbols-rounded">arrow_forward</span><div><span class="material-symbols-rounded">android</span><strong>Compose MD3</strong></div></div>
+          <div class="api-chips"><code>ui.scaffold</code><code>ui.column</code><code>ui.lazy_column</code><code>ui.card</code><code>ui.segmented_list</code><code>ui.function_row</code><code>ui.button</code><code>ui.split_button</code><code>ui.icon_button</code><code>ui.text_field</code><code>ui.switch</code><code>ui.slider</code><code>ui.tabs</code><code>ui.dropdown</code><code>ui.floating_toolbar</code><code>ui.wavy_progress</code></div>
+          <div class="contract-table">
+            <div><code>text.style</code><span data-i18n="uiTextStyles">headlineLarge/Medium/Small, titleLarge/Medium/Small, bodyLarge/Medium/Small and labelLarge/Medium/Small; camelCase and snake_case are accepted.</span></div>
+            <div><code>color / tint</code><span data-i18n="uiColorValues">primary/accent, muted/secondary, error/red, success/green, warning/orange, or #RGB/#ARGB/#RRGGBB/#AARRGGBB.</span></div>
+            <div><code>icon</code><span data-i18n="uiIconValues">A built-in alias or any bundled Material icon as style:name: filled, outlined, rounded, sharp, twotone or automirrored.</span></div>
+            <div><code>image.source</code><span data-i18n="uiImageValues">asset path, asset:// URL, data:image/...;base64 URI or raw Base64. Scale: fit, crop, fill, fillWidth, fillHeight, inside or none.</span></div>
+            <div><code>callbacks</code><span data-i18n="uiCallbackValues">Click receives no value; text fields receive str, switches and checkboxes bool, sliders float, tabs int, and option controls the selected value.</span></div>
+            <div><code>WebView</code><span data-i18n="uiWebViewValues">Loads either url or html, with JavaScript and DOM storage enabled. Treat remote and embedded content as trusted executable UI.</span></div>
+          </div>
+          <div class="route-box"><strong data-i18n="uiSignatureTitle">Complete UiFactory signatures</strong><p data-i18n="uiSignatureBody">Every argument below is supported by the Python runtime. Dimensions and spacing use dp.</p><div class="api-chips"><code>scaffold(content, title=None, show_back=True, fab=None, actions=None)</code><code>top_action(icon, on_click=None)</code><code>column(children=None, padding=0, spacing=8, fill_max_size=False)</code><code>row(children=None, padding=0, spacing=8, fill_max_width=True)</code><code>box(children=None, padding=0, fill_max_size=False)</code><code>lazy_column(children=None, padding=0, spacing=4, fill_max_size=True)</code><code>lazy_row(children=None, padding=0, spacing=8, fill_max_width=True)</code><code>text(text, style="bodyMedium", color=None, max_lines=2147483647)</code><code>button(text, on_click=None, style="filled", enabled=True, fill_max_width=False)</code><code>bounce_button(text, on_click=None, enabled=True, fill_max_width=True)</code><code>split_button(text, on_click=None, on_secondary=None, enabled=True, fill_max_width=True)</code><code>icon_button(icon, on_click=None, enabled=True)</code><code>text_field(value="", on_change=None, label="", single_line=True, fill_max_width=True)</code><code>switch(checked=False, on_change=None, title="", subtitle="", enabled=True)</code><code>checkbox(checked=False, on_change=None, title="", subtitle="", enabled=True)</code><code>slider(value=0, on_change=None, minimum=0, maximum=100, title="", steps=0)</code><code>linear_progress(progress=None, fill_max_width=True)</code><code>circular_progress(progress=None)</code><code>wavy_progress(progress=None, size=64)</code><code>divider(vertical=False)</code><code>spacer(height=8, width=0)</code><code>icon(name, size=24, tint=None)</code><code>image(source, width=None, height=None, scale="fit", corner_radius=0, fill_max_width=False, content_description="")</code><code>chip(text, selected=False, on_click=None)</code><code>card(children=None, padding=16, index=None, count=None, on_click=None)</code><code>function_row(title, description="", icon="extension", icon_tint=None, on_click=None)</code><code>segmented_list(children=None, spacing=4)</code><code>settings_row(title, subtitle="", icon=None, on_click=None, trailing=None)</code><code>tabs(tabs, selected=0, on_select=None)</code><code>button_group(options, selected, on_select=None)</code><code>floating_toolbar(items)</code><code>toolbar_item(icon, on_click=None, selected=False, label="")</code><code>radio_group(options, selected, on_select=None, title="")</code><code>dropdown(options, selected, on_select=None, label="", enabled=True)</code><code>webview(url="", html="", fill_max_size=True, height=320)</code><code>log_panel(text, max_height=200)</code><code>alert_dialog(show, title, message, confirm_text="OK", dismiss_text="Cancel", on_confirm=None, on_dismiss=None, cancelable=True)</code><code>empty()</code></div></div>
+          <div class="route-box" id="plugin-settings"><strong data-i18n="settingsContribTitle">Native plugin settings</strong><p data-i18n="settingsContribBody">api.registerSettings adds Material 3 Expressive sections directly to Dolphy Settings. Switches and sliders persist in the plugin store and emit setting_changed; nav and card items open plugin screens.</p><div class="api-chips"><code>header</code><code>switch</code><code>slider</code><code>nav</code><code>card</code></div></div>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>plugin_settings.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">import</span> json
+
+<span class="code-key">def</span> on_plugin_load(self):
+    self.api.registerSettings(<span class="code-string">"Radio toolkit"</span>, json.dumps([
+        {<span class="code-string">"type"</span>: <span class="code-string">"switch"</span>, <span class="code-string">"key"</span>: <span class="code-string">"capture"</span>, <span class="code-string">"title"</span>: <span class="code-string">"Capture packets"</span>, <span class="code-string">"subtitle"</span>: <span class="code-string">"Keep a local trace"</span>, <span class="code-string">"default"</span>: <span class="code-key">True</span>},
+        {<span class="code-string">"type"</span>: <span class="code-string">"slider"</span>, <span class="code-string">"key"</span>: <span class="code-string">"power"</span>, <span class="code-string">"title"</span>: <span class="code-string">"Power"</span>, <span class="code-string">"min"</span>: <span class="code-number">1</span>, <span class="code-string">"max"</span>: <span class="code-number">100</span>, <span class="code-string">"default"</span>: <span class="code-number">40</span>, <span class="code-string">"steps"</span>: <span class="code-number">98</span>},
+        {<span class="code-string">"type"</span>: <span class="code-string">"nav"</span>, <span class="code-string">"title"</span>: <span class="code-string">"Advanced"</span>, <span class="code-string">"icon"</span>: <span class="code-string">"tune"</span>, <span class="code-string">"screen"</span>: <span class="code-string">"advanced"</span>}
+    ]), <span class="code-number">20</span>)
+
+<span class="code-key">def</span> on_setting_changed(self, payload):
+    key = payload[<span class="code-string">"key"</span>]
+    value = payload[<span class="code-string">"value"</span>]</code></pre></div>
+          <div class="property-list">
+            <div><code>header</code><span data-i18n="settingsHeaderSchema">title</span></div>
+            <div><code>switch</code><span data-i18n="settingsSwitchSchema">key, title, subtitle, default: bool</span></div>
+            <div><code>slider</code><span data-i18n="settingsSliderSchema">key, title, subtitle, min, max, default, steps</span></div>
+            <div><code>nav</code><span data-i18n="settingsNavSchema">title, subtitle, icon, screen; always opens plugin/{pluginId}/{screen}</span></div>
+            <div><code>card</code><span data-i18n="settingsCardSchema">title, subtitle, icon and optional screen</span></div>
+          </div>
+          <div class="callout current"><span class="material-symbols-rounded">save</span><div><strong data-i18n="settingsStorageTitle">Storage and updates</strong><p data-i18n="settingsStorageBody">Switch and slider values use the same per-plugin JSON store as get_setting/set_setting. The host persists a value before calling on_setting_changed({key, value}); sliders emit the event when interaction finishes.</p></div></div>
+          <div class="route-box"><strong data-i18n="settingKeysTitle">Where setting keys come from</strong><p data-i18n="settingKeysBody">There is no predefined key catalog. The plugin author creates any string key and uses the same spelling when reading, writing or declaring a Settings item. Keys only collide inside the same plugin because every pluginId has a separate store. Prefer stable names such as capture_enabled or radio.power; changing a key creates a new setting.</p><div class="api-chips"><code>set_setting("capture_enabled", True)</code><code>get_setting("capture_enabled", False)</code><code>{"type":"switch", "key":"capture_enabled", ...}</code></div></div>
+          <div class="contract-table compact-contract">
+            <div><code>key</code><span data-i18n="settingKeyContract">Any non-empty string chosen by the plugin. There are currently no reserved host keys.</span></div>
+            <div><code>value</code><span data-i18n="settingValueContract">Any json.dumps-compatible value: None, bool, number, str, list or dict.</span></div>
+            <div><code>default</code><span data-i18n="settingDefaultContract">get_setting returns the supplied default when the key has never been saved.</span></div>
+            <div><code>lifetime</code><span data-i18n="settingLifetimeContract">Values survive restarts and enable/disable. Deleting the plugin removes its entire settings store.</span></div>
+          </div>
+        </section>
+
+        <section id="integration" class="doc-section reveal">
+          <div class="section-index">05</div><div class="doc-heading"><span class="material-symbols-rounded">conversion_path</span><div><h2 data-i18n="integrationTitle">Integrate with existing features</h2><p data-i18n="integrationLead">Plugins can participate in Dolphy instead of living on an isolated screen.</p></div></div>
+          <div class="callout truth"><span class="material-symbols-rounded">fact_check</span><div><strong data-i18n="integrationTruthTitle">Integration points, not arbitrary patching</strong><p data-i18n="integrationTruthBody">Screen hooks work for every route hosted by Dolphy. Action and service hooks work only where the app explicitly dispatches a named integration point. A plugin does not automatically intercept every Kotlin function.</p></div></div>
+          <div class="integration-stack">
+            <div><span class="material-symbols-rounded">layers</span><div><strong>hook_screen(route, screen, mode, priority)</strong><p data-i18n="hookScreenBody">Add an overlay, top or bottom panel, FAB, or replace a route. Wildcards such as ir_* are supported.</p></div></div>
+            <div><span class="material-symbols-rounded">bolt</span><div><strong>hook_action(action, priority)</strong><p data-i18n="hookActionBody">Inspect or change data, mark an action handled, or cancel it.</p></div></div>
+            <div><span class="material-symbols-rounded">settings_input_component</span><div><strong>provide_service(service, priority)</strong><p data-i18n="serviceBody">Provide an alternative hardware or logic backend with automatic fallback.</p></div></div>
+          </div>
+          <h3 class="doc-subtitle anchor-heading" id="screen-hooks" data-i18n="screenHookTitle">Screen hooks in detail</h3>
+          <p class="doc-copy" data-i18n="screenHookLead">Routes and patterns are case-insensitive. The asterisk matches any number of characters. If several plugins match, higher priority wins where only one contribution can be used.</p>
+          <div class="contract-table">
+            <div><code>overlay</code><span data-i18n="modeOverlay">Renders a full-size transparent layer over the existing screen.</span></div>
+            <div><code>top</code><span data-i18n="modeTop">Places plugin UI in a Material surface at the top of the screen.</span></div>
+            <div><code>bottom</code><span data-i18n="modeBottom">Places plugin UI above the bottom navigation area.</span></div>
+            <div><code>fab</code><span data-i18n="modeFab">Places compact plugin UI at the bottom end with navigation-safe padding.</span></div>
+            <div><code>replace</code><span data-i18n="modeReplace">The highest-priority replacement visually covers the built-in screen. Its underlying Compose screen still exists, so this is UI replacement rather than bytecode patching.</span></div>
+          </div>
+          <div class="route-box"><strong data-i18n="routePatternsTitle">Useful route patterns</strong><div class="api-chips"><code>ir_*</code><code>other/ir_*</code><code>nfc_*</code><code>other/nfc_*</code><code>lan_*</code><code>other/lan_*</code><code>ble_section/*</code><code>plugin/*</code><code>*</code></div><p data-i18n="routePatternsBody">Use the navigation event while developing to inspect the current route. Routes with arguments are reported as their navigation template, for example nfc_result/{id}.</p></div>
+          <div class="route-box"><strong data-i18n="coreReplaceTitle">Replace complete core screens</strong><p data-i18n="coreReplaceBody">Use replace with other, bluetooth or settings to cover the complete core screen. Bluetooth also exposes three live sub-screen targets, so a plugin can replace All, BLE or Advert independently.</p><div class="api-chips"><code>other</code><code>bluetooth</code><code>settings</code><code>bluetooth/all</code><code>bluetooth/ble</code><code>bluetooth/advert</code></div></div>
+          <div class="route-box" id="surface-hooks"><strong data-i18n="surfaceHooksTitle">App chrome surfaces</strong><p data-i18n="surfaceHooksBody">hook_surface targets UI outside an ordinary screen route. bottom_bar can be overlaid or fully replaced. The replacement follows plugin priority and disappears automatically when the plugin is disabled.</p><div class="api-chips"><code>hook_surface("bottom_bar", "panel", "replace", 100)</code><code>surface/bottom_bar</code></div></div>
+          <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>bluetooth_redesign.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
+    self.hook_screen(<span class="code-string">"other"</span>, <span class="code-string">"my_other"</span>, <span class="code-string">"replace"</span>, <span class="code-number">100</span>)
+    self.hook_screen(<span class="code-string">"settings"</span>, <span class="code-string">"my_settings"</span>, <span class="code-string">"replace"</span>, <span class="code-number">100</span>)
+    self.hook_screen(<span class="code-string">"bluetooth/all"</span>, <span class="code-string">"my_all"</span>, <span class="code-string">"replace"</span>, <span class="code-number">100</span>)
+    self.hook_screen(<span class="code-string">"bluetooth/ble"</span>, <span class="code-string">"my_ble"</span>, <span class="code-string">"replace"</span>, <span class="code-number">100</span>)
+    self.hook_screen(<span class="code-string">"bluetooth/advert"</span>, <span class="code-string">"my_advert"</span>, <span class="code-string">"replace"</span>, <span class="code-number">100</span>)</code></pre></div>
+          <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>bottom_bar_extension.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
+    self.hook_surface(<span class="code-string">"bottom_bar"</span>, <span class="code-string">"custom_bar"</span>, <span class="code-string">"replace"</span>, <span class="code-number">100</span>)
+
+<span class="code-key">def</span> screen_custom_bar(self, ui, api, state):
+    <span class="code-key">return</span> ui.floating_toolbar([
+        ui.toolbar_item(<span class="code-string">"bluetooth"</span>, <span class="code-key">lambda</span>: self.navigate_app(<span class="code-string">"bluetooth"</span>), label=<span class="code-string">"Bluetooth"</span>),
+        ui.toolbar_item(<span class="code-string">"extension"</span>, <span class="code-key">lambda</span>: self.navigate_app(<span class="code-string">"other"</span>), label=<span class="code-string">"Functions"</span>),
+        ui.toolbar_item(<span class="code-string">"settings"</span>, <span class="code-key">lambda</span>: self.navigate_app(<span class="code-string">"settings"</span>), label=<span class="code-string">"Settings"</span>)
+    ])</code></pre></div>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>screen_hooks.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
+    self.hook_screen(<span class="code-string">"ir_*"</span>, <span class="code-string">"ir_badge"</span>, <span class="code-string">"fab"</span>, <span class="code-number">50</span>)
+    self.hook_screen(<span class="code-string">"nfc_tools"</span>, <span class="code-string">"nfc_panel"</span>, <span class="code-string">"bottom"</span>, <span class="code-number">20</span>)
+    self.hook_screen(<span class="code-string">"qr_tools"</span>, <span class="code-string">"replacement"</span>, <span class="code-string">"replace"</span>, <span class="code-number">100</span>)
+
+<span class="code-key">def</span> screen_ir_badge(self, ui, api, state):
+    <span class="code-key">return</span> ui.icon_button(<span class="code-string">"usb"</span>, <span class="code-key">lambda</span>: self.navigate(<span class="code-string">"hardware"</span>))
+
+<span class="code-key">def</span> screen_hardware(self, ui, api, state):
+    <span class="code-key">return</span> ui.scaffold(
+        title=<span class="code-string">"External hardware"</span>,
+        content=ui.text(<span class="code-string">"Connected"</span>)
+    )
+
+<span class="code-key">def</span> screen_nfc_panel(self, ui, api, state):
+    <span class="code-key">return</span> ui.card([
+        ui.text(<span class="code-string">"Plugin panel on the existing NFC screen"</span>)
+    ])
+
+<span class="code-key">def</span> screen_replacement(self, ui, api, state):
+    <span class="code-key">return</span> ui.scaffold(
+        title=<span class="code-string">"My QR tools"</span>,
+        content=ui.column([
+            ui.text(<span class="code-string">"This plugin replaced the built-in QR screen"</span>, <span class="code-string">"headlineSmall"</span>),
+            ui.button(<span class="code-string">"Open original section"</span>, <span class="code-key">lambda</span>: self.navigate_app(<span class="code-string">"other"</span>))
+        ], padding=<span class="code-number">16</span>, spacing=<span class="code-number">12</span>, fill_max_size=<span class="code-key">True</span>)
+    )</code></pre></div>
+          <h3 class="doc-subtitle anchor-heading" id="logic-hooks" data-i18n="logicHooksTitle">Action hooks and services</h3>
+          <p class="doc-copy" data-i18n="logicHooksLead">Action hooks form a priority-ordered pipeline. Services form a priority-ordered provider list. Both use JSON-compatible payloads.</p>
+          <div class="contract-table">
+            <div><code>None</code><span data-i18n="returnNone">Continue without changing the action.</span></div>
+            <div><code>{"payload": {...}}</code><span data-i18n="returnPayload">Replace the payload passed to lower-priority hooks and the built-in implementation.</span></div>
+            <div><code>{"handled": true}</code><span data-i18n="returnHandled">Mark the action handled by the plugin. Use result to return a value.</span></div>
+            <div><code>{"cancel": true}</code><span data-i18n="returnCancel">Stop the hook chain and cancel the built-in operation.</span></div>
+            <div><code>False</code><span data-i18n="returnFalse">Cancel immediately. True marks the action handled.</span></div>
+          </div>
+          <div class="callout current"><span class="material-symbols-rounded">account_tree</span><div><strong data-i18n="currentPointsTitle">Integration points available now</strong><p data-i18n="currentPointsBody">Dolphy exposes shared infrared transmission plus Bluetooth section selection, All actions, BLE modes, Advert presets and every outgoing BLE advertising packet. The complete exact list is in the hook catalog.</p></div></div>
+          <h3 class="doc-subtitle" data-i18n="bleModeApiTitle">Add a first-class BLE Spam mode</h3>
+          <p class="doc-copy" data-i18n="bleModeApiLead">register_ble_mode adds the plugin beside the built-in BLE modes using the same card, active state, shared delay and Stop All behavior. Dolphy sends ble_mode_start, ble_mode_stop and ble_mode_delay_changed only to the owning plugin. The plugin owns its advertising loop and must stop it on both stop and unload.</p>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>custom_ble_mode.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
+    self.register_ble_mode(<span class="code-string">"lab_beacon"</span>, <span class="code-string">"Lab Beacon"</span>, <span class="code-string">"Custom advertising payload"</span>, <span class="code-string">"radar"</span>)
+
+<span class="code-key">def</span> on_ble_mode_start(self, payload):
+    <span class="code-key">if</span> payload[<span class="code-string">"modeId"</span>] == <span class="code-string">"lab_beacon"</span>:
+        self.start_loop(payload[<span class="code-string">"delayMs"</span>])
+
+<span class="code-key">def</span> on_ble_mode_delay_changed(self, payload):
+    self.delay_ms = payload[<span class="code-string">"delayMs"</span>]
+
+<span class="code-key">def</span> on_ble_mode_stop(self, payload):
+    self.stop_loop()
+
+<span class="code-key">def</span> on_plugin_unload(self):
+    self.stop_loop()</code></pre></div>
+          <h3 class="doc-subtitle" data-i18n="assetApiTitle">Download and apply plugin assets</h3>
+          <p class="doc-copy" data-i18n="assetApiLead">download_assets requests all files as one batch. Each destination is confined to this plugin’s private directory; maxBytes limits each response and sha256 can verify it. Unless the user disabled confirmation in Plugin settings → Security, Dolphy shows the plugin name, file count and declared total size before network transfer. apply_asset imports a saved file into a stock Bad USB editor, user IR remotes or QR Audio Spoofer custom HTML.</p>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>asset_pack.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> fetch_remote(self):
+    files = [{
+        <span class="code-string">"url"</span>: <span class="code-string">"https://example.org/remotes/tv.ir"</span>,
+        <span class="code-string">"path"</span>: <span class="code-string">"remotes/tv.ir"</span>,
+        <span class="code-string">"sizeBytes"</span>: <span class="code-number">24576</span>,
+        <span class="code-string">"maxBytes"</span>: <span class="code-number">100000</span>,
+        <span class="code-string">"sha256"</span>: <span class="code-string">"published SHA-256"</span>
+    }]
+    self.download_assets(files, self.downloaded)
+
+<span class="code-key">def</span> downloaded(self, result_json):
+    result = json.loads(str(result_json))
+    <span class="code-key">if</span> result.get(<span class="code-string">"ok"</span>):
+        self.apply_asset(<span class="code-string">"ir_remote"</span>, <span class="code-string">"remotes/tv.ir"</span>, <span class="code-string">"My TV"</span>)</code></pre></div>
+          <div class="contract-table"><div><code>asset_path(path)</code><span data-i18n="assetPathContract">Returns the absolute path of a location inside the plugin’s private folder for Java and DEX APIs.</span></div><div><code>download_assets(items, callback)</code><span data-i18n="assetDownloadContract">Items accept url, path, sizeBytes, maxBytes, sha256 and headers. The callback receives {ok, files} as JSON text.</span></div><div><code>apply_asset(type, path, title="")</code><span data-i18n="assetApplyContract">Supported types: bad_hid, ir_remote and qr_audio_html. Returns a parsed result dictionary.</span></div></div>
+          <h3 class="doc-subtitle" data-i18n="bleHookTitle">Example: replace BLE advertising logic</h3>
+          <p class="doc-copy" data-i18n="bleHookLead">bluetooth.advertising.transmit runs for custom Advert presets and packets generated by every built-in BLE spam mode. Change data to rewrite the packet, return cancel to block it, or handled after transmitting with your own backend.</p>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>ble_backend.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
+    self.hook_action(<span class="code-string">"bluetooth.advertising.transmit"</span>, <span class="code-number">100</span>)
+    self.hook_action(<span class="code-string">"bluetooth.advert.preset.*"</span>, <span class="code-number">80</span>)
+
+<span class="code-key">def</span> hook_bluetooth_advertising_transmit(self, payload):
+    source = payload[<span class="code-string">"metadata"</span>][<span class="code-string">"source"</span>]
+    packet = payload[<span class="code-string">"data"</span>]
+    <span class="code-key">if</span> self.external_radio_ready():
+        self.send_external(packet, payload.get(<span class="code-string">"scanResponse"</span>))
+        <span class="code-key">return</span> {<span class="code-string">"handled"</span>: <span class="code-key">True</span>}
+    packet[<span class="code-string">"includeDeviceName"</span>] = <span class="code-key">False</span>
+    <span class="code-key">return</span> {<span class="code-string">"payload"</span>: payload}</code></pre></div>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>integration.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
+    self.hook_screen(<span class="code-string">"ir_*"</span>, <span class="code-string">"usb_status"</span>, <span class="code-string">"fab"</span>, <span class="code-number">50</span>)
+    self.hook_action(<span class="code-string">"infrared.transmit"</span>, <span class="code-number">50</span>)
+    self.provide_service(<span class="code-string">"infrared.transmitter"</span>, <span class="code-number">100</span>)
+
+<span class="code-key">def</span> hook_infrared_transmit(self, payload):
+    payload[<span class="code-string">"frequency"</span>] = self.normalize_frequency(payload[<span class="code-string">"frequency"</span>])
+    <span class="code-key">return</span> {<span class="code-string">"payload"</span>: payload}
+
+<span class="code-key">def</span> service_infrared_transmitter_available(self, payload):
+    <span class="code-key">return</span> {<span class="code-string">"available"</span>: self.usb_connected()}
+
+<span class="code-key">def</span> service_infrared_transmitter_transmit(self, payload):
+    <span class="code-key">if not</span> self.usb_connected():
+        <span class="code-key">return</span> {<span class="code-string">"handled"</span>: <span class="code-key">False</span>}
+    ok = self.send_usb(payload[<span class="code-string">"frequency"</span>], payload[<span class="code-string">"pattern"</span>])
+    <span class="code-key">return</span> {<span class="code-string">"handled"</span>: <span class="code-key">True</span>, <span class="code-string">"ok"</span>: ok}</code></pre></div>
+          <h3 class="doc-subtitle" data-i18n="stormHookTitle">Example: intercept every IR Storm transmission</h3>
+          <p class="doc-copy" data-i18n="stormHookLead">IR Storm calls the shared infrared.transmit action once for every signal. The action payload does not contain the source screen, so a plugin that targets only IR Storm must remember the latest navigation event.</p>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>ir_storm_hook.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"ir_storm_hook"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"IR Storm Hook"</span>
+<span class="code-key">__version__</span> = <span class="code-string">"1.0.0"</span>
+<span class="code-key">__icon__</span> = <span class="code-string">"rounded:settings_input_antenna"</span>
+
+<span class="code-key">from</span> java <span class="code-key">import</span> jarray, jint
+
+<span class="code-key">class</span> IrStormHook(BasePlugin):
+    <span class="code-key">def</span> __init__(self):
+        <span class="code-key">super</span>().__init__()
+        self.current_route = <span class="code-string">""</span>
+
+    <span class="code-key">def</span> on_plugin_load(self):
+        self.hook_action(<span class="code-string">"infrared.transmit"</span>, <span class="code-number">100</span>)
+
+    <span class="code-key">def</span> on_navigation(self, route):
+        self.current_route = str(route)
+
+    <span class="code-key">def</span> hook_infrared_transmit(self, payload):
+        <span class="code-key">if</span> self.current_route <span class="code-key">not in</span> (<span class="code-string">"ir_storm"</span>, <span class="code-string">"other/ir_storm"</span>):
+            <span class="code-key">return</span> <span class="code-key">None</span>
+
+        frequency = int(payload[<span class="code-string">"frequency"</span>])
+        pattern = [int(value) <span class="code-key">for</span> value <span class="code-key">in</span> payload[<span class="code-string">"pattern"</span>]]
+        ok = self.send_to_external_ir(frequency, pattern)
+        <span class="code-key">return</span> {
+            <span class="code-string">"handled"</span>: <span class="code-key">True</span>,
+            <span class="code-string">"result"</span>: ok
+        }
+
+    <span class="code-key">def</span> send_to_external_ir(self, frequency, pattern):
+        android = self.api.getAndroid()
+        java_pattern = jarray(jint)(pattern)
+        <span class="code-key">return</span> android.irTransmit(frequency, java_pattern)</code></pre></div>
+          <div class="callout warning"><span class="material-symbols-rounded">usb</span><div><strong data-i18n="stormAdapterTitle">Built-in and external transmitters</strong><p data-i18n="stormAdapterBody">The example sends through Android's built-in ConsumerIrManager without re-entering the hook. For a USB transmitter, replace only send_to_external_ir with the device protocol implemented through api.getAndroid(), Android USB classes or a service provider.</p></div></div>
+          <div class="property-list">
+            <div><code>name</code><span data-i18n="stormPayloadName">Signal or button name when available</span></div><div><code>frequency</code><span data-i18n="stormPayloadFrequency">Carrier frequency in hertz</span></div><div><code>pattern</code><span data-i18n="stormPayloadPattern">Alternating mark and space durations in microseconds</span></div><div><code>protocol</code><span data-i18n="stormPayloadProtocol">Protocol label when known</span></div><div><code>code</code><span data-i18n="stormPayloadCode">Original encoded value when available</span></div><div><code>timings</code><span data-i18n="stormPayloadTimings">Original timing representation when available</span></div>
+          </div>
+          <div class="callout current"><span class="material-symbols-rounded">route</span><div><strong data-i18n="stormScopeTitle">What this example affects</strong><p data-i18n="stormScopeBody">It intercepts both ir_storm and other/ir_storm. Returning None on every other route preserves ordinary remotes, TV Be Gone and IR Jammer. Remove the route check to intercept every Dolphy IR transmission.</p></div></div>
+          <div class="contract-table compact-contract">
+            <div><code>{"payload": payload}</code><span data-i18n="stormModify">Change frequency or pattern, then let Dolphy continue sending.</span></div><div><code>{"handled": true, "result": true}</code><span data-i18n="stormHandle">The plugin sent the signal; skip the built-in transmitter and report success.</span></div><div><code>{"cancel": true}</code><span data-i18n="stormCancel">Block the signal without sending it.</span></div>
+          </div>
+        </section>
+
+        <section id="dex-libraries" class="doc-section reveal">
+          <div class="section-index">05A</div><div class="doc-heading"><span class="material-symbols-rounded">deployed_code</span><div><h2 data-i18n="dexLibrariesTitle">DEX loading and library plugins</h2><p data-i18n="dexLibrariesLead">Keep a plugin as one readable Python file while embedding compiled Java or Kotlin code and sharing native capabilities with other plugins.</p></div></div>
+          <div class="callout warning"><span class="material-symbols-rounded">verified_user</span><div><strong data-i18n="dexTrustTitle">DEX is native trusted code</strong><p data-i18n="dexTrustBody">A loaded DEX runs inside the Dolphy process with the app permissions. Always publish the SHA-256, verify it before loading and never execute an untrusted downloaded payload.</p></div></div>
+          <h3 class="doc-subtitle" data-i18n="dexEmbeddedTitle">Embed and load a raw DEX</h3>
+          <p class="doc-copy" data-i18n="dexEmbeddedLead">Store the raw DEX as Base64 in the .dolphyplugin file. Dolphy removes whitespace, decodes it, verifies SHA-256 and creates the class loader. Raw DEX uses InMemoryDexClassLoader on Android 8+; older Android and ZIP-based JAR/APK payloads use a private read-only code-cache file and DexClassLoader.</p>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>native_radio_core.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"shared_radio_core"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"Shared Radio Core"</span>
+<span class="code-key">__version__</span> = <span class="code-string">"1.0.0"</span>
+<span class="code-key">__library__</span> = <span class="code-key">True</span>
+
+DEX_SHA256 = <span class="code-string">"48c3cb64ad3c0e82b7352549f7568e4e42119fc6b066a050054474e6fffca28c"</span>
+DEX_BASE64 = <span class="code-string">"ZGV4CjAzNQ..."</span>
+
+<span class="code-key">class</span> SharedRadioCore(BasePlugin):
+    <span class="code-key">def</span> on_plugin_load(self):
+        loader = self.load_dex_base64(<span class="code-string">"radio_core"</span>, DEX_BASE64, DEX_SHA256)
+        bridge_class = loader.loadClass(<span class="code-string">"dev.dolphy.radio.RadioBridge"</span>)
+        constructor = bridge_class.getDeclaredConstructor()
+        constructor.setAccessible(<span class="code-key">True</span>)
+        bridge = constructor.newInstance()
+        self.export_java_class(<span class="code-string">"radio.bridge.class"</span>, bridge_class)
+        self.export_java_object(<span class="code-string">"radio.bridge"</span>, bridge)
+
+    <span class="code-key">def</span> on_plugin_unload(self):
+        bridge = self.import_java_object(<span class="code-string">"radio.bridge"</span>)
+        <span class="code-key">if</span> bridge is not <span class="code-key">None</span>:
+            bridge.close()</code></pre></div>
+          <div class="contract-table">
+            <div><code>load_dex_base64(module, encoded, sha256="")</code><span data-i18n="dexLoadBase64Contract">Loads raw DEX, JAR or APK bytes stored as Base64 and returns the module ClassLoader.</span></div>
+            <div><code>load_dex_file(module, path, sha256="")</code><span data-i18n="dexLoadFileContract">Copies and loads a DEX/JAR/APK file. Use plugin-private storage and verify its digest.</span></div>
+            <div><code>dex_class(module, class_name)</code><span data-i18n="dexClassContract">Loads a Class from a module owned by the current plugin.</span></div>
+            <div><code>new_dex_instance(module, class_name)</code><span data-i18n="dexInstanceContract">Calls an accessible no-argument constructor and returns the Java object.</span></div>
+            <div><code>api.getDexClassLoader(module)</code><span data-i18n="dexLoaderContract">Returns an already loaded module ClassLoader or None.</span></div>
+            <div><code>api.getDependencyClassLoader()</code><span data-i18n="dexDependencyLoaderContract">Returns an app parent loader which can also resolve modules exported by declared dependencies.</span></div>
+          </div>
+          <h3 class="doc-subtitle anchor-heading" id="library-exports" data-i18n="libraryExportsTitle">Export classes and live objects</h3>
+          <p class="doc-copy" data-i18n="libraryExportsLead">Exports are process-local named references. A library owns every class and object it exports; disabling, updating or deleting that library removes its modules and exports from the registry.</p>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>radio_consumer.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"radio_consumer"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"Radio Consumer"</span>
+<span class="code-key">__dependencies__</span> = [<span class="code-string">"shared_radio_core"</span>]
+
+<span class="code-key">class</span> RadioConsumer(BasePlugin):
+    <span class="code-key">def</span> on_plugin_load(self):
+        self.bridge = self.import_java_object(<span class="code-string">"radio.bridge"</span>)
+        bridge_class = self.import_java_class(<span class="code-string">"radio.bridge.class"</span>)
+        <span class="code-key">if</span> self.bridge is <span class="code-key">None</span> or bridge_class is <span class="code-key">None</span>:
+            <span class="code-key">raise</span> RuntimeError(<span class="code-string">"Shared Radio Core did not export its API"</span>)
+        self.add_module(<span class="code-string">"Radio Console"</span>, <span class="code-string">"Uses the shared native bridge"</span>, <span class="code-string">"memory"</span>)
+
+    <span class="code-key">def</span> scan(self):
+        result = self.bridge.scan()
+        self.toast(str(result))</code></pre></div>
+          <div class="property-list">
+            <div><code>export_dex_class(name, module, class_name)</code><span data-i18n="exportDexClassBody">Resolve and publish a class from the current DEX module.</span></div>
+            <div><code>export_app_class(name, class_name)</code><span data-i18n="exportAppClassBody">Publish a Dolphy or dependency class by its fully qualified name.</span></div>
+            <div><code>export_java_class(name, java_class)</code><span data-i18n="exportJavaClassBody">Publish a Class object already obtained through Java reflection.</span></div>
+            <div><code>export_java_object(name, value)</code><span data-i18n="exportJavaObjectBody">Publish a live Java object, adapter, controller or facade.</span></div>
+            <div><code>import_java_class(name)</code><span data-i18n="importJavaClassBody">Get a named Class export from any enabled dependency.</span></div>
+            <div><code>import_java_object(name)</code><span data-i18n="importJavaObjectBody">Get a named live object export from any enabled dependency.</span></div>
+            <div><code>java_exports()</code><span data-i18n="javaExportsBody">Inspect all loaded modules and exported class/object names for diagnostics.</span></div>
+          </div>
+          <h3 class="doc-subtitle" data-i18n="sourceBridgeTitle">Expose Dolphy internals from open source</h3>
+          <p class="doc-copy" data-i18n="sourceBridgeLead">Use the repository to find a fully qualified JVM class name, then export that Class or wrap it in a stable DEX facade. Consumers should depend on the library facade instead of duplicating fragile reflection code.</p>
+          <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>dolphy_internal_facade.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
+    self.export_app_class(
+        <span class="code-string">"dolphy.main_activity"</span>,
+        <span class="code-string">"com.droid.dolphy.MainActivity"</span>
+    )
+    activity_class = self.import_java_class(<span class="code-string">"dolphy.main_activity"</span>)
+    methods = [method.getName() <span class="code-key">for</span> method <span class="code-key">in</span> activity_class.getDeclaredMethods()]</code></pre></div>
+          <h3 class="doc-subtitle anchor-heading" id="reflection" data-i18n="reflectionTitle">Java reflection helpers</h3>
+          <p class="doc-copy" data-i18n="reflectionLead">These helpers search the app plus DEX modules of declared dependencies. They can inspect private members, read or write fields, call a matching method and construct an object. They do not install a method hook and do not intercept future calls.</p>
+          <div class="contract-table">
+            <div><code>find_java_class(class_name)</code><span data-i18n="reflectionFind">Returns a Class or None using the app and dependency ClassLoaders.</span></div>
+            <div><code>inspect_java_class(java_class)</code><span data-i18n="reflectionInspect">Returns className plus inherited fields, methods, constructors, parameter types and static flags.</span></div>
+            <div><code>get_java_field(target, field_name)</code><span data-i18n="reflectionGet">Reads a public or private instance field. Pass a Class for a static field.</span></div>
+            <div><code>set_java_field(target, field_name, value)</code><span data-i18n="reflectionSet">Writes a public or private instance field. Pass a Class for a static field.</span></div>
+            <div><code>invoke_java(target, method_name, *args)</code><span data-i18n="reflectionInvoke">Calls the first compatible overload by name, argument count and runtime types. Pass a Class for a static method.</span></div>
+            <div><code>new_java_instance(java_class, *args)</code><span data-i18n="reflectionNew">Calls the first compatible declared constructor, including a private constructor.</span></div>
+          </div>
+          <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>reflection_library.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"dolphy_reflection_facade"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"Dolphy Reflection Facade"</span>
+<span class="code-key">__library__</span> = <span class="code-key">True</span>
+
+<span class="code-key">class</span> ReflectionFacade(BasePlugin):
+    <span class="code-key">def</span> on_plugin_load(self):
+        activity_class = self.find_java_class(<span class="code-string">"com.droid.dolphy.MainActivity"</span>)
+        <span class="code-key">if</span> activity_class is <span class="code-key">None</span>:
+            <span class="code-key">raise</span> RuntimeError(<span class="code-string">"MainActivity class is unavailable"</span>)
+        description = self.inspect_java_class(activity_class)
+        self.export_java_class(<span class="code-string">"dolphy.main_activity"</span>, activity_class)
+        self.set_setting(<span class="code-string">"known_methods"</span>, [item[<span class="code-string">"name"</span>] <span class="code-key">for</span> item <span class="code-key">in</span> description[<span class="code-string">"methods"</span>]])</code></pre></div>
+          <div class="callout warning"><span class="material-symbols-rounded">warning</span><div><strong data-i18n="reflectionLimitsTitle">Reflection compatibility</strong><p data-i18n="reflectionLimitsBody">Private names and signatures may change between Dolphy builds. Catch exceptions, declare the library dependency, verify the app version yourself and prefer stable screen, surface, action and service hooks whenever one exists. Overload resolution does not perform arbitrary type conversion.</p></div></div>
+          <div class="callout truth"><span class="material-symbols-rounded">extension</span><div><strong data-i18n="sourceBridgeBoundaryTitle">Class access versus host hooks</strong><p data-i18n="sourceBridgeBoundaryBody">Class export enables reflection, construction and method calls; it does not rewrite an already compiled Compose function. Use hook_screen for screens, hook_surface("bottom_bar") for the navigation panel, action hooks for logic and service providers for replaceable hardware backends. A DEX library can hide reflection behind a stable facade shared by other plugins.</p></div></div>
+          <div class="route-box"><strong data-i18n="dexLimitsTitle">Limits and lifecycle</strong><p data-i18n="dexLimitsBody">A .dolphyplugin may be 48 MiB; each decoded DEX/JAR/APK payload may be 32 MiB. Disabling, deleting or updating a library automatically disables enabled dependent plugins first; re-enable consumers when the library is ready. Android cannot unload a Class once code has referenced it. Dolphy drops loaders and exports when the owner stops, but a process restart is the only guaranteed complete unload after an update. Keep export names globally unique and close threads, receivers, sockets and hardware handles in on_plugin_unload.</p><div class="api-chips"><code>48 MiB source</code><code>32 MiB decoded module</code><code>SHA-256</code><code>read-only code cache</code><code>process-local exports</code></div></div>
+        </section>
+
+        <section id="apis" class="doc-section reveal">
+          <div class="section-index">06</div><div class="doc-heading"><span class="material-symbols-rounded">memory</span><div><h2 data-i18n="apisTitle">Android and device APIs</h2><p data-i18n="apisLead">Use high-level Dolphy bridges or import Android Java classes directly.</p></div></div>
+          <div class="api-table"><div><code>api.getContext()</code><span data-i18n="apiContext">Android application context</span></div><div><code>api.getActivity()</code><span data-i18n="apiActivity">Current Activity when available</span></div><div><code>api.getAndroid()</code><span data-i18n="apiAndroid">Files, intents, USB, IR, networking and Android helpers</span></div><div><code>api.getDevice()</code><span data-i18n="apiDevice">BLE scans and device capabilities</span></div><div><code>self.shell(command)</code><span data-i18n="apiShell">Regular shell command</span></div><div><code>self.root(command)</code><span data-i18n="apiRoot">Root command when granted</span></div><div><code>self.shizuku(command)</code><span data-i18n="apiShizuku">Shizuku command when available</span></div></div>
+          <h3 class="doc-subtitle" data-i18n="fullApiTitle">Complete runtime map</h3>
+          <p class="doc-copy" data-i18n="fullApiLead">These groups mirror the callable surface currently shipped with Dolphy. Open a group to see every public helper name.</p>
+          <div class="contract-table">
+            <div><code>self / BasePlugin</code><span data-i18n="layerBase">Convenience helpers for modules, navigation, state, screen/action/service hooks and shell access.</span></div>
+            <div><code>self.ui</code><span data-i18n="layerUi">Builds a JSON-compatible UI tree rendered as native Compose Material 3 components.</span></div>
+            <div><code>self.api</code><span data-i18n="layerBridge">Registration, Context/Activity access, persistent JSON settings, execution and batched BLE scanning.</span></div>
+            <div><code>self.api.getAndroid()</code><span data-i18n="layerAndroid">Direct Android integration: storage, assets, media, crypto, IR, classic Bluetooth, RFCOMM, GATT, BLE server/advertiser, Wi-Fi and NSD.</span></div>
+            <div><code>self.api.getDevice()</code><span data-i18n="layerDevice">Higher-level wireless, NFC, network, Root and Shizuku operations with JSON-oriented results.</span></div>
+            <div><code>jclass / Java imports</code><span data-i18n="layerJava">Chaquopy can import Android and Java classes directly when a bridge helper is not enough.</span></div>
+          </div>
+          <div class="route-box"><strong data-i18n="apiContractsTitle">Data and execution contracts</strong><div class="api-chips"><code>*Json() → str; use json.loads(...)</code><code>HEX → even-length hexadecimal text</code><code>callbacks → JSON str or primitive</code><code>scanId/address → resource key</code><code>stop/release → explicit cleanup</code><code>Boolean false → unsupported, denied or failed</code><code>{ok,code,out,err,via} → command result</code></div><p data-i18n="apiContractsBody">Most hardware helpers do not open permission prompts. Check hasPermission/capability methods and request Android permissions through Activity APIs when needed. Long-running scans, GATT, RFCOMM, sensors, audio, advertising, BLE servers, NSD and Wi-Fi P2P must be stopped during on_plugin_disable/on_plugin_unload.</p></div>
+          <div class="route-box"><strong data-i18n="bridgeSignatureTitle">Direct bridge signatures</strong><div class="api-chips"><code>getContext()</code><code>getApplicationContext()</code><code>getActivity()</code><code>getClassLoader()</code><code>getAndroid()</code><code>getDevice()</code><code>getPluginId()</code><code>getDependencies()</code><code>getDependencyClassLoader()</code><code>registerModule(section, title, description, icon, screenId, order)</code><code>registerSettings(title, itemsJson, order=0)</code><code>registerScreenHook(routePattern, screenId, mode="overlay", priority=0)</code><code>registerSurfaceHook(surface, screenId, mode="overlay", priority=0)</code><code>registerService(serviceId, priority=0)</code><code>registerActionHook(actionPattern, priority=0)</code><code>loadDexBase64(moduleName, encoded, sha256)</code><code>loadDexFile(moduleName, path, sha256)</code><code>getDexClassLoader(moduleName)</code><code>loadDexClass(moduleName, className)</code><code>newDexInstance(moduleName, className)</code><code>exportDexClass(exportName, moduleName, className)</code><code>exportAppClass(exportName, className)</code><code>exportJavaClass(exportName, type)</code><code>importJavaClass(exportName)</code><code>exportJavaObject(exportName, value)</code><code>importJavaObject(exportName)</code><code>listJavaExports()</code><code>navigate(screenId)</code><code>refresh()</code><code>toast(text)</code><code>getSettingJson(key, fallbackJson)</code><code>setSettingJson(key, valueJson)</code><code>shellExec(command)</code><code>rootExec(command)</code><code>shizukuExec(command)</code><code>smartExec(command)</code><code>bleStartScan(scanId, callback, batchMs=350, maxDevices=128)</code><code>bleStopScan(scanId)</code><code>release()</code></div><p data-i18n="bridgeSignatureBody">Use BasePlugin wrappers where they exist. Direct bridge methods preserve Java return types; settings and command methods exchange JSON text.</p></div>
+          <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>async_hardware.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">import</span> json
+
+<span class="code-key">class</span> HardwarePlugin(BasePlugin):
+    <span class="code-key">def</span> on_plugin_load(self):
+        self.devices = []
+        self.api.bleStartScan(<span class="code-string">"nearby"</span>, self.on_ble_batch, <span class="code-number">350</span>, <span class="code-number">128</span>)
+
+    <span class="code-key">def</span> on_ble_batch(self, payload_json):
+        self.devices = json.loads(str(payload_json))
+        self.refresh()
+
+    <span class="code-key">def</span> connect_gatt(self, address):
+        android = self.api.getAndroid()
+        <span class="code-key">return</span> android.gattConnect(address, self.on_gatt_event)
+
+    <span class="code-key">def</span> on_gatt_event(self, payload_json):
+        event = json.loads(str(payload_json))
+
+    <span class="code-key">def</span> on_plugin_unload(self):
+        self.api.bleStopScan(<span class="code-string">"nearby"</span>)
+        self.api.getAndroid().release()</code></pre></div>
+          <div class="api-reference">
+            <details><summary><span class="material-symbols-rounded">fact_check</span><strong data-i18n="deviceCompleteTitle">Additional Device API methods</strong><span data-i18n="deviceCompleteBody">Capabilities included in the exact source audit</span></summary><div class="api-chips"><code>deviceInfoJson() -> String</code><code>wifiIsEnabled() -> Boolean</code><code>wifiSetEnabled(enabled: Boolean) -> Boolean</code><code>wifiOpenSettings() -> Unit</code><code>wifiIs5GHzBandSupported() -> Boolean</code><code>wifiIsP2pSupported() -> Boolean</code><code>btIsEnabled() -> Boolean</code><code>btState() -> Int</code><code>btLeScannerAvailable() -> Boolean</code><code>btLeAdvertiserAvailable() -> Boolean</code><code>btSupportsMultipleAdvertisement() -> Boolean</code><code>btSupportsOffloadedFiltering() -> Boolean</code><code>btSupportsOffloadedScanBatching() -> Boolean</code><code>bleScanResultToJson(result: ScanResult) -> String</code><code>stopAllBleScans() -> Unit</code><code>nfcIsAvailable() -> Boolean</code><code>nfcIsEnabled() -> Boolean</code><code>nfcOpenSettings() -> Unit</code><code>nfcRootSetEnabled(enabled: Boolean, callback: (String) -> Unit) -> Unit</code><code>nfcWriteNdefRaw(recordsJson: String, callback: (String) -> Unit) -> Unit</code><code>onNfcTagDiscovered(tag: Tag) -> Unit</code><code>rootId(callback: (String) -> Unit) -> Unit</code><code>rootWhich(bin: String, callback: (String) -> Unit) -> Unit</code><code>rootExists(path: String, callback: (String) -> Unit) -> Unit</code><code>rootPs(filter: String?, callback: (String) -> Unit) -> Unit</code><code>rootKill(target: String, callback: (String) -> Unit) -> Unit</code><code>rootMount(callback: (String) -> Unit) -> Unit</code><code>rootRemount(rw: Boolean, callback: (String) -> Unit) -> Unit</code><code>rootDf(callback: (String) -> Unit) -> Unit</code><code>rootServiceList(callback: (String) -> Unit) -> Unit</code><code>rootInitDList(callback: (String) -> Unit) -> Unit</code><code>rootInitDRun(script: String, callback: (String) -> Unit) -> Unit</code><code>rootExecScript(script: String, callback: (String) -> Unit) -> Unit</code><code>rootBuildPropGet(key: String, callback: (String) -> Unit) -> Unit</code><code>rootBuildPropSet(key: String, value: String, callback: (String) -> Unit) -> Unit</code><code>rootPullToFile(remotePath: String, localFile: java.io.File, callback: (String) -> Unit) -> Unit</code><code>rootPushFromFile(localFile: java.io.File, remotePath: String, callback: (String) -> Unit) -> Unit</code><code>rootPmPath(pkg: String, callback: (String) -> Unit) -> Unit</code><code>rootPmClear(pkg: String, callback: (String) -> Unit) -> Unit</code><code>rootReboot(mode: String?, callback: (String) -> Unit) -> Unit</code><code>rootSelinuxSet(mode: String, callback: (String) -> Unit) -> Unit</code><code>rootMagiskToggleModule(name: String, enable: Boolean, callback: (String) -> Unit) -> Unit</code><code>rootBtStatus(callback: (String) -> Unit) -> Unit</code><code>rootBtSetEnabled(enabled: Boolean, callback: (String) -> Unit) -> Unit</code><code>rootWifiStatus(callback: (String) -> Unit) -> Unit</code><code>rootWifiSetEnabled(enabled: Boolean, callback: (String) -> Unit) -> Unit</code><code>rootNfcStatus(callback: (String) -> Unit) -> Unit</code><code>rootHciconfig(callback: (String) -> Unit) -> Unit</code><code>rootIwlistScan(iface: String, callback: (String) -> Unit) -> Unit</code><code>rootWmSizeSet(w: Int, h: Int, callback: (String) -> Unit) -> Unit</code><code>rootWmSizeReset(callback: (String) -> Unit) -> Unit</code><code>rootWmDensitySet(d: Int, callback: (String) -> Unit) -> Unit</code><code>rootWmDensityReset(callback: (String) -> Unit) -> Unit</code><code>shellQuote(s: String) -> String</code></div></details>
+            <details open><summary><span class="material-symbols-rounded">extension</span><strong>BasePlugin</strong><span data-i18n="baseHelpers">Plugin helpers</span></summary><div class="api-chips"><code>add_module(title, description="", icon="extension", screen="main", section="PLUGINS", order=0)</code><code>navigate(screen)</code><code>navigate_app(route)</code><code>refresh()</code><code>get_setting(key, default=None)</code><code>set_setting(key, value)</code><code>toast(text)</code><code>hook_screen(route, screen="main", mode="overlay", priority=0)</code><code>hook_surface(surface, screen="main", mode="overlay", priority=0)</code><code>hook_action(action, priority=0)</code><code>provide_service(service, priority=0)</code><code>load_dex_base64(module, encoded, sha256="")</code><code>load_dex_file(module, path, sha256="")</code><code>dex_class(module, class_name)</code><code>new_dex_instance(module, class_name)</code><code>export_dex_class(name, module, class_name)</code><code>export_app_class(name, class_name)</code><code>export_java_class(name, java_class)</code><code>import_java_class(name)</code><code>export_java_object(name, value)</code><code>import_java_object(name)</code><code>java_exports()</code><code>shell(command)</code><code>root(command)</code><code>shizuku(command)</code></div></details>
+            <details><summary><span class="material-symbols-rounded">cloud_download</span><strong>BasePlugin</strong><span data-i18n="bleAssetHelpers">BLE modes and plugin assets</span></summary><div class="api-chips"><code>register_ble_mode(mode_id, title, description="", icon="bluetooth_searching", order=0) -> Boolean</code><code>asset_path(path) -> String?</code><code>download_assets(items, on_result) -> Boolean</code><code>apply_asset(asset_type, path, title="") -> dict</code></div></details>
+            <details><summary><span class="material-symbols-rounded">manage_search</span><strong>BasePlugin</strong><span data-i18n="reflectionHelpers">Reflection helpers</span></summary><div class="api-chips"><code>find_java_class(class_name) -> Class?</code><code>inspect_java_class(java_class) -> dict</code><code>get_java_field(target, field_name) -> Object?</code><code>set_java_field(target, field_name, value) -> Boolean</code><code>invoke_java(target, method_name, *args) -> Object?</code><code>new_java_instance(java_class, *args) -> Object</code></div></details>
+            <details><summary><span class="material-symbols-rounded">widgets</span><strong>UiFactory</strong><span data-i18n="uiHelpers">Native Compose UI builders</span></summary><div class="api-chips"><code>scaffold(content, title=None, show_back=True, fab=None, actions=None)</code><code>top_action(icon, on_click=None)</code><code>column(children=None, padding=0, spacing=8, fill_max_size=False)</code><code>row(children=None, padding=0, spacing=8, fill_max_width=True)</code><code>box(children=None, padding=0, fill_max_size=False)</code><code>lazy_column(children=None, padding=0, spacing=4, fill_max_size=True)</code><code>lazy_row(children=None, padding=0, spacing=8, fill_max_width=True)</code><code>text(text, style="bodyMedium", color=None, max_lines=2147483647)</code><code>button(text, on_click=None, style="filled", enabled=True, fill_max_width=False)</code><code>bounce_button(text, on_click=None, enabled=True, fill_max_width=True)</code><code>split_button(text, on_click=None, on_secondary=None, enabled=True, fill_max_width=True)</code><code>icon_button(icon, on_click=None, enabled=True)</code><code>text_field(value="", on_change=None, label="", single_line=True, fill_max_width=True)</code><code>switch(checked=False, on_change=None, title="", subtitle="", enabled=True)</code><code>checkbox(checked=False, on_change=None, title="", subtitle="", enabled=True)</code><code>slider(value=0, on_change=None, minimum=0, maximum=100, title="", steps=0)</code><code>linear_progress(progress=None, fill_max_width=True)</code><code>circular_progress(progress=None)</code><code>wavy_progress(progress=None, size=64)</code><code>divider(vertical=False)</code><code>spacer(height=8, width=0)</code><code>icon(name, size=24, tint=None)</code><code>image(source, width=None, height=None, scale="fit", corner_radius=0, fill_max_width=False, content_description="")</code><code>chip(text, selected=False, on_click=None)</code><code>card(children=None, padding=16, index=None, count=None, on_click=None)</code><code>function_row(title, description="", icon="extension", icon_tint=None, on_click=None)</code><code>segmented_list(children=None, spacing=4)</code><code>settings_row(title, subtitle="", icon=None, on_click=None, trailing=None)</code><code>tabs(tabs, selected=0, on_select=None)</code><code>button_group(options, selected, on_select=None)</code><code>floating_toolbar(items)</code><code>toolbar_item(icon, on_click=None, selected=False, label="")</code><code>radio_group(options, selected, on_select=None, title="")</code><code>dropdown(options, selected, on_select=None, label="", enabled=True)</code><code>webview(url="", html="", fill_max_size=True, height=320)</code><code>log_panel(text, max_height=200)</code><code>alert_dialog(show, title, message, confirm_text="OK", dismiss_text="Cancel", on_confirm=None, on_dismiss=None, cancelable=True)</code><code>empty()</code></div></details>
+            <details><summary><span class="material-symbols-rounded">conversion_path</span><strong>api</strong><span data-i18n="bridgeHelpers">Runtime bridge</span></summary><div class="api-chips"><code>getContext()</code><code>getApplicationContext()</code><code>getActivity()</code><code>getClassLoader()</code><code>getAndroid()</code><code>getDevice()</code><code>getPluginId()</code><code>getDependencies() -> Array&lt;String&gt;</code><code>getDependencyClassLoader() -> ClassLoader</code><code>registerModule(section, title, description, icon, screenId, order)</code><code>registerSettings(title, itemsJson, order=0)</code><code>registerScreenHook(routePattern, screenId, mode="overlay", priority=0)</code><code>registerSurfaceHook(surface, screenId, mode="overlay", priority=0)</code><code>registerService(serviceId, priority=0)</code><code>registerActionHook(actionPattern, priority=0)</code><code>loadDexBase64(moduleName, encoded, sha256) -> ClassLoader</code><code>loadDexFile(moduleName, path, sha256) -> ClassLoader</code><code>getDexClassLoader(moduleName) -> ClassLoader?</code><code>loadDexClass(moduleName, className) -> Class</code><code>newDexInstance(moduleName, className) -> Object</code><code>exportDexClass(exportName, moduleName, className) -> Boolean</code><code>exportAppClass(exportName, className) -> Boolean</code><code>exportJavaClass(exportName, type) -> Boolean</code><code>importJavaClass(exportName) -> Class?</code><code>exportJavaObject(exportName, value) -> Boolean</code><code>importJavaObject(exportName) -> Object?</code><code>listJavaExports() -> String</code><code>navigate(screenId)</code><code>refresh()</code><code>toast(text)</code><code>getSettingJson(key, fallbackJson)</code><code>setSettingJson(key, valueJson)</code><code>shellExec(command)</code><code>rootExec(command)</code><code>shizukuExec(command)</code><code>smartExec(command)</code><code>bleStartScan(scanId, callback, batchMs=350, maxDevices=128)</code><code>bleStopScan(scanId)</code><code>release()</code></div></details>
+            <details><summary><span class="material-symbols-rounded">cloud_sync</span><strong>api</strong><span data-i18n="bleAssetBridgeHelpers">BLE and asset bridge</span></summary><div class="api-chips"><code>registerBleMode(modeId, title, description="", icon="bluetooth_searching", order=0) -> Boolean</code><code>assetPath(path) -> String?</code><code>downloadAssets(itemsJson, callback) -> Boolean</code><code>applyAsset(type, path, title="") -> String</code></div></details>
+            <details><summary><span class="material-symbols-rounded">data_object</span><strong>api</strong><span data-i18n="reflectionBridgeHelpers">Reflection bridge</span></summary><div class="api-chips"><code>findJavaClass(className) -> Class?</code><code>inspectJavaClass(type) -> String</code><code>getJavaField(target, fieldName) -> Object?</code><code>setJavaField(target, fieldName, value) -> Boolean</code><code>invokeJava(target, methodName, args) -> Object?</code><code>newJavaInstance(type, args) -> Object</code></div></details>
+            <details><summary><span class="material-symbols-rounded">android</span><strong>api.getAndroid()</strong><span data-i18n="androidHelpers">Android, files and advanced Bluetooth</span></summary><div class="api-chips"><code>clipboardGet() -> String</code><code>clipboardSet(text: String) -> Boolean</code><code>vibrate(ms: Long) -> Boolean</code><code>vibratePattern(patternMs: LongArray, repeat: Int = -1) -> Boolean</code><code>vibrateCancel() -> Unit</code><code>notifyShow(id: Int, title: String, text: String, channelId: String = "dolphy_plugins") -> Boolean</code><code>notifyCancel(id: Int) -> Unit</code><code>openUrl(url: String) -> Boolean</code><code>shareText(text: String, title: String = "Share") -> Boolean</code><code>openSettings(action: String?) -> Boolean</code><code>startActivity(action: String, dataUri: String? = null, extrasJson: String? = null) -> Boolean</code><code>dial(number: String) -> Boolean</code><code>filesList(sub: String = "") -> String</code><code>filesRead(path: String) -> String?</code><code>filesWrite(path: String, content: String, append: Boolean = false) -> Boolean</code><code>filesDelete(path: String) -> Boolean</code><code>filesExists(path: String) -> Boolean</code><code>filesWriteBase64(path: String, b64: String) -> Boolean</code><code>filesReadBase64(path: String) -> String?</code><code>filesMkdir(path: String) -> Boolean</code><code>filesStat(path: String) -> String</code><code>filesCopy(from: String, to: String) -> Boolean</code><code>filesMove(from: String, to: String) -> Boolean</code><code>filesAppend(path: String, content: String) -> Boolean</code><code>filesAbsolute(path: String) -> String?</code><code>filesShare(path: String, mime: String? = null, title: String = "Share") -> Boolean</code><code>filesOpenWith(path: String, mime: String? = null) -> Boolean</code><code>exportSandboxToUri(sandboxPath: String, destUri: Uri) -> String</code><code>pluginFilesDir() -> File</code><code>importUriToSandbox(uri: Uri, destRelative: String? = null, includeBase64: Boolean = false, maxBytes: Long = 12_000_000L) -> String</code><code>assetsList(path: String = "") -> String</code><code>assetsExists(path: String) -> Boolean</code><code>assetsReadText(path: String, maxBytes: Int = 2_000_000) -> String?</code><code>assetsReadBase64(path: String, maxBytes: Int = 5_000_000) -> String?</code><code>assetsDataUri(path: String, maxBytes: Int = 5_000_000) -> String?</code><code>createCameraCaptureTarget(fileName: String? = null) -> Pair<File, Uri>?</code><code>importCameraFile(captureFile: File, destRelative: String? = null, includeBase64: Boolean = false) -> String</code><code>hasCamera() -> Boolean</code><code>cryptoHash(algo: String, text: String) -> String?</code><code>cryptoHashBytes(algo: String, bytes: ByteArray) -> String?</code><code>cryptoHashFile(algo: String, path: String) -> String?</code><code>cryptoBase64Encode(text: String) -> String</code><code>cryptoBase64Decode(b64: String) -> String?</code><code>cryptoHexEncode(text: String) -> String</code><code>cryptoHexDecode(hex: String) -> String?</code><code>cryptoRandomHex(bytes: Int = 16) -> String</code><code>cryptoUuid() -> String</code><code>irHasEmitter() -> Boolean</code><code>irCarrierFrequenciesJson() -> String</code><code>irTransmit(freqHz: Int, pattern: IntArray) -> Boolean</code><code>usbDevicesJson() -> String</code><code>locationLastJson() -> String</code><code>locationIsEnabled() -> Boolean</code><code>sensorsListJson() -> String</code><code>sensorStart(type: Int, onEvent: (String) -> Unit) -> String?</code><code>sensorStop(id: String) -> Unit</code><code>sensorStopAll() -> Unit</code><code>audioPlayUrl(url: String, onDone: ((String) -> Unit)? = null) -> Boolean</code><code>audioPlayFile(path: String) -> Boolean</code><code>audioStop() -> Unit</code><code>audioTone(toneType: Int = ToneGenerator.TONE_PROP_BEEP, durationMs: Int = 200) -> Boolean</code><code>batteryJson() -> String</code><code>hasPermission(permission: String) -> Boolean</code><code>hasFeature(feature: String) -> Boolean</code><code>featuresJson() -> String</code><code>deviceInfoExtendedJson() -> String</code><code>connectivityDetailJson() -> String</code><code>btBondedDevicesJson() -> String</code><code>btStartDiscovery(onDevice: (String) -> Unit) -> Boolean</code><code>btStopDiscovery() -> Unit</code><code>btOpenSettings() -> Boolean</code><code>btAddress() -> String</code><code>btName() -> String</code><code>btSetName(name: String) -> Boolean</code><code>btEnable() -> Boolean</code><code>btDisable() -> Boolean</code><code>btIsEnabled() -> Boolean</code><code>btScanMode() -> Int</code><code>btDeviceInfoJson(address: String) -> String</code><code>btCreateBond(address: String) -> Boolean</code><code>btRemoveBond(address: String) -> Boolean</code><code>btGetBondState(address: String) -> Int</code><code>btConnectRfcomm(address: String, uuidStr: String, onEvent: (String) -> Unit) -> Boolean</code><code>btSendRfcomm(address: String, hex: String) -> Boolean</code><code>btSendRfcommText(address: String, text: String) -> Boolean</code><code>btDisconnectRfcomm(address: String) -> Unit</code><code>btRfcommConnectedJson() -> String</code><code>gattConnect(address: String, onEvent: (String) -> Unit) -> Boolean</code><code>gattDisconnect(address: String) -> Unit</code><code>gattRead(address: String, serviceUuid: String, charUuid: String) -> Boolean</code><code>gattWrite(address: String, serviceUuid: String, charUuid: String, hex: String) -> Boolean</code><code>gattWriteNoResponse(address: String, serviceUuid: String, charUuid: String, hex: String) -> Boolean</code><code>gattEnableNotifications(address: String, serviceUuid: String, charUuid: String, enable: Boolean = true) -> Boolean</code><code>gattRequestMtu(address: String, mtu: Int) -> Boolean</code><code>gattReadRssi(address: String) -> Boolean</code><code>gattSetPreferredPhy(address: String, txPhy: Int, rxPhy: Int, phyOptions: Int = 0) -> Boolean</code><code>gattDiscoverServices(address: String) -> Boolean</code><code>gattServicesJson(address: String) -> String</code><code>gattWriteDescriptor(address: String, serviceUuid: String, charUuid: String, descUuid: String, hex: String) -> Boolean</code><code>gattReadDescriptor(address: String, serviceUuid: String, charUuid: String, descUuid: String) -> Boolean</code><code>bleAdvertiseStart(manufacturerId: Int, payloadHex: String, connectable: Boolean = false, includeName: Boolean = false) -> Boolean</code><code>bleAdvertiseCustom(manufacturerId: Int?, manufacturerData: String?, serviceUuids: List<String>?, serviceDataUuid: String?, serviceData: String?, includeName: Boolean = false, includeTxPower: Boolean = false, connectable: Boolean = false, mode: Int = AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY, txPower: Int = AdvertiseSettings.ADVERTISE_TX_POWER_HIGH) -> Boolean</code><code>bleAdvertiseStop() -> Unit</code><code>bleServerStart(servicesJson: String, onEvent: (String) -> Unit) -> Boolean</code><code>bleServerStop() -> Unit</code><code>bleServerNotify(address: String, serviceUuid: String, charUuid: String, hex: String) -> Boolean</code><code>bleServerSendResponse(address: String, requestId: Int, status: Int, offset: Int, hex: String?) -> Boolean</code><code>wifiDetailedInfoJson() -> String</code><code>wifiDhcpInfoJson() -> String</code><code>wifiChannelsJson() -> String</code><code>wifiMacAddress() -> String</code><code>wifiIsEnabled() -> Boolean</code><code>wifiDisconnect() -> Boolean</code><code>wifiReconnect() -> Boolean</code><code>wifiAddSuggestion(ssid: String, passphrase: String?) -> Boolean</code><code>netInterfacesJson() -> String</code><code>nsdDiscover(serviceType: String, onEvent: (String) -> Unit) -> Boolean</code><code>nsdStop() -> Unit</code><code>release() -> Unit</code></div></details>
+            <details><summary><span class="material-symbols-rounded">memory</span><strong>api.getDevice()</strong><span data-i18n="deviceHelpers">Wireless, network and elevated device tools</span></summary><div class="api-chips"><code>wifiScanResultsJson(maxResults: Int = DEFAULT_WIFI_MAX, minRssi: Int? = null) -> String</code><code>wifiStartScan(force: Boolean = false) -> Boolean</code><code>wifiConnectionInfoJson() -> String</code><code>wifiConfiguredNetworksJson() -> String</code><code>btCapabilitiesJson() -> String</code><code>bleStartScan(scanId: String, onDeviceJs: (String) -> Unit, batchMs: Long = BLE_BATCH_MS, maxDevices: Int = BLE_MAX_DEVICES) -> Boolean</code><code>bleStartScanFiltered(pluginId: String, filterName: String?, filterAddress: String?, filterServiceUuid: String?, onResult: (String) -> Unit, batchMs: Long = BLE_BATCH_MS, maxDevices: Int = BLE_MAX_DEVICES) -> Boolean</code><code>stopBleScan(scanId: String) -> Unit</code><code>nfcCapabilitiesJson() -> String</code><code>nfcSetTagCallback(cb: ((String) -> Unit)?) -> Unit</code><code>nfcLastTagJson() -> String</code><code>nfcReadNdef(callback: (String) -> Unit) -> Unit</code><code>nfcWriteNdef(textOrUri: String, isUri: Boolean, callback: (String) -> Unit) -> Unit</code><code>nfcTransceive(techType: String, hexCmd: String, callback: (String) -> Unit) -> Unit</code><code>nfcMifareClassicRead(sector: Int, keyHex: String?, keyType: String, callback: (String) -> Unit) -> Unit</code><code>nfcMifareClassicWrite(sector: Int, blockIndex: Int, dataHex: String, keyHex: String?, keyType: String, callback: (String) -> Unit) -> Unit</code><code>nfcMifareUltralightRead(startPage: Int, callback: (String) -> Unit) -> Unit</code><code>nfcMifareUltralightWrite(page: Int, dataHex: String, callback: (String) -> Unit) -> Unit</code><code>irStatusJson() -> String</code><code>irToggleStorm() -> Boolean</code><code>irToggleJammer() -> Boolean</code><code>networkActiveJson() -> String</code><code>httpRequest(method: String, url: String, body: String?, headersJson: String?, callback: (String) -> Unit) -> Unit</code><code>httpDownload(url: String, destFile: java.io.File, headersJson: String?, maxBytes: Long = 50_000_000L, callback: (String) -> Unit) -> Unit</code><code>tcpReachable(host: String, port: Int, timeoutMs: Int, callback: (Boolean) -> Unit) -> Unit</code><code>pingHost(host: String, timeoutMs: Int, callback: (String) -> Unit) -> Unit</code><code>portScan(host: String, ports: IntArray, timeoutMs: Int, callback: (String) -> Unit) -> Unit</code><code>wifiP2pDiscover(callback: (String) -> Unit) -> Unit</code><code>wifiP2pConnect(address: String, callback: (String) -> Unit) -> Unit</code><code>wifiP2pDisconnect(callback: (String) -> Unit) -> Unit</code><code>wifiP2pGroupInfo(callback: (String) -> Unit) -> Unit</code><code>rootAvailable() -> Boolean</code><code>rootExec(command: String, callback: (String) -> Unit) -> Unit</code><code>rootReadText(path: String, maxBytes: Int = 2_000_000, callback: (String) -> Unit) -> Unit</code><code>rootWriteText(path: String, content: String, callback: (String) -> Unit) -> Unit</code><code>rootReadBase64(path: String, maxBytes: Int = 2_000_000, callback: (String) -> Unit) -> Unit</code><code>rootWriteBase64(path: String, b64: String, callback: (String) -> Unit) -> Unit</code><code>rootList(path: String, callback: (String) -> Unit) -> Unit</code><code>rootStat(path: String, callback: (String) -> Unit) -> Unit</code><code>rootMkdir(path: String, callback: (String) -> Unit) -> Unit</code><code>rootDelete(path: String, recursive: Boolean, callback: (String) -> Unit) -> Unit</code><code>rootCopy(src: String, dst: String, callback: (String) -> Unit) -> Unit</code><code>rootMove(src: String, dst: String, callback: (String) -> Unit) -> Unit</code><code>rootChmod(mode: String, path: String, callback: (String) -> Unit) -> Unit</code><code>rootChown(owner: String, path: String, callback: (String) -> Unit) -> Unit</code><code>rootGetprop(key: String?, callback: (String) -> Unit) -> Unit</code><code>rootSetprop(key: String, value: String, callback: (String) -> Unit) -> Unit</code><code>rootPackages(filter: String?, callback: (String) -> Unit) -> Unit</code><code>rootPmInstall(apkPath: String, callback: (String) -> Unit) -> Unit</code><code>rootPmUninstall(pkg: String, callback: (String) -> Unit) -> Unit</code><code>rootPmDisable(pkg: String, callback: (String) -> Unit) -> Unit</code><code>rootPmEnable(pkg: String, callback: (String) -> Unit) -> Unit</code><code>rootPmGrant(pkg: String, permission: String, callback: (String) -> Unit) -> Unit</code><code>rootPmRevoke(pkg: String, permission: String, callback: (String) -> Unit) -> Unit</code><code>rootForceStop(pkg: String, callback: (String) -> Unit) -> Unit</code><code>rootAmStart(componentOrAction: String, callback: (String) -> Unit) -> Unit</code><code>rootAmBroadcast(action: String, callback: (String) -> Unit) -> Unit</code><code>rootSettingsGet(namespace: String, key: String, callback: (String) -> Unit) -> Unit</code><code>rootSettingsPut(namespace: String, key: String, value: String, callback: (String) -> Unit) -> Unit</code><code>rootIptables(args: String, callback: (String) -> Unit) -> Unit</code><code>rootIp(args: String, callback: (String) -> Unit) -> Unit</code><code>rootIfconfig(callback: (String) -> Unit) -> Unit</code><code>rootSysctl(key: String?, value: String?, callback: (String) -> Unit) -> Unit</code><code>rootDmesg(lines: Int, callback: (String) -> Unit) -> Unit</code><code>rootLogcat(lines: Int, callback: (String) -> Unit) -> Unit</code><code>rootDumpsys(service: String, callback: (String) -> Unit) -> Unit</code><code>rootInputTap(x: Int, y: Int, callback: (String) -> Unit) -> Unit</code><code>rootInputSwipe(x1: Int, y1: Int, x2: Int, y2: Int, durationMs: Int, callback: (String) -> Unit) -> Unit</code><code>rootInputText(text: String, callback: (String) -> Unit) -> Unit</code><code>rootInputKeyevent(keycode: Int, callback: (String) -> Unit) -> Unit</code><code>rootScreencap(destPath: String, callback: (String) -> Unit) -> Unit</code><code>rootScreenrecord(destPath: String, durationSec: Int, callback: (String) -> Unit) -> Unit</code><code>rootWmSize(callback: (String) -> Unit) -> Unit</code><code>rootWmDensity(callback: (String) -> Unit) -> Unit</code><code>rootSelinux(callback: (String) -> Unit) -> Unit</code><code>rootMagiskModules(callback: (String) -> Unit) -> Unit</code><code>rootMagiskInstallModule(zipPath: String, callback: (String) -> Unit) -> Unit</code><code>rootMacSpoof(iface: String, newMac: String, callback: (String) -> Unit) -> Unit</code><code>shizukuAvailable() -> Boolean</code><code>shizukuHasPermission() -> Boolean</code><code>shizukuRequestPermission() -> Unit</code><code>shizukuExec(command: String, callback: (String) -> Unit) -> Unit</code><code>shellExecSmart(command: String, callback: (String) -> Unit) -> Unit</code></div></details>
+          </div>
+          <div id="sdk-reference" class="sdk-reference" data-sdk-reference data-layer="all">
+            <div class="sdk-reference-heading"><div><span class="material-symbols-rounded">menu_book</span><div><h3 data-i18n="sdkReferenceTitle">Callable SDK reference</h3><p data-i18n="sdkReferenceLead">Search the complete public API. Every entry includes its exact signature, parameters, return contract, requirements and a Python call example.</p></div></div><strong data-sdk-count></strong></div>
+            <label class="sdk-search"><span class="material-symbols-rounded">search</span><input type="search" data-sdk-search autocomplete="off" spellcheck="false" aria-label="Search SDK"></label>
+            <div class="sdk-filters" data-sdk-filters>
+              <button class="selected" type="button" data-sdk-layer="all" data-sdk-all>All</button>
+              <button type="button" data-sdk-layer="base">BasePlugin</button>
+              <button type="button" data-sdk-layer="ui">UiFactory</button>
+              <button type="button" data-sdk-layer="bridge">Bridge</button>
+              <button type="button" data-sdk-layer="android">Android</button>
+              <button type="button" data-sdk-layer="device">Device</button>
+            </div>
+            <div class="callout current sdk-reading"><span class="material-symbols-rounded">conversion_path</span><div><strong data-i18n="sdkReadingTitle">How to read the contracts</strong><p data-i18n="sdkReadingBody">A nullable type can become None. Boolean actions report whether Android accepted the request, not whether a remote device completed it. Methods with callbacks finish asynchronously. JSON results remain strings until json.loads is called.</p></div></div>
+            <div class="sdk-methods" data-sdk-list></div>
+          </div>
+          <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>android_access.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">from</span> java <span class="code-key">import</span> jclass
+
+UsbManager = jclass(<span class="code-string">"android.hardware.usb.UsbManager"</span>)
+context = self.api.getContext()
+usb = context.getSystemService(<span class="code-string">"usb"</span>)
+result = self.shizuku(<span class="code-string">"id"</span>)</code></pre></div>
+        </section>
+
+        <section id="hook-catalog" class="doc-section reveal">
+          <div class="section-index">07</div><div class="doc-heading"><span class="material-symbols-rounded">format_list_bulleted</span><div><h2 data-i18n="hookCatalogTitle">Complete hook catalog</h2><p data-i18n="hookCatalogLead">Every screen route, named action, service operation and event currently emitted by Dolphy.</p></div></div>
+          <div class="callout truth"><span class="material-symbols-rounded">rule</span><div><strong data-i18n="hookCatalogRuleTitle">Call and intercept are different</strong><p data-i18n="hookCatalogRuleBody">The Android and Device API lists contain functions a plugin can call. Only the entries below can be intercepted. Registering hook_action("*") does not expose functions that Dolphy never dispatches.</p></div></div>
+          <h3 class="doc-subtitle" data-i18n="actionCatalogTitle">Named action hooks</h3>
+          <div class="hook-table">
+            <div class="hook-head"><span data-i18n="catalogName">Name</span><span data-i18n="catalogHandler">Python handler</span><span data-i18n="catalogWhere">Triggered by</span></div>
+            <div><code>infrared.transmit</code><code>hook_infrared_transmit(payload)</code><span data-i18n="infraredActionWhere">Every send through the shared IR backend: IR Storm, IR Jammer, TV Be Gone, universal and database remotes.</span></div>
+            <div><code>bluetooth.section.select</code><code>hook_bluetooth_section_select(payload)</code><span data-i18n="btSectionWhere">Before switching between All, BLE and Advert. section or index may be changed.</span></div>
+            <div><code>bluetooth.all.device.select</code><code>hook_bluetooth_all_device_select(payload)</code><span data-i18n="btDeviceWhere">Before selecting a discovered classic Bluetooth device.</span></div>
+            <div><code>bluetooth.all.interval.change</code><code>hook_bluetooth_all_interval_change(payload)</code><span data-i18n="btIntervalWhere">When the All interval slider changes. intervalMs may be changed.</span></div>
+            <div><code>bluetooth.all.scan.start</code><code>hook_bluetooth_all_scan_start(payload)</code><span data-i18n="btScanWhere">Before classic and BLE discovery starts on All.</span></div>
+            <div><code>bluetooth.all.start</code><code>hook_bluetooth_all_start(payload)</code><span data-i18n="btAllStartWhere">Before All starts repeated classic pairing requests.</span></div>
+            <div><code>bluetooth.all.stop</code><code>hook_bluetooth_all_stop(payload)</code><span data-i18n="btAllStopWhere">Before All stops its active operation.</span></div>
+            <div><code>bluetooth.ble.delay.change</code><code>hook_bluetooth_ble_delay_change(payload)</code><span data-i18n="bleDelayWhere">Before changing the BLE mode delay. delayMs may be changed.</span></div>
+            <div><code>bluetooth.ble.mode.toggle</code><code>hook_bluetooth_ble_mode_toggle(payload)</code><span data-i18n="bleModeWhere">Before toggling an individual BLE mode.</span></div>
+            <div><code>bluetooth.ble.kitchen_sink.toggle</code><code>hook_bluetooth_ble_kitchen_sink_toggle(payload)</code><span data-i18n="bleKitchenWhere">Before toggling Kitchen Sink.</span></div>
+            <div><code>bluetooth.ble.stop_all</code><code>hook_bluetooth_ble_stop_all(payload)</code><span data-i18n="bleStopWhere">Before stopping all BLE modes.</span></div>
+            <div><code>bluetooth.ble.section.toggle</code><code>hook_bluetooth_ble_section_toggle(payload)</code><span data-i18n="bleSectionToggleWhere">Before toggling every mode in an iOS, Samsung, Android, Windows, Xiaomi or Phantom group.</span></div>
+            <div><code>bluetooth.ble.section.open</code><code>hook_bluetooth_ble_section_open(payload)</code><span data-i18n="bleSectionOpenWhere">Before opening a BLE group screen. section may be redirected.</span></div>
+            <div><code>bluetooth.advert.preset.add</code><code>hook_bluetooth_advert_preset_add(payload)</code><span data-i18n="advertAddWhere">Before saving a new Advert preset; all fields may be changed.</span></div>
+            <div><code>bluetooth.advert.preset.update</code><code>hook_bluetooth_advert_preset_update(payload)</code><span data-i18n="advertUpdateWhere">Before updating an Advert preset; all fields may be changed.</span></div>
+            <div><code>bluetooth.advert.preset.delete</code><code>hook_bluetooth_advert_preset_delete(payload)</code><span data-i18n="advertDeleteWhere">Before deleting an Advert preset.</span></div>
+            <div><code>bluetooth.advert.preset.start</code><code>hook_bluetooth_advert_preset_start(payload)</code><span data-i18n="advertStartWhere">Before starting a preset; fields may be changed or the start may be fully handled.</span></div>
+            <div><code>bluetooth.advert.preset.stop</code><code>hook_bluetooth_advert_preset_stop(payload)</code><span data-i18n="advertStopWhere">Before stopping an Advert preset.</span></div>
+            <div><code>bluetooth.advertising.transmit</code><code>hook_bluetooth_advertising_transmit(payload)</code><span data-i18n="advertTransmitWhere">Before every outgoing advertising packet from Advert or built-in BLE modes.</span></div>
+            <div><code>bluetooth.advertising.stop</code><code>hook_bluetooth_advertising_stop(payload)</code><span data-i18n="advertisingStopWhere">Before an Advert cycle or built-in BLE advertiser stops; an external backend can stop its own transmission and return handled.</span></div>
+          </div>
+          <p class="doc-copy catalog-note" data-i18n="actionCatalogNote">Registration uses hook_action(name, priority). Wildcards are supported: bluetooth.*, bluetooth.ble.* and bluetooth.advert.preset.* can intercept whole families.</p>
+          <div class="route-box"><strong><code>on_action(action, payload)</code></strong><p data-i18n="genericActionBody">Generic fallback for every registered action without a matching hook_&lt;normalized_action&gt; method. Dots and other non-alphanumeric characters normalize to underscores.</p></div>
+          <div class="route-box"><strong data-i18n="advertPayloadTitle">bluetooth.advertising.transmit payload</strong><p data-i18n="advertPayloadBody">metadata.source is ble_spam or advert; Advert also includes metadata.preset. data and scanResponse contain includeDeviceName, includeTxPowerLevel, manufacturerData [{id,data}], serviceUuids and serviceData [{uuid,data}]. Binary values are uppercase hex. Returning a modified payload rebuilds the native AdvertiseData.</p></div>
+          <h3 class="doc-subtitle" data-i18n="serviceCatalogTitle">Service providers and operations</h3>
+          <div class="hook-table">
+            <div class="hook-head"><span data-i18n="catalogName">Name</span><span data-i18n="catalogHandler">Python handler</span><span data-i18n="catalogWhere">Triggered by</span></div>
+            <div><code>infrared.transmitter.available</code><code>service_infrared_transmitter_available(payload)</code><span data-i18n="infraredAvailableWhere">When Dolphy checks whether any IR transmitter is available.</span></div>
+            <div><code>infrared.transmitter.transmit</code><code>service_infrared_transmitter_transmit(payload)</code><span data-i18n="infraredTransmitWhere">After action hooks, before the built-in ConsumerIrManager fallback.</span></div>
+          </div>
+          <p class="doc-copy catalog-note" data-i18n="serviceCatalogNote">Registration: provide_service("infrared.transmitter", priority). Service identifiers are exact and do not use wildcard matching.</p>
+          <div class="contract-table compact-contract">
+            <div><code>available → {"available": true}</code><span data-i18n="serviceAvailableContract">Makes an external transmitter count as available; {"ok": true} or raw True are also accepted.</span></div>
+            <div><code>transmit → {"handled": true, "ok": true}</code><span data-i18n="serviceTransmitContract">Stops provider fallback and reports success. handled false lets the next provider or built-in ConsumerIrManager run.</span></div>
+            <div><code>on_service(id, operation, payload)</code><span data-i18n="serviceGenericContract">Generic fallback when service_&lt;service&gt;_&lt;operation&gt; is not defined.</span></div>
+          </div>
+          <h3 class="doc-subtitle" data-i18n="eventCatalogTitle">Events</h3>
+          <div class="hook-table event-table">
+            <div class="hook-head"><span data-i18n="catalogName">Name</span><span data-i18n="catalogHandler">Python handler</span><span>payload</span></div>
+            <div><code>activity_create</code><code>on_activity_create(activity)</code><span>android.app.Activity</span></div>
+            <div><code>activity_destroy</code><code>on_activity_destroy(activity)</code><span>android.app.Activity</span></div>
+            <div><code>navigation</code><code>on_navigation(route)</code><span>str</span></div>
+            <div><code>nfc_tag</code><code>on_nfc_tag(tag)</code><span>android.nfc.Tag</span></div>
+            <div><code>setting_changed</code><code>on_setting_changed(payload)</code><span>{key, value}</span></div>
+            <div><code>*</code><code>on_event(name, payload)</code><span data-i18n="genericEventPayload">Fallback for events without a specific on_&lt;event&gt; method</span></div>
+          </div>
+          <h3 class="doc-subtitle" data-i18n="routeCatalogTitle">All screen routes available to hook_screen</h3>
+          <p class="doc-copy" data-i18n="routeCatalogLead">There are 108 routes in the current navigation hosts. Parameterized routes are matched by their template shown below, including braces.</p>
+          <div class="api-reference route-reference">
+            <div class="route-box"><strong data-i18n="virtualRoutesTitle">Bluetooth sub-screen targets</strong><p data-i18n="virtualRoutesBody">These are live hook targets inside the bluetooth route rather than navigation destinations. They support every hook_screen mode.</p><div class="api-chips"><code>bluetooth/all</code><code>bluetooth/ble</code><code>bluetooth/advert</code></div></div>
+            <div class="route-box"><strong data-i18n="surfaceCatalogTitle">Hookable host surfaces</strong><p data-i18n="surfaceCatalogBody">Use hook_surface rather than hook_screen for UI owned by the app shell.</p><div class="api-chips"><code>bottom_bar</code><code>surface/bottom_bar</code></div></div>
+            <details open><summary><span class="material-symbols-rounded">route</span><strong data-i18n="allRoutesTitle">108 exact route names</strong><span data-i18n="allRoutesHint">Use an exact name or an asterisk pattern</span></summary><div class="api-chips route-chips">
+              <code>accent_color</code><code>main_scaffold</code><code>plugin_preview</code><code>theme_mode</code>
+              <code>audio_scanner</code><code>ble_section/{section}</code><code>bluetooth</code><code>bluetooth_whisperpair</code><code>bt_audio_stress_run/{name}/{address}/{rssi}</code><code>bt_audio_stress_scan</code><code>flipper_brand/{catEnc}/{brandEnc}</code><code>flipper_cat/{catEnc}</code><code>flipper_remote/{catEnc}/{brandEnc}/{remoteEnc}</code><code>ir_favorites</code><code>ir_flipper_home</code><code>ir_jammer</code><code>ir_storm</code><code>ir_tv_home</code><code>lan_camera_results</code><code>lan_camera_scan</code><code>lan_scanner</code><code>lan_scanner_run</code><code>network_diagnostic_hub</code><code>nfc_audio_spoofer</code><code>nfc_emulator_list</code><code>nfc_emulator_run/{id}</code><code>nfc_erase</code><code>nfc_history</code><code>nfc_master_key</code><code>nfc_result/{id}</code><code>nfc_tools</code><code>nfc_trolls</code><code>nfc_wait</code><code>nfc_write_contact</code><code>nfc_write_form/{kind}</code><code>nfc_write_menu</code><code>nfc_write_wait</code><code>nrf_scanner</code><code>other</code><code>other/audio_scanner</code><code>other/bad_usb</code><code>other/bluetooth_jammer</code><code>other/bluetooth_whisperpair</code><code>other/bt_audio_stress_run/{name}/{address}/{rssi}</code><code>other/bt_audio_stress_scan</code><code>other/dolphy_chat</code><code>other/dolphy_chat_conversation/{userId}/{userName}</code><code>other/dolphy_chat_global</code><code>other/dolphy_chat_main/{userName}</code><code>other/flipper_brand/{catEnc}/{brandEnc}</code><code>other/flipper_cat/{catEnc}</code><code>other/flipper_remote/{catEnc}/{brandEnc}/{remoteEnc}</code><code>other/ir_favorites</code><code>other/ir_flipper_home</code><code>other/ir_jammer</code><code>other/ir_storm</code><code>other/ir_tv_home</code><code>other/lan_camera_results</code><code>other/lan_camera_scan</code><code>other/lan_scanner</code><code>other/lan_scanner_run</code><code>other/network_diagnostic_hub</code><code>other/nfc_audio_spoofer</code><code>other/nfc_emulator_list</code><code>other/nfc_emulator_run/{id}</code><code>other/nfc_erase</code><code>other/nfc_history</code><code>other/nfc_master_key</code><code>other/nfc_result/{id}</code><code>other/nfc_tools</code><code>other/nfc_trolls</code><code>other/nfc_wait</code><code>other/nfc_write_contact</code><code>other/nfc_write_form/{kind}</code><code>other/nfc_write_menu</code><code>other/nfc_write_wait</code><code>other/nrf_scanner</code><code>other/qr_audio_spoofer</code><code>other/qr_detail/{qrId}</code><code>other/qr_generator_main</code><code>other/qr_tools</code><code>other/scooter_hack</code><code>other/smarttv_cast</code><code>other/tv_brand/{brandEnc}</code><code>other/tv_remote/{brandEnc}/{remoteEnc}</code><code>other/universal_remote/{categoryId}</code><code>other/universal_remotes_home</code><code>other/user_ir_remote/{remoteId}</code><code>other/user_ir_remotes</code><code>other/wifi_print</code><code>plugin_about</code><code>plugin_file_preview/{uri}</code><code>plugin_install_helper</code><code>plugin_manager</code><code>plugin/{pluginId}/{screenId}</code><code>qr_audio_spoofer</code><code>qr_detail/{qrId}</code><code>qr_generator_main</code><code>qr_tools</code><code>settings</code><code>smarttv_cast</code><code>tv_brand/{brandEnc}</code><code>tv_remote/{brandEnc}/{remoteEnc}</code><code>universal_remote/{categoryId}</code><code>universal_remotes_home</code><code>user_ir_remote/{remoteId}</code><code>user_ir_remotes</code><code>wifi_print</code>
+            </div></details>
+          </div>
+          <div class="callout current"><span class="material-symbols-rounded">code_blocks</span><div><strong data-i18n="newHookTitle">When a function is missing from this catalog</strong><p data-i18n="newHookBody">It cannot currently be intercepted through the public plugin hook API. Dolphy must add invokeActionHooks(name, payload) or invokeServices(service, operation, payload) at that Kotlin call site before plugin authors can hook it.</p></div></div>
+        </section>
+
+        <section id="lifecycle" class="doc-section reveal">
+          <div class="section-index">08</div><div class="doc-heading"><span class="material-symbols-rounded">cycle</span><div><h2 data-i18n="lifecycleTitle">Lifecycle and state</h2><p data-i18n="lifecycleLead">Release scans, USB connections and background work when the plugin stops.</p></div></div>
+          <div class="timeline"><div><span>1</span><code>on_plugin_load</code><p data-i18n="lifeLoad">Register modules, hooks and services.</p></div><div><span>2</span><code>screen_*</code><p data-i18n="lifeScreen">Return UI for each plugin screen.</p></div><div><span>3</span><code>on_event</code><p data-i18n="lifeEvent">Receive navigation, NFC and activity events.</p></div><div><span>4</span><code>on_plugin_unload</code><p data-i18n="lifeUnload">Stop operations and release resources.</p></div></div>
+          <div class="contract-table">
+            <div><code>screen_&lt;id&gt;(ui, api, state)</code><span data-i18n="screenResolverContract">Primary renderer. main also accepts create_screen or screen_main. Missing screens render a native error placeholder.</span></div>
+            <div><code>callback(value)</code><span data-i18n="callbackContract">Python callables passed into UI builders receive only the value type produced by that component. Declaring fewer positional arguments is supported.</span></div>
+            <div><code>on_&lt;event&gt;(payload)</code><span data-i18n="eventResolverContract">Specific event handler wins; otherwise on_event(name, payload) is called.</span></div>
+            <div><code>hook_&lt;action&gt;(payload)</code><span data-i18n="actionResolverContract">Specific normalized action handler wins; otherwise on_action(action, payload) is called.</span></div>
+            <div><code>service_&lt;id&gt;_&lt;operation&gt;(payload)</code><span data-i18n="serviceResolverContract">Specific normalized service handler wins; otherwise on_service(id, operation, payload) is called.</span></div>
+            <div><code>self.refresh()</code><span data-i18n="refreshContract">Invalidates registered plugin UI so screen functions run again with the latest plugin state.</span></div>
+          </div>
+          <div class="route-box"><strong data-i18n="lifecycleAliasesTitle">Accepted lifecycle names</strong><div class="api-chips"><code>on_plugin_load</code><code>on_load</code><code>onLoad</code><code>on_plugin_enable</code><code>on_enable</code><code>onEnable</code><code>on_plugin_disable</code><code>on_disable</code><code>onDisable</code><code>on_plugin_unload</code><code>on_unload</code><code>onUnload</code><code>on_&lt;event&gt;</code><code>on_event</code></div><p data-i18n="lifecycleAliasesBody">Load and enable callbacks run when the session starts. Disable and unload callbacks run when it stops. Specific on_&lt;event&gt; handlers take precedence over on_event.</p></div>
+          <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>state.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code>enabled = self.get_setting(<span class="code-string">"enabled"</span>, <span class="code-key">True</span>)
+self.set_setting(<span class="code-string">"enabled"</span>, <span class="code-key">not</span> enabled)
+self.refresh()
+
+<span class="code-key">def</span> on_plugin_unload(self):
+    self.api.bleStopScan(<span class="code-string">"my_scan"</span>)</code></pre></div>
+        </section>
+
+        <section id="install" class="doc-section reveal">
+          <div class="section-index">09</div><div class="doc-heading"><span class="material-symbols-rounded">verified_user</span><div><h2 data-i18n="installTitle">Install, update and recover</h2><p data-i18n="installLead">Dolphy is registered as a .dolphyplugin file handler and shows a safe preview before executing code.</p></div></div>
+          <ol class="step-list"><li><span>1</span><div><strong data-i18n="stepOpen">Open the file</strong><p data-i18n="stepOpenBody">Tap a .dolphyplugin file in your file manager and choose Dolphy.</p></div></li><li><span>2</span><div><strong data-i18n="stepReview">Review metadata</strong><p data-i18n="stepReviewBody">Check the icon, author, version and description on the installation page.</p></div></li><li><span>3</span><div><strong data-i18n="stepInstall">Install</strong><p data-i18n="stepInstallBody">Code starts only after you press Install. Reopening the file updates it.</p></div></li></ol>
+          <div class="contract-table">
+            <div><code>preview</code><span data-i18n="installPreviewContract">Reads metadata and size without executing Python; shows whether the same id is already installed.</span></div>
+            <div><code>install / update</code><span data-i18n="installUpdateContract">Saves the source privately and starts it immediately unless Safe Mode is active. Installing the same id replaces the previous session and keeps its pinned state.</span></div>
+            <div><code>enable / disable</code><span data-i18n="installToggleContract">Starts or stops the runtime and removes all registered modules, settings, screens, services and actions when disabled.</span></div>
+            <div><code>pin / share</code><span data-i18n="installShareContract">Pin changes ordering. Share exports the original source as application/x-dolphy-plugin with the .dolphyplugin extension.</span></div>
+            <div><code>delete</code><span data-i18n="installDeleteContract">Stops the runtime and permanently removes source, metadata, registrations and the plugin's private settings store.</span></div>
+            <div><code>startup failure</code><span data-i18n="installFailureContract">A plugin that cannot start is saved disabled during installation; a corrupt stored source can be quarantined as .broken during restoration.</span></div>
+          </div>
+          <div class="callout safe"><span class="material-symbols-rounded">health_and_safety</span><div><strong data-i18n="safeTitle">Automatic Safe Mode</strong><p data-i18n="safeBody">If the app closes while plugin code is running, the next launch disables every plugin and offers a crash log. You can then enable plugins one by one.</p></div></div>
+          <div class="route-box"><strong data-i18n="safeDetailsTitle">Safe Mode behavior</strong><p data-i18n="safeDetailsBody">The recovery sheet explains that a plugin error closed the app and offers Copy log or Disable Safe Mode. Dismissing it leaves Safe Mode enabled and a persistent item remains on the Plugins screen. While active, every plugin is disabled and cannot be enabled until Safe Mode is turned off.</p></div>
+          <div class="docs-cta"><img src="assets/dolphy-icon.png" alt="" width="78" height="78"><div><strong data-i18n="docsCtaTitle">Ready to build?</strong><p data-i18n="docsCtaBody">Start with the examples in the Dolphy repository.</p></div><a class="button button-light" href="https://github.com/unvoiddd/Dolphy-App/tree/main/plugin-examples" target="_blank" rel="noopener"><span class="material-symbols-rounded">code</span><span data-i18n="viewExamples">View examples</span></a></div>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer section-shell"><div class="footer-brand"><img src="assets/dolphy-icon.png" alt="" width="42" height="42"><div><strong>Dolphy</strong><span data-i18n="footerTagline">Hack the World.</span></div></div><div class="footer-links"><a href="index.html" data-i18n="navHome">Home</a><a href="https://github.com/unvoiddd/Dolphy-App" target="_blank" rel="noopener">GitHub</a><a href="https://t.me/dolphy_app_official" target="_blank" rel="noopener">Telegram</a></div><p>© <span data-current-year></span> Dolphy</p></footer>
+</body>
+</html>
