@@ -70,9 +70,9 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/app_icon"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/app_icon"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:extractNativeLibs="true"
@@ -84,6 +84,10 @@
             android:launchMode="singleTop"
             android:label="@string/app_name"
             android:theme="@style/Theme.Dolphy.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
             
             <intent-filter>
                 <action android:name="android.nfc.action.TAG_DISCOVERED" />
@@ -139,186 +143,18 @@
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.dolphy" />
-                <data android:pathPattern=".*\\.js" />
-                <data android:pathPattern=".*\\.plugin" />
-                <data android:pathPattern=".*\\.kt" />
+                <data android:pathPattern=".*\\.dolphyplugin" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="content" />
+                <data android:scheme="file" />
                 <data android:mimeType="application/x-dolphy-plugin" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.kt" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:pathPattern=".*\\.plugin" />
             </intent-filter>
         </activity>
         
-        <activity-alias
-            android:name=".MainActivityDefault"
-            android:enabled="true"
-            android:exported="true"
-            android:icon="@drawable/app_icon"
-            android:roundIcon="@drawable/app_icon"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityCyber"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/cyber"
-            android:roundIcon="@drawable/cyber"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityOrange"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/orange"
-            android:roundIcon="@drawable/orange"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityPurple"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/purple"
-            android:roundIcon="@drawable/purple"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityRetro"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/retro"
-            android:roundIcon="@drawable/retro"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityPhoto1"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/photo_icon_1"
-            android:roundIcon="@drawable/photo_icon_1"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityPhoto2"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/photo_icon_2"
-            android:roundIcon="@drawable/photo_icon_2"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityPhoto3"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/photo_icon_3"
-            android:roundIcon="@drawable/photo_icon_3"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityMaterial1"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/material_1"
-            android:roundIcon="@drawable/material_1"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityMaterial"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/material"
-            android:roundIcon="@drawable/material"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityAstroDolphy"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@drawable/astro_dolphy"
-            android:roundIcon="@drawable/astro_dolphy"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
         <activity
             android:name=".hid.HidKeyboardActivity"
             android:exported="false"

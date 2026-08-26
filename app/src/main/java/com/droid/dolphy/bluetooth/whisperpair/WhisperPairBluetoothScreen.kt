@@ -129,7 +129,7 @@ fun WhisperPairBluetoothScreen(navController: NavController) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background.copy(alpha = 0.74f)) {
             Scaffold(
                 contentWindowInsets = WindowInsets(0),
-                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0f)
+                containerColor = MaterialTheme.colorScheme.background
             ) { padding ->
                 Column(
                     modifier = Modifier
@@ -232,7 +232,7 @@ fun WhisperPairBluetoothScreen(navController: NavController) {
             title = { Text(stringResource(R.string.whisperpair_about_title)) },
             text = { Text(stringResource(R.string.whisperpair_about_message)) },
             confirmButton = {
-                TextButton(onClick = { dismissAboutDialog() }) {
+                com.droid.dolphy.AccentButton(onClick = { dismissAboutDialog() }) {
                     Text(stringResource(R.string.ok))
                 }
             }
@@ -276,7 +276,7 @@ private fun TabButton(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    Button(
+    com.droid.dolphy.AccentButton(
         modifier = modifier,
         onClick = onClick,
         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
@@ -364,7 +364,7 @@ private fun ScannerTab(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
+            com.droid.dolphy.AccentButton(
                 modifier = Modifier.weight(1f),
                 onClick = {
                     if (!isScanning) {
@@ -384,7 +384,7 @@ private fun ScannerTab(
                 Spacer(Modifier.size(6.dp))
                 Text(if (isScanning) stringResource(R.string.whisperpair_stop) else stringResource(R.string.scan))
             }
-            Button(
+            com.droid.dolphy.AccentButton(
                 modifier = Modifier.weight(1f),
                 onClick = { onShowAllDevicesChange(!showAllDevices) }
             ) {
@@ -398,7 +398,7 @@ private fun ScannerTab(
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             items(devices.sortedByDescending { it.rssi }, key = { it.address }) { device ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -435,7 +435,7 @@ private fun ScannerTab(
                             )
                         }
                         Spacer(Modifier.height(8.dp))
-                        Button(
+                        com.droid.dolphy.AccentButton(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { onExploitDevice(device) }
                         ) {
@@ -469,7 +469,7 @@ private fun PairedTab(
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(devices, key = { it.address }) { device ->
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                             Text(device.displayName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                             Text(device.address, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)

@@ -1,0 +1,75 @@
+import json
+import threading
+import time
+
+__id__ = "ble_asset_pack"
+__name__ = "BLE Asset Pack"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Custom BLE mode and permission-aware asset download example"
+__icon__ = "rounded:radar"
+__permissions__ = ["ble_spam", "bluetooth", "download", "files", "infrared"]
+
+
+class BleAssetPack(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.stop_event = threading.Event()
+        self.worker = None
+        self.delay_ms = 250
+
+    def on_plugin_load(self):
+        self.register_ble_mode(
+            "lab_beacon",
+            "Lab Beacon",
+            "Custom plugin advertising mode",
+            "radar",
+            20,
+        )
+
+    def on_ble_mode_start(self, payload):
+        if payload.get("modeId") != "lab_beacon":
+            return
+        self.delay_ms = int(payload.get("delayMs", 250))
+        self.stop_mode()
+        self.stop_event.clear()
+        self.worker = threading.Thread(target=self.advertising_loop, daemon=True)
+        self.worker.start()
+
+    def on_ble_mode_delay_changed(self, payload):
+        if payload.get("modeId") == "lab_beacon":
+            self.delay_ms = int(payload.get("delayMs", self.delay_ms))
+
+    def on_ble_mode_stop(self, payload):
+        if payload.get("modeId") == "lab_beacon":
+            self.stop_mode()
+
+    def on_plugin_unload(self):
+        self.stop_mode()
+
+    def advertising_loop(self):
+        android = self.api.getAndroid()
+        while not self.stop_event.is_set():
+            android.bleAdvertiseStart(65535, "444F4C504859", False, False)
+            time.sleep(max(0.05, self.delay_ms / 1000.0))
+            android.bleAdvertiseStop()
+
+    def stop_mode(self):
+        self.stop_event.set()
+        self.api.getAndroid().bleAdvertiseStop()
+
+    def download_ir_pack(self):
+        self.download_assets([
+            {
+                "url": "https://example.org/dolphy/demo.ir",
+                "path": "ir/demo.ir",
+                "sizeBytes": 24576,
+                "maxBytes": 100000,
+                "sha256": "",
+            }
+        ], self.on_download_finished)
+
+    def on_download_finished(self, result_json):
+        result = json.loads(str(result_json))
+        if result.get("ok"):
+            self.apply_asset("ir_remote", "ir/demo.ir", "Demo remote")

@@ -1,0 +1,198 @@
+import json
+import threading
+
+__id__ = "wifi_scanner_md3e"
+__name__ = "Wi-Fi Scanner MD3E"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Material 3 Expressive Wi-Fi scanner with connection, radio, security and channel details"
+__icon__ = "rounded:wifi"
+__permissions__ = ["wifi"]
+
+
+class WifiScannerMd3e(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.networks = []
+        self.selected = None
+        self.filter = "all"
+        self.status = "Cached scan results"
+        self.timer = None
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Wi-Fi Scanner MD3E",
+            "Networks, security, channels and connection details",
+            "wifi",
+            "main",
+            "OTHER",
+            10,
+        )
+        self.read_results()
+
+    def on_plugin_unload(self):
+        if self.timer is not None:
+            self.timer.cancel()
+
+    def scan(self):
+        device = self.api.getDevice()
+        if not device.wifiIsEnabled():
+            self.status = "Wi-Fi is disabled"
+            device.wifiOpenSettings()
+            self.refresh()
+            return
+        started = bool(device.wifiStartScan(True))
+        self.status = "Scanning nearby networks…" if started else "Using the latest results allowed by Android"
+        self.read_results()
+        if self.timer is not None:
+            self.timer.cancel()
+        self.timer = threading.Timer(2.5, self.finish_scan)
+        self.timer.daemon = True
+        self.timer.start()
+        self.refresh()
+
+    def finish_scan(self):
+        self.read_results()
+        self.status = "Scan completed · " + str(len(self.networks)) + " networks"
+        self.refresh()
+
+    def read_results(self):
+        try:
+            self.networks = json.loads(str(self.api.getDevice().wifiScanResultsJson(200, -100)))
+        except Exception:
+            self.networks = []
+
+    def set_filter(self, value):
+        self.filter = str(value)
+        self.refresh()
+
+    def open_network(self, network):
+        self.selected = network
+        self.navigate("details")
+
+    def network_callback(self, network):
+        def callback():
+            self.open_network(network)
+        return callback
+
+    def security(self, capabilities):
+        value = str(capabilities).upper()
+        if "SAE" in value:
+            return "WPA3-Personal"
+        if "OWE" in value:
+            return "Enhanced Open"
+        if "WPA2" in value or "RSN" in value:
+            return "WPA2"
+        if "WPA" in value:
+            return "WPA"
+        if "WEP" in value:
+            return "WEP"
+        return "Open"
+
+    def band(self, frequency):
+        value = int(frequency or 0)
+        if 5925 <= value <= 7125:
+            return "6 GHz"
+        if 4900 <= value <= 5900:
+            return "5 GHz"
+        if 2400 <= value <= 2500:
+            return "2.4 GHz"
+        return "Unknown band"
+
+    def channel(self, frequency):
+        value = int(frequency or 0)
+        if value == 2484:
+            return 14
+        if 2412 <= value <= 2472:
+            return (value - 2407) // 5
+        if 5000 <= value <= 5900:
+            return (value - 5000) // 5
+        if 5955 <= value <= 7115:
+            return (value - 5950) // 5
+        return 0
+
+    def width(self, value):
+        widths = {0: "20 MHz", 1: "40 MHz", 2: "80 MHz", 3: "160 MHz", 4: "80+80 MHz", 5: "320 MHz"}
+        return widths.get(int(value or -1), "Unknown")
+
+    def signal_percent(self, rssi):
+        return max(0, min(100, int(round((int(rssi or -100) + 100) * 100.0 / 55.0))))
+
+    def visible_networks(self):
+        if self.filter == "open":
+            return [item for item in self.networks if self.security(item.get("capabilities", "")) == "Open"]
+        if self.filter == "secure":
+            return [item for item in self.networks if self.security(item.get("capabilities", "")) != "Open"]
+        return self.networks
+
+    def screen_main(self, ui, api, state):
+        device = api.getDevice()
+        connection = json.loads(str(device.wifiConnectionInfoJson()))
+        visible = self.visible_networks()
+        rows = []
+        for network in visible:
+            ssid = network.get("ssid") or "Hidden network"
+            rssi = int(network.get("rssi", -127))
+            subtitle = self.security(network.get("capabilities", "")) + " · " + self.band(network.get("frequency", 0)) + " · " + str(rssi) + " dBm"
+            rows.append(ui.function_row(ssid, subtitle, "wifi", on_click=self.network_callback(network)))
+        if not rows:
+            rows.append(ui.card([
+                ui.icon("wifi", 42),
+                ui.text("No networks in this filter", "titleMedium"),
+                ui.text("Run a scan and make sure Location and Wi-Fi permissions are granted.", "bodyMedium"),
+            ]))
+        return ui.scaffold(
+            title="Wi-Fi Scanner",
+            content=ui.lazy_column([
+                ui.card([
+                    ui.row([
+                        ui.icon("wifi", 34),
+                        ui.column([
+                            ui.text(connection.get("ssid") or "Not connected", "titleLarge"),
+                            ui.text(str(connection.get("ip", "0.0.0.0")) + " · " + str(connection.get("linkSpeed", 0)) + " Mbps", "bodyMedium"),
+                        ], spacing=2),
+                    ], spacing=12),
+                    ui.row([
+                        ui.chip(self.band(connection.get("frequency", 0)), True),
+                        ui.chip(str(connection.get("rssi", 0)) + " dBm", True),
+                        ui.chip("5 GHz ready" if device.wifiIs5GHzBandSupported() else "2.4 GHz", False),
+                    ], spacing=6),
+                    ui.button("Scan networks", self.scan, fill_max_width=True),
+                    ui.text(self.status, "bodySmall"),
+                ]),
+                ui.button_group([["all", "All"], ["secure", "Secure"], ["open", "Open"]], self.filter, self.set_filter),
+                ui.text(str(len(visible)) + " visible networks", "titleMedium"),
+                ui.segmented_list(rows),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )
+
+    def screen_details(self, ui, api, state):
+        network = self.selected or {}
+        ssid = network.get("ssid") or "Hidden network"
+        rssi = int(network.get("rssi", -127))
+        frequency = int(network.get("frequency", 0))
+        security = self.security(network.get("capabilities", ""))
+        return ui.scaffold(
+            title=ssid,
+            content=ui.lazy_column([
+                ui.card([
+                    ui.icon("wifi", 52),
+                    ui.text(ssid, "headlineSmall"),
+                    ui.text(str(network.get("bssid", "Unknown BSSID")), "bodyMedium"),
+                    ui.linear_progress(self.signal_percent(rssi) / 100.0),
+                    ui.text(str(rssi) + " dBm · " + str(self.signal_percent(rssi)) + "%", "titleMedium"),
+                ]),
+                ui.segmented_list([
+                    ui.settings_row("Security", security, "security"),
+                    ui.settings_row("Band", self.band(frequency), "wifi"),
+                    ui.settings_row("Channel", str(self.channel(frequency)), "info"),
+                    ui.settings_row("Frequency", str(frequency) + " MHz", "speed"),
+                    ui.settings_row("Channel width", self.width(network.get("channelWidth", -1)), "tune"),
+                    ui.settings_row("Signal", str(rssi) + " dBm", "sensors"),
+                ]),
+                ui.card([
+                    ui.text("Raw capabilities", "titleMedium"),
+                    ui.text(network.get("capabilities") or "No capability flags", "bodySmall"),
+                ]),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )

@@ -258,7 +258,7 @@ private fun FailureBlock(message: String, accent: Color, onRetry: () -> Unit) {
             color = MaterialTheme.colorScheme.error,
         )
         Spacer(modifier = Modifier.height(20.dp))
-        Button(
+        com.droid.dolphy.AccentButton(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(containerColor = accent),
         ) {
@@ -470,9 +470,9 @@ fun NfcWriteContactScreen(navController: NavController, viewModel: NfcViewModel)
                 )
             },
             confirmButton = {
-                Button(onClick = {
+                com.droid.dolphy.AccentButton(onClick = {
                     val raw = phoneInput.trim()
-                    if (raw.isEmpty()) return@Button
+                    if (raw.isEmpty()) return@AccentButton
                     try {
                         viewModel.armWrite(NfcNdefPayloads.telephone(raw))
                         showPhoneDialog = false
@@ -484,7 +484,7 @@ fun NfcWriteContactScreen(navController: NavController, viewModel: NfcViewModel)
                 }) { Text(stringResource(R.string.nfc_next)) }
             },
             dismissButton = {
-                TextButton(onClick = { showPhoneDialog = false }) { Text(stringResource(R.string.cancel)) }
+                com.droid.dolphy.AccentButton(onClick = { showPhoneDialog = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -595,7 +595,7 @@ fun NfcWriteFormScreen(kind: String, navController: NavController, viewModel: Nf
                     }
                 }
 
-                Button(
+                com.droid.dolphy.AccentButton(
                     onClick = { go() },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = accent),

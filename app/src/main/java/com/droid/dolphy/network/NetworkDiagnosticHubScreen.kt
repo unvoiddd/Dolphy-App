@@ -1058,7 +1058,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
-                            FilledTonalButton(onClick = {
+                            com.droid.dolphy.AccentButton(onClick = {
                                 wifiPermissionLauncher.launch(requiredWifiPermissions())
                             }) {
                                 Text(stringResource(R.string.us_wifi_grant_location))
@@ -1080,7 +1080,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
-                            FilledTonalButton(onClick = {
+                            com.droid.dolphy.AccentButton(onClick = {
                                 showLocationServicesDialog = false
                                 context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                             }) {
@@ -1152,7 +1152,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
             title = { Text(stringResource(R.string.us_wifi_location_services_disabled_title)) },
             text = { Text(stringResource(R.string.us_wifi_location_services_disabled_message)) },
             confirmButton = {
-                Button(onClick = {
+                com.droid.dolphy.AccentButton(onClick = {
                     showLocationServicesDialog = false
                     context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                 }) {
@@ -1160,7 +1160,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showLocationServicesDialog = false }) {
+                com.droid.dolphy.AccentButton(onClick = { showLocationServicesDialog = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -1270,7 +1270,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                 )
                             }
 
-                            TextButton(onClick = { closeDialog() }, modifier = Modifier.fillMaxWidth()) {
+                            com.droid.dolphy.AccentButton(onClick = { closeDialog() }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.cancel))
                             }
                         }
@@ -1397,13 +1397,13 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                TextButton(
+                                com.droid.dolphy.AccentButton(
                                     onClick = { dialogStage = HubDialogStage.Menu; lanScanJob?.cancel() },
                                     modifier = Modifier.weight(1f),
                                 ) {
                                     Text(stringResource(R.string.cancel))
                                 }
-                                FilledTonalButton(
+                                com.droid.dolphy.AccentButton(
                                     onClick = { startLanDeviceScan() },
                                     enabled = !lanScanning,
                                     modifier = Modifier.weight(1f),
@@ -1431,7 +1431,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.ExtraBold,
                             )
-                            FilledTonalButton(
+                            com.droid.dolphy.AccentButton(
                                 onClick = { closeDialog() },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -1457,7 +1457,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            FilledTonalButton(
+                            com.droid.dolphy.AccentButton(
                                 onClick = { closeDialog() },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -1573,7 +1573,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                     }
                                 }
                             }
-                            FilledTonalButton(
+                            com.droid.dolphy.AccentButton(
                                 onClick = { closeDialog() },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
@@ -1651,7 +1651,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                FilledTonalButton(
+                                com.droid.dolphy.AccentButton(
                                     onClick = { closeDialog() },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
@@ -1684,7 +1684,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            FilledTonalButton(
+                            com.droid.dolphy.AccentButton(
                                 onClick = { closeDialog() },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -2091,7 +2091,7 @@ private fun BrutePasswordDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    com.droid.dolphy.AccentButton(onClick = onDismiss) {
                         Text(stringResource(R.string.cd_close))
                     }
                 }

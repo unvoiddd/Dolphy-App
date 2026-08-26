@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Square
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.CameraAlt
@@ -68,7 +69,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -109,6 +110,7 @@ import com.droid.dolphy.trackBadHidRun
 private enum class PcSection(@StringRes val titleRes: Int, val icon: ImageVector) {
     Mouse(R.string.hid_pc_mouse, Icons.Default.Mouse),
     Keyboard(R.string.hid_pc_keyboard, Icons.Default.Keyboard),
+    Controls(R.string.hid_pc_controls, Icons.Default.Tune),
     BadHid(R.string.hid_pc_bad_hid, Icons.Default.Terminal),
 }
 
@@ -235,7 +237,7 @@ fun PcHidWorkspaceScreen(
                 )
                 Spacer(Modifier.height(12.dp))
                 PcSection.entries.forEach { item ->
-                    Button(
+                    com.droid.dolphy.AccentButton(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             section = item
@@ -267,7 +269,7 @@ fun PcHidWorkspaceScreen(
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
+                CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.hid_pc_keyboard) + ": " + stringResource(section.titleRes)) },
                     navigationIcon = {
                         DolphyIconButton(onClick = onBack) {
@@ -314,6 +316,7 @@ fun PcHidWorkspaceScreen(
                         sensitivityScroll = sensitivityScroll
                     )
                     PcSection.Keyboard -> PcKeyboardSection(hidConnection, capsLock)
+                    PcSection.Controls -> PcConsumerControlsSection(hidConnection)
                     PcSection.BadHid -> BadHidSection(
                         scripts = scripts,
                         editMode = badHidEditMode,
@@ -670,7 +673,7 @@ private fun PcMouseSection(
                 icon = Icons.AutoMirrored.Filled.VolumeOff,
                 contentDescription = stringResource(R.string.hid_mute),
                 onClick = {
-                    scope.launch { sendMediaTap(hidConnection, "POWER") }
+                    scope.launch { sendMediaTap(hidConnection, "VOLUMEMUTE") }
                 }
             )
             PcIconControlButton(
@@ -723,7 +726,7 @@ private fun PcIconControlButton(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
-    Button(
+    com.droid.dolphy.AccentButton(
         onClick = onClick,
         modifier = modifier.height(64.dp),
         shape = RoundedCornerShape(20.dp),
@@ -879,7 +882,7 @@ private fun BadHidSection(
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Language, null) }
             )
-            Button(
+            com.droid.dolphy.AccentButton(
                 onClick = onOpenUrl,
                 enabled = targetUrl.isNotBlank(),
                 modifier = Modifier.height(56.dp)
@@ -902,7 +905,7 @@ private fun BadHidSection(
                 label = { Text(stringResource(R.string.hid_notepad_label)) },
                 singleLine = true
             )
-            Button(
+            com.droid.dolphy.AccentButton(
                 onClick = onSendToNotepad,
                 enabled = noteText.isNotBlank(),
                 modifier = Modifier.height(56.dp),

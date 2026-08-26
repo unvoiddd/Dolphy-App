@@ -7,8 +7,11 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Nfc
 import androidx.compose.ui.graphics.vector.ImageVector
+import java.util.concurrent.ConcurrentHashMap
 
 object PluginIcons {
+    private val dynamicCache = ConcurrentHashMap<String, ImageVector>()
+    private val missingIcons = ConcurrentHashMap.newKeySet<String>()
 
     val knownNames: List<String> = listOf(
         "extension", "plugin", "bluetooth", "bt", "ble", "bluetooth_searching", "bluetooth_audio",
@@ -71,8 +74,65 @@ object PluginIcons {
             "send" -> Icons.AutoMirrored.Filled.Send
             "circle" -> Icons.Default.Circle
             "more" -> Icons.Default.MoreHoriz
-            else -> Icons.Default.Extension
+            else -> resolveDynamic(name) ?: Icons.Default.Extension
         }
+    }
+
+    private fun resolveDynamic(raw: String): ImageVector? {
+        val key = raw.trim().lowercase().replace(" ", "_")
+        dynamicCache[key]?.let { return it }
+        if (key in missingIcons) return null
+        val pieces = raw.trim().split(':', limit = 2)
+        val style = if (pieces.size == 2) pieces[0].lowercase() else "filled"
+        val iconPart = if (pieces.size == 2) pieces[1] else pieces[0]
+        val classStem = iconPart
+            .split('_', '-', '.', '/')
+            .filter { it.isNotBlank() }
+            .joinToString("") { part -> part.replaceFirstChar { it.uppercase() } }
+        if (classStem.isBlank()) return null
+        val packageName: String
+        val receiver: Any
+        when (style.replace('-', '_')) {
+            "outlined", "outline" -> {
+                packageName = "outlined"
+                receiver = Icons.Outlined
+            }
+            "rounded", "round" -> {
+                packageName = "rounded"
+                receiver = Icons.Rounded
+            }
+            "sharp" -> {
+                packageName = "sharp"
+                receiver = Icons.Sharp
+            }
+            "twotone", "two_tone" -> {
+                packageName = "twotone"
+                receiver = Icons.TwoTone
+            }
+            "automirrored", "automirrored_filled", "auto" -> {
+                packageName = "automirrored.filled"
+                receiver = Icons.AutoMirrored.Filled
+            }
+            "automirrored_outlined", "auto_outlined" -> {
+                packageName = "automirrored.outlined"
+                receiver = Icons.AutoMirrored.Outlined
+            }
+            else -> {
+                packageName = "filled"
+                receiver = Icons.Filled
+            }
+        }
+        val resolved = runCatching {
+            val type = Class.forName("androidx.compose.material.icons.$packageName.${classStem}Kt")
+            val getter = type.methods.firstOrNull {
+                it.name.equals("get$classStem", true) &&
+                    it.parameterTypes.size == 1 &&
+                    ImageVector::class.java.isAssignableFrom(it.returnType)
+            } ?: return@runCatching null
+            getter.invoke(null, receiver) as? ImageVector
+        }.getOrNull()
+        if (resolved == null) missingIcons += key else dynamicCache[key] = resolved
+        return resolved
     }
 }
 

@@ -67,6 +67,8 @@ val keyCodes = mapOf<String, Byte>(
     "DOT" to 0x37,
     "SLASH" to 0x38,
     "CAPSLOCK" to 0x39,
+    "SCROLLLOCK" to 0x47,
+    "NUMLOCK" to 0x53,
 
     "SYSRQ" to 0x46,
     "HOME" to 0x4a,
@@ -102,5 +104,24 @@ val keyCodes = mapOf<String, Byte>(
     "TRACKNEXT" to 0x10,
     "TRACKPREVIOUS" to 0x20,
     "POWER" to 0x40,
+)
+
+val consumerControlCodes = mapOf(
+    "BRIGHTNESSUP" to 0x0001,
+    "BRIGHTNESSDOWN" to 0x0002,
+    "TRACKNEXT" to 0x0004,
+    "TRACKPREVIOUS" to 0x0008,
+    "STOP" to 0x0010,
+    "PLAYPAUSE" to 0x0020,
+    "VOLUMEMUTE" to 0x0040,
+    "VOLUMEUP" to 0x0080,
+    "VOLUMEDOWN" to 0x0100,
+    "EJECT" to 0x0200,
+    "SNAPSHOT" to 0x0400,
+    "SLEEP" to 0x0800,
+    "HIBERNATE" to 0x1000,
+    "POWER" to 0x2000,
+    "COLDRESTART" to 0x4000,
+    "WARMRESTART" to 0x8000,
 )
 

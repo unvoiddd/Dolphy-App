@@ -13,6 +13,7 @@ import com.droid.dolphy.EasySetupDevice
 import com.droid.dolphy.SpamType
 import com.droid.dolphy.plugin.PluginLibraryRegistry
 import com.droid.dolphy.plugin.PluginRegistry
+import com.droid.dolphy.plugin.PluginSession
 import com.droid.dolphy.plugin.bridge.PluginAndroidApis
 import com.droid.dolphy.plugin.bridge.PluginDeviceApis
 import com.droid.dolphy.IrRepository
@@ -45,34 +46,34 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class JsPluginSession(
     private val appContext: Context,
-    val manifest: PluginManifest,
+    override val manifest: PluginManifest,
     private val sourceCode: String,
-) {
+) : PluginSession {
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val device = PluginDeviceApis(appContext)
+    private val device = PluginDeviceApis(appContext, manifest.id)
     private val androidApis = PluginAndroidApis(appContext, manifest.id)
     private val uiBuilder = JsUiBuilder()
     private val prefs = appContext.getSharedPreferences("plugin_prefs_${manifest.id}", Context.MODE_PRIVATE)
     private val state = ConcurrentHashMap<String, Any?>()
     private val _dialog = MutableStateFlow<PluginDialogSpec?>(null)
-    val dialog: StateFlow<PluginDialogSpec?> = _dialog.asStateFlow()
+    override val dialog: StateFlow<PluginDialogSpec?> = _dialog.asStateFlow()
     private val _snackbar = MutableStateFlow<PluginSnackbarSpec?>(null)
-    val snackbar: StateFlow<PluginSnackbarSpec?> = _snackbar.asStateFlow()
+    override val snackbar: StateFlow<PluginSnackbarSpec?> = _snackbar.asStateFlow()
     private val _bottomSheet = MutableStateFlow<PluginBottomSheetSpec?>(null)
-    val bottomSheet: StateFlow<PluginBottomSheetSpec?> = _bottomSheet.asStateFlow()
+    override val bottomSheet: StateFlow<PluginBottomSheetSpec?> = _bottomSheet.asStateFlow()
 
     @Volatile private var scope: Scriptable? = null
     @Volatile private var started = false
     @Volatile private var stateVersion: Int = 0
-    @Volatile var lastError: String? = null
+    @Volatile override var lastError: String? = null
         private set
 
-    var navigateToScreen: ((String) -> Unit)? = null
-    var requestUiRefresh: (() -> Unit)? = null
+    override var navigateToScreen: ((String) -> Unit)? = null
+    override var requestUiRefresh: (() -> Unit)? = null
 
     
-    var mediaRequestHandler: ((PluginMediaRequest) -> Unit)? = null
-    var permissionRequestHandler: ((PluginPermissionRequest) -> Unit)? = null
+    override var mediaRequestHandler: ((PluginMediaRequest) -> Unit)? = null
+    override var permissionRequestHandler: ((PluginPermissionRequest) -> Unit)? = null
 
     private val timerSeq = AtomicInteger(0)
     private val timers = ConcurrentHashMap<Int, Runnable>()
@@ -85,29 +86,29 @@ class JsPluginSession(
         mainHandler.postDelayed(refreshRunnable, refreshDebounceMs)
     }
 
-    fun dismissDialog() {
+    override fun dismissDialog() {
         _dialog.value = null
     }
 
-    fun onDialogButton(callbackId: String?) {
+    override fun onDialogButton(callbackId: String?) {
         _dialog.value = null
         if (callbackId != null) onCallback(callbackId, null)
     }
 
-    fun dismissSnackbar() {
+    override fun dismissSnackbar() {
         _snackbar.value = null
     }
 
-    fun onSnackbarAction(callbackId: String?) {
+    override fun onSnackbarAction(callbackId: String?) {
         _snackbar.value = null
         if (callbackId != null) onCallback(callbackId, null)
     }
 
-    fun dismissBottomSheet() {
+    override fun dismissBottomSheet() {
         _bottomSheet.value = null
     }
 
-    fun onBottomSheetButton(callbackId: String?) {
+    override fun onBottomSheetButton(callbackId: String?) {
         _bottomSheet.value = null
         if (callbackId != null) onCallback(callbackId, null)
     }
@@ -118,7 +119,7 @@ class JsPluginSession(
         }
     }
 
-    fun start() {
+    override fun start() {
         synchronized(this) {
             stopInternal(clearRegistry = false)
             try {
@@ -165,7 +166,7 @@ class JsPluginSession(
         }
     }
 
-    fun stop() {
+    override fun stop() {
         synchronized(this) {
             try {
                 withRhino { cx, sc ->
@@ -194,7 +195,7 @@ class JsPluginSession(
         }
     }
 
-    fun renderScreen(screenId: String): UiNode {
+    override fun renderScreen(screenId: String): UiNode {
         synchronized(this) {
             val sc = scope
             if (!started || sc == null) {
@@ -240,7 +241,7 @@ class JsPluginSession(
         }
     }
 
-    fun onCallback(id: String?, value: Any? = Undefined) {
+    override fun onCallback(id: String?, value: Any?) {
         if (id == null) return
 
 
@@ -274,7 +275,7 @@ class JsPluginSession(
         }
     }
 
-    fun getStateVersion(): Int = stateVersion
+    override fun getStateVersion(): Int = stateVersion
 
     private fun <T> withRhino(block: (RhinoContext, Scriptable?) -> T): T {
         val cx = RhinoContext.enter()
@@ -2622,7 +2623,7 @@ class JsPluginSession(
         return Undefined
     }
 
-    fun importMediaUri(uriString: String, destPath: String?, includeBase64: Boolean): String {
+    override fun importMediaUri(uriString: String, destPath: String?, includeBase64: Boolean): String {
         return try {
             androidApis.importUriToSandbox(
                 android.net.Uri.parse(uriString),
@@ -2634,17 +2635,17 @@ class JsPluginSession(
         }
     }
 
-    fun createCameraCaptureTarget(fileName: String? = null): Pair<java.io.File, android.net.Uri>? =
+    override fun createCameraCaptureTarget(fileName: String?): Pair<java.io.File, android.net.Uri>? =
         androidApis.createCameraCaptureTarget(fileName)
 
-    fun importCameraFile(file: java.io.File, destPath: String?, includeBase64: Boolean): String =
+    override fun importCameraFile(file: java.io.File, destPath: String?, includeBase64: Boolean): String =
         androidApis.importCameraFile(file, destPath, includeBase64)
 
     fun exportSandboxToUri(sandboxPath: String, destUri: String): String =
         androidApis.exportSandboxToUri(sandboxPath, android.net.Uri.parse(destUri))
 
     
-    fun onNfcTag(tag: android.nfc.Tag) {
+    override fun onNfcTag(tag: android.nfc.Tag) {
         device.onNfcTagDiscovered(tag)
     }
 
@@ -2863,6 +2864,7 @@ class JsPluginSession(
             val version = fromLine("version") ?: metaQuoted("version") ?: "1.0"
             val description = fromLine("description") ?: metaQuoted("description") ?: ""
             val author = fromLine("author") ?: metaQuoted("author") ?: ""
+            val icon = fromLine("icon") ?: metaQuoted("icon") ?: "extension"
 
             val libraryFlag = (
                 fromLine("library")
@@ -2883,11 +2885,18 @@ class JsPluginSession(
                 libraryFlag in setOf("design", "ui", "theme", "material", "m3")
             val isLibrary = isDesignLibrary ||
                 libraryFlag in setOf("true", "1", "yes", "library", "lib")
+            val dependencies = (fromLine("dependencies") ?: metaQuoted("dependencies") ?: "")
+                .split(',', ';')
+                .map { it.trim().lowercase() }
+                .filter { it.isNotEmpty() }
+                .distinct()
 
             return PluginManifest(
                 id, name, version, description, author,
                 isLibrary = isLibrary,
                 isDesignLibrary = isDesignLibrary,
+                icon = icon,
+                dependencies = dependencies,
             )
         }
     }

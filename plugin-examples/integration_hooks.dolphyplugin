@@ -1,0 +1,52 @@
+__id__ = "integration_hooks"
+__name__ = "Integration Hooks"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Screen and action hook example"
+__icon__ = "rounded:extension"
+
+
+class IntegrationHooks(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.transmissions = 0
+
+    def on_plugin_load(self):
+        self.add_module(
+            title="Integration Hooks",
+            description="Existing screen and logic extension",
+            icon="extension",
+            screen="main",
+            section="PLUGINS",
+        )
+        self.hook_screen("ir_*", "ir_counter", "fab", 20)
+        self.hook_screen("other/ir_*", "ir_counter", "fab", 20)
+        self.hook_action("infrared.transmit", 20)
+        self.provide_service("integration.echo", 10)
+
+    def hook_infrared_transmit(self, payload):
+        self.transmissions += 1
+        self.refresh()
+        return {"payload": payload}
+
+    def service_integration_echo_ping(self, payload):
+        return {"handled": True, "ok": True, "echo": payload}
+
+    def open_details(self):
+        self.navigate("main")
+
+    def screen_ir_counter(self, ui, api, state):
+        return ui.icon_button("extension", self.open_details)
+
+    def screen_main(self, ui, api, state):
+        return ui.scaffold(
+            title="Integration Hooks",
+            content=ui.column([
+                ui.card([
+                    ui.text("Active integrations", "titleLarge"),
+                    ui.text("IR transmissions: " + str(self.transmissions), "bodyLarge"),
+                    ui.text("FAB is injected into existing IR screens", "bodyMedium"),
+                ]),
+                ui.button("Open IR Storm", lambda: self.navigate_app("ir_storm"), fill_max_width=True),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )

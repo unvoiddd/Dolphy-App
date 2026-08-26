@@ -209,17 +209,17 @@ fun PluginUiRenderer(
         is UiNode.Button -> {
             val mod = if (node.fillMaxWidth) Modifier.fillMaxWidth() else Modifier
             when (node.style.lowercase()) {
-                "outlined" -> OutlinedButton(
+                "outlined" -> com.droid.dolphy.AccentButton(
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
                 ) { Text(node.text) }
-                "text" -> TextButton(
+                "text" -> com.droid.dolphy.AccentButton(
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
                 ) { Text(node.text) }
-                "tonal" -> FilledTonalButton(
+                "tonal" -> com.droid.dolphy.AccentButton(
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
@@ -767,7 +767,7 @@ private fun PluginFloatingToolbar(
             ) {
                 items.forEach { item ->
                     val pillColor by animateColorAsState(
-                        targetValue = if (item.selected) accent else Color.Transparent,
+                        targetValue = if (item.selected) accent else barColor,
                         animationSpec = spring(dampingRatio = 0.8f, stiffness = 450f),
                         label = "plugin_ftb_pill",
                     )
@@ -838,21 +838,21 @@ fun PluginAlertDialogContent(
 private fun DialogActionButton(btn: UiNode.DialogButton, onClick: () -> Unit) {
     when (btn.style.lowercase()) {
         "filled", "material" -> {
-            Button(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
         }
         "tonal" -> {
-            FilledTonalButton(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
         }
         "outlined" -> {
-            OutlinedButton(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
         }
         "destructive" -> {
-            TextButton(onClick = onClick) {
+            com.droid.dolphy.AccentButton(onClick = onClick) {
                 Text(btn.text, color = MaterialTheme.colorScheme.error)
             }
         }
         else -> {
-            TextButton(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
         }
     }
 }

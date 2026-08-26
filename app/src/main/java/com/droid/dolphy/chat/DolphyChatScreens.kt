@@ -646,7 +646,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(24.dp))
 
 
-                Button(
+                com.droid.dolphy.AccentButton(
                     onClick = {
                         if (userName.isNotBlank()) {
 
@@ -802,7 +802,7 @@ fun ChatUserCard(
             .fillMaxWidth()
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

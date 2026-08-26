@@ -33,5 +33,5 @@
 -dontwarn rikka.shizuku.**
 -dontwarn moe.shizuku.**
 
--keep class com.droid.dolphy.plugin.PluginManager { *; }
--keep class com.droid.dolphy.plugin.bridge.** { *; }
+-keep class com.droid.dolphy.plugin.** { *; }
+-keep class androidx.compose.material.icons.** { *; }

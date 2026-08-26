@@ -1,7 +1,10 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 package com.droid.dolphy
 
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.MaterialShapes
 
 import android.content.Context
 import android.content.res.Resources
@@ -11,7 +14,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.OpenableColumns
 import android.util.Log
-import android.hardware.ConsumerIrManager
 import java.io.File
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,7 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
@@ -1077,64 +1079,14 @@ private fun FlipperCategoryRow(
 
 
 fun transmitIr(context: Context, button: IrButton) {
-    Log.d("IrTransmit", "=== START transmitIr for: ${button.name} ===")
-
-    val cm = context.getSystemService(Context.CONSUMER_IR_SERVICE) as? ConsumerIrManager
-    if (cm == null) {
-        Log.e("IrTransmit", "FATAL: ConsumerIrManager is NULL!")
-        return
-    }
-    Log.d("IrTransmit", "✓ ConsumerIrManager obtained")
-
-    val hasIr = cm.hasIrEmitter()
-    Log.d("IrTransmit", "hasIrEmitter() = $hasIr")
-    if (!hasIr) {
-        Log.e("IrTransmit", "Device does NOT have IR emitter capability")
-        return
-    }
-
-    val freq = button.frequency
-    val pat = button.pattern
-
-    Log.d("IrTransmit", "Frequency: $freq Hz")
-    Log.d("IrTransmit", "Pattern length: ${pat.size} values")
-
-    if (pat.isEmpty()) {
-        Log.e("IrTransmit", "Pattern is EMPTY!")
-        return
-    }
-
-
-    val first10 = pat.take(10).joinToString(", ")
-    Log.d("IrTransmit", "First 10 values: $first10")
-
-    val invalidCount = pat.count { it <= 0 }
-    if (invalidCount > 0) {
-        Log.e("IrTransmit", "Pattern has $invalidCount invalid (<=0) values!")
-        val invalidIndices = pat.mapIndexed { i, v -> if (v <= 0) i else null }.filterNotNull()
-        Log.d("IrTransmit", "Invalid indices: $invalidIndices")
-        return
-    }
-    Log.d("IrTransmit", "✓ All pattern values are positive")
-
-    try {
-        Log.d("IrTransmit", "Calling ConsumerIrManager.transmit($freq, IntArray[${pat.size}])...")
-        cm.transmit(freq, pat)
-        trackIrSend(context)
-        Log.i("IrTransmit", "✓✓✓ IR transmission successful! ✓✓✓")
-    } catch (e: Exception) {
-        Log.e("IrTransmit", "transmit() threw exception: ${e.javaClass.simpleName}: ${e.message}")
-        e.printStackTrace()
-    }
-    Log.d("IrTransmit", "=== END transmitIr ===")
+    IrBackend.transmit(context, button)
 }
 
 
 
 
 fun hasIrEmitter(context: Context): Boolean {
-    val cm = context.getSystemService(Context.CONSUMER_IR_SERVICE) as? ConsumerIrManager
-    return cm?.hasIrEmitter() == true
+    return IrBackend.isAvailable(context)
 }
 
 private val irListsBottomPadding = 220.dp
@@ -1913,7 +1865,7 @@ private fun UniversalActionButton(
         }
         return
     }
-    Button(
+    AccentButton(
         onClick = { onClick(action) },
         enabled = enabled,
         colors = ButtonDefaults.buttonColors(
@@ -2267,7 +2219,7 @@ fun UniversalRemoteCategoryScreen(navController: NavController, categoryIdEnc: S
                 }
             },
             confirmButton = {
-                TextButton(onClick = { stopSending() }) {
+                AccentButton(onClick = { stopSending() }) {
                     Text(stringResource(R.string.stop))
                 }
             }
@@ -2339,7 +2291,7 @@ fun UserIrRemotesScreen(navController: NavController) {
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                AccentButton(onClick = {
                     val newName = renameText.trim()
                     if (newName.isNotEmpty()) {
                         val finalName = if (newName.endsWith(".ir", ignoreCase = true)) newName else "$newName.ir"
@@ -2349,7 +2301,7 @@ fun UserIrRemotesScreen(navController: NavController) {
                 }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
-                TextButton(onClick = { renameDialogVisible = false }) { Text(stringResource(R.string.cancel)) }
+                AccentButton(onClick = { renameDialogVisible = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -2480,7 +2432,7 @@ fun UserIrRemotesScreen(navController: NavController) {
                                             )
                                         }
                                     } else {
-                                        Button(
+                                        AccentButton(
                                             onClick = { navController.navigate("other/user_ir_remote/${remote.id}") },
                                             shape = RoundedCornerShape(10.dp),
                                             modifier = Modifier
@@ -3151,12 +3103,12 @@ private fun RemoteDpadButton(
         }
         return
     }
-    Button(
+    AccentButton(
         onClick = { onPress(button) },
         modifier = modifier.size(54.dp),
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = accent.copy(alpha = 0.96f),
+            containerColor = accent,
             contentColor = MaterialTheme.colorScheme.onPrimary
         ),
         contentPadding = PaddingValues(0.dp)
@@ -3196,12 +3148,12 @@ private fun RemoteIconButton(
         }
         return
     }
-    Button(
+    AccentButton(
         onClick = { onPress(button) },
         modifier = modifier,
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = accent.copy(alpha = 0.96f),
+            containerColor = accent,
             contentColor = MaterialTheme.colorScheme.onPrimary
         )
     ) {
@@ -3249,12 +3201,12 @@ private fun RemoteTextButton(
         }
         return
     }
-    Button(
+    AccentButton(
         onClick = { onPress(button) },
         modifier = modifier.heightIn(min = if (small) 38.dp else 50.dp),
         shape = if (rounded) CircleShape else RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = accent.copy(alpha = if (small) 0.78f else 0.93f),
+            containerColor = accent,
             contentColor = MaterialTheme.colorScheme.onPrimary
         )
     ) {
@@ -3673,53 +3625,46 @@ object IrStormRepository {
 @Composable
 fun IrExpressivePowerButton(
     active: Boolean,
-    progress: Float?,
-    accentColor: Color,
-    activeTint: Color,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 160.dp,
+    size: Dp = 220.dp,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val frozenPolygons = remember {
+        listOf(MaterialShapes.Cookie9Sided, MaterialShapes.Cookie9Sided)
+    }
+
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
         if (active) {
-            WavyCircularProgressIndicator(
+            ContainedLoadingIndicator(
                 modifier = Modifier.fillMaxSize(),
-                progress = progress,
-                color = accentColor,
+                containerColor = colorScheme.surfaceContainerHigh,
+                indicatorColor = colorScheme.primaryFixed,
             )
         } else {
-            Box(
-                modifier = Modifier
-                    .size(size * 0.62f)
-                    .clip(CircleShape)
-                    .background(Color.Gray.copy(alpha = 0.22f)),
+            ContainedLoadingIndicator(
+                progress = { 0f },
+                modifier = Modifier.fillMaxSize(),
+                containerColor = colorScheme.surfaceContainerHigh,
+                indicatorColor = colorScheme.primaryFixed,
+                polygons = frozenPolygons,
             )
         }
 
-        DolphyIconButton(
+        IconButton(
             onClick = onClick,
             enabled = enabled,
-            liquidTint = accentColor,
-            modifier = Modifier
-                .size(size * 0.62f)
-                .clip(CircleShape)
-                .background(
-                    if (active) activeTint.copy(alpha = 0.18f) else Color.Transparent,
-                ),
+            modifier = Modifier.size(size * 0.44f),
         ) {
             Icon(
                 imageVector = Icons.Default.PowerSettingsNew,
                 contentDescription = null,
-                modifier = Modifier.size(size * 0.35f),
-                tint = when {
-                    isLiquidGlassChrome() -> Color.Black
-                    active -> activeTint
-                    else -> Color.White
-                },
+                modifier = Modifier.size(size * 0.24f),
+                tint = colorScheme.onPrimaryFixed,
             )
         }
     }
@@ -3816,159 +3761,131 @@ fun IRStormScreen(navController: NavController? = null) {
         isLoading = false
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-        SectionTopBar(
-            title = stringResource(R.string.ir_storm),
-            onBack = if (navController != null) ({ navController.popBackStack() }) else null,
-            transparent = true
-        )
-
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(accentColor.copy(alpha = 0.12f))
-                .clickable {
-                    if (!isRunning && !isLoading) {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        categoryMenuExpanded = !categoryMenuExpanded
+    Box(modifier = Modifier.fillMaxSize()) {
+        CenterAlignedTopAppBar(
+            modifier = Modifier.align(Alignment.TopCenter),
+            navigationIcon = {
+                if (navController != null) {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back),
+                        )
                     }
                 }
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = IrStormRepository.categoryLabel(context, selectedCategory),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = accentColor
-            )
-            Icon(
-                imageVector = if (categoryMenuExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                tint = accentColor
-            )
-        }
-
-        if (categoryMenuExpanded) {
-            ExpressiveSegmentedCardList(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
-                    itemsIndexed(categoryOptions) { index, option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    selectedCategory = option
-                                    categoryMenuExpanded = false
-                                }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box {
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                categoryMenuExpanded = true
+                            },
+                            enabled = !isRunning && !isLoading,
+                            modifier = Modifier.height(40.dp),
+                            shape = MaterialTheme.shapes.extraLarge,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryFixed,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
                         ) {
                             Text(
-                                text = IrStormRepository.categoryLabel(context, option),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (option == selectedCategory) FontWeight.Bold else FontWeight.Normal,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f)
+                                text = if (selectedCategory == IR_STORM_TV_ALL_KEY) {
+                                    "TV"
+                                } else {
+                                    IrStormRepository.categoryLabel(context, selectedCategory)
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                            if (option == selectedCategory) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = accentColor
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                            )
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = categoryMenuExpanded,
+                            onDismissRequest = { categoryMenuExpanded = false },
+                        ) {
+                            categoryOptions.forEach { option ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = IrStormRepository.categoryLabel(context, option),
+                                            fontWeight = if (option == selectedCategory) FontWeight.Bold else FontWeight.Normal,
+                                        )
+                                    },
+                                    onClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        selectedCategory = option
+                                        categoryMenuExpanded = false
+                                    },
+                                    trailingIcon = {
+                                        if (option == selectedCategory) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    },
                                 )
                             }
                         }
-                        if (index < categoryOptions.size - 1) {
-                            Box(modifier = Modifier.padding(horizontal = 16.dp).height(0.5.dp).fillMaxWidth().background(MaterialTheme.colorScheme.outlineVariant))
-                        }
                     }
+                    Text(
+                        text = "Be Gone",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
                 }
-            }
-        }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        )
 
+        IrExpressivePowerButton(
+            active = isRunning || isLoading,
+            enabled = !isLoading || isRunning,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                if (isRunning) stopIrStorm() else startIrStorm()
+            },
+            modifier = Modifier.align(Alignment.Center),
+        )
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+                .align(Alignment.Center)
+                .offset(y = 172.dp)
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-
-
-            IrExpressivePowerButton(
-                active = isRunning || isLoading,
-                progress = if (totalCommands > 0) progress.toFloat() / totalCommands else null,
-                accentColor = accentColor,
-                activeTint = Color.Red,
-                enabled = !isLoading || isRunning,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    if (isRunning) stopIrStorm() else startIrStorm()
-                },
-            )
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-
-            DolphyLinearProgressIndicator(
-                progress = if (totalCommands > 0) progress.toFloat() / totalCommands else 0f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp),
-                color = accentColor,
-                trackColor = Color.Gray.copy(alpha = 0.3f)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-
             Text(
                 text = "$progress / $totalCommands",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-
-            if (currentCommand != null) {
+            currentCommand?.let { command ->
                 Text(
-                    text = stringResource(R.string.ir_current_signal),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-                Text(
-                    text = currentCommand!!.name,
+                    text = command.name,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                    modifier = Modifier.padding(top = 8.dp)
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-
-            Text(
-                text = statusMessage,
-                style = MaterialTheme.typography.bodyLarge,
-                color = accentColor
-            )
         }
     }
 }
@@ -4000,148 +3917,87 @@ fun IRJammerScreen(navController: NavController? = null) {
     var isSending by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf(context.getString(R.string.ir_storm_ready)) }
     var sentCommands by remember { mutableStateOf(0) }
-    var progressPercent by remember { mutableStateOf(0) }
     var jammerJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        SectionTopBar(title = stringResource(R.string.ir_jammer), onBack = if (navController != null) ({ navController.popBackStack() }) else null, transparent = true)
-        Text(
-            text = stringResource(R.string.ir_jammer_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        SectionTopBar(
+            title = stringResource(R.string.ir_jammer),
+            onBack = if (navController != null) ({ navController.popBackStack() }) else null,
+            transparent = true,
+            alwaysCollapsed = true,
         )
 
-        if (buttons == null) {
-            LoadingScreen()
-            return@Column
-        }
-
-        if (buttons!!.isEmpty()) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
+        when {
+            buttons == null -> LoadingScreen()
+            buttons!!.isEmpty() -> Text(
                 text = stringResource(R.string.ir_file_not_found, sourceLabel),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(24.dp),
             )
-            return@Column
-        }
+            else -> {
+                IrExpressivePowerButton(
+                    active = isSending,
+                    enabled = true,
+                    onClick = {
+                        if (isSending) {
+                            jammerJob?.cancel()
+                            jammerJob = null
+                            isSending = false
+                            statusMessage = context.getString(R.string.ir_storm_stopped)
+                        } else {
+                            isSending = true
+                            statusMessage = context.getString(R.string.ir_jammer_sending_signals)
+                            sentCommands = 0
+                            jammerJob = scope.launch(Dispatchers.Default) {
+                                try {
+                                    val list = buttons!!
+                                    var cycle = 0
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Spacer(modifier = Modifier.height(1.dp))
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier.size(160.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    IrExpressivePowerButton(
-                        active = isSending,
-                        progress = if (isSending) progressPercent / 100f else null,
-                        accentColor = accentColor,
-                        activeTint = accentColor,
-                        enabled = buttons!!.isNotEmpty(),
-                        onClick = {
-                            if (isSending) {
-                                jammerJob?.cancel()
-                                jammerJob = null
-                                isSending = false
-                                statusMessage = context.getString(R.string.ir_storm_stopped)
-                            } else if (buttons!!.isNotEmpty()) {
-                                isSending = true
-                                statusMessage = context.getString(R.string.ir_jammer_sending_signals)
-                                sentCommands = 0
-                                progressPercent = 0
-                                jammerJob = scope.launch(Dispatchers.Default) {
-                                    try {
-                                        val list = buttons!!
-                                        val total = list.size.coerceAtLeast(1)
-                                        var cycle = 0
-
-                                        while (kotlinx.coroutines.currentCoroutineContext().isActive && isSending) {
-                                            cycle++
-                                            for ((index, btn) in list.withIndex()) {
-                                                if (!kotlinx.coroutines.currentCoroutineContext().isActive || !isSending) break
-                                                withContext(Dispatchers.IO) {
-                                                    transmitIr(context, btn)
-                                                }
-                                                withContext(Dispatchers.Main) {
-                                                    sentCommands = (cycle - 1) * total + index + 1
-                                                    progressPercent = (((index + 1) * 100f) / total).toInt().coerceIn(0, 100)
-                                                    statusMessage = context.getString(R.string.ir_jammer_sending_signals) +
-                                                        " · цикл $cycle"
-                                                }
-                                                delay(8)
+                                    while (kotlinx.coroutines.currentCoroutineContext().isActive && isSending) {
+                                        cycle++
+                                        for ((index, btn) in list.withIndex()) {
+                                            if (!kotlinx.coroutines.currentCoroutineContext().isActive || !isSending) break
+                                            withContext(Dispatchers.IO) {
+                                                transmitIr(context, btn)
                                             }
+                                            withContext(Dispatchers.Main) {
+                                                sentCommands = index + 1
+                                                statusMessage = context.getString(R.string.ir_jammer_sending_signals) +
+                                                    " · цикл $cycle"
+                                            }
+                                            delay(8)
                                         }
-                                    } catch (_: kotlinx.coroutines.CancellationException) {
-                                    } finally {
-                                        withContext(Dispatchers.Main) {
-                                            isSending = false
-                                            jammerJob = null
-                                            statusMessage = context.getString(R.string.ir_storm_stopped)
-                                        }
+                                    }
+                                } catch (_: kotlinx.coroutines.CancellationException) {
+                                } finally {
+                                    withContext(Dispatchers.Main) {
+                                        isSending = false
+                                        jammerJob = null
+                                        statusMessage = context.getString(R.string.ir_storm_stopped)
                                     }
                                 }
                             }
-                        },
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.Center),
+                )
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(y = 164.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "$sentCommands / ${buttons!!.size}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Text(
-                    text = statusMessage,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = accentColor
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "$sentCommands / ${buttons!!.size}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(bottom = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                DolphyLinearProgressIndicator(
-                    progress = progressPercent / 100f,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = accentColor,
-                    trackColor = Color.Gray.copy(alpha = 0.3f)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "$progressPercent%",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White
-                )
             }
         }
     }

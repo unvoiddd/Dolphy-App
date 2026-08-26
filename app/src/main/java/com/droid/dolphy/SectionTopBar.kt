@@ -1,130 +1,84 @@
 package com.droid.dolphy
 
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
+internal val LocalSectionTopBarScrollBehavior = staticCompositionLocalOf<TopAppBarScrollBehavior?> { null }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SectionTopBar(
     title: String,
     onBack: (() -> Unit)? = null,
     transparent: Boolean = false,
     accentColor: Color = MaterialTheme.colorScheme.primary,
+    alwaysCollapsed: Boolean = false,
     
     showRootBadge: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    val liquid = isLiquidGlassTopBarChrome()
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        if (onBack != null) {
-            if (liquid) {
-                DolphyIconButton(
-                    onClick = onBack,
-                    liquidTint = accentColor,
-                    forTopBar = true,
-                    modifier = Modifier.size(44.dp),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.cd_back),
-                        tint = Color.Black,
-                    )
-                }
-            } else {
-                DolphyIconButton(
-                    onClick = onBack,
-                    forTopBar = true,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .border(1.5.dp, accentColor, CircleShape),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.cd_back),
-                        tint = accentColor,
-                    )
-                }
-            }
-        }
-
-        if (liquid) {
-            DolphyLiquidTitlePill(
-                modifier = Modifier.weight(1f),
-                tint = accentColor,
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        text = title,
-                        color = Color.Black,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                    )
-                    if (showRootBadge) {
-                        androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
-                        RootBadge(accentColor = accentColor)
-                    }
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .border(1.5.dp, accentColor, RoundedCornerShape(50.dp))
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = title,
-                        color = accentColor,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                    )
-                    if (showRootBadge) {
-                        androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
-                        RootBadge(accentColor = accentColor)
-                    }
-                }
-            }
-        }
-
-        actions()
+    val scrollBehavior = LocalSectionTopBarScrollBehavior.current
+    val titleContent: @Composable () -> Unit = {
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
+    val navigationContent: @Composable () -> Unit = {
+        if (onBack != null) {
+            FilledTonalIconButton(
+                onClick = onBack,
+                modifier = Modifier.size(48.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.cd_back),
+                )
+            }
+        }
+    }
+    val colors = TopAppBarDefaults.topAppBarColors(
+        containerColor = MaterialTheme.colorScheme.background,
+        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (alwaysCollapsed) {
+        CenterAlignedTopAppBar(
+            title = titleContent,
+            navigationIcon = navigationContent,
+            actions = actions,
+            colors = colors,
+        )
+        return
+    }
+    LargeTopAppBar(
+        title = titleContent,
+        navigationIcon = navigationContent,
+        actions = actions,
+        colors = colors,
+        scrollBehavior = scrollBehavior,
+    )
 }
 

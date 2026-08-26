@@ -1,0 +1,68 @@
+import json
+
+__id__ = "radio_lab"
+__name__ = "Radio Lab"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Bluetooth and Wi-Fi diagnostics"
+__icon__ = "filled:bluetooth_searching"
+
+
+class RadioLab(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.scanning = False
+        self.devices = {}
+
+    def on_plugin_load(self):
+        self.add_module(
+            title="Radio Lab",
+            description="Bluetooth and Wi-Fi diagnostics",
+            icon="bluetooth",
+            screen="main",
+            section="BLUETOOTH",
+        )
+
+    def on_plugin_unload(self):
+        self.api.bleStopScan("radio_lab")
+
+    def toggle_scan(self):
+        if self.scanning:
+            self.api.bleStopScan("radio_lab")
+            self.scanning = False
+        else:
+            self.devices.clear()
+            self.scanning = self.api.bleStartScan("radio_lab", self.on_device, 300, 128)
+        self.refresh()
+
+    def on_device(self, payload):
+        device = json.loads(str(payload))
+        address = device.get("address", "unknown")
+        self.devices[address] = device
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        rows = []
+        for device in sorted(self.devices.values(), key=lambda item: item.get("rssi", -999), reverse=True):
+            title = device.get("name") or device.get("address") or "BLE device"
+            description = str(device.get("address", "")) + "  RSSI " + str(device.get("rssi", "?"))
+            rows.append(ui.function_row(title, description, "bluetooth"))
+        if not rows:
+            rows.append(ui.text("Devices will appear here", "bodyMedium"))
+        wifi = json.loads(str(api.getDevice().wifiConnectionInfoJson()))
+        return ui.scaffold(
+            title="Radio Lab",
+            content=ui.lazy_column([
+                ui.card([
+                    ui.text("Wireless interface", "titleLarge"),
+                    ui.text("Wi-Fi: " + str(wifi.get("ssid", "unknown")), "bodyMedium"),
+                    ui.button(
+                        "Stop BLE scan" if self.scanning else "Start BLE scan",
+                        self.toggle_scan,
+                        fill_max_width=True,
+                    ),
+                ]),
+                ui.text("Nearby BLE: " + str(len(self.devices)), "titleMedium"),
+                ui.segmented_list(rows),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )

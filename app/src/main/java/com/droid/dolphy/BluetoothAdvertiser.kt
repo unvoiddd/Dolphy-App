@@ -10,6 +10,8 @@ import android.bluetooth.le.AdvertisingSetParameters
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import com.droid.dolphy.plugin.PluginBluetoothHooks
+import org.json.JSONObject
 
 class BluetoothAdvertiser {
 
@@ -35,13 +37,21 @@ class BluetoothAdvertiser {
         advertiseData: AdvertiseData,
         scanResponse: AdvertiseData? = null
     ) {
+        val pluginDecision = PluginBluetoothHooks.interceptAdvertising(
+            advertiseData,
+            scanResponse,
+            JSONObject().put("source", "ble_spam"),
+        )
+        if (pluginDecision.skipNative) return
+        val effectiveData = pluginDecision.advertiseData
+        val effectiveScanResponse = pluginDecision.scanResponse
         if (Helper.canUseExtendedAdvertising()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                advertiseExtended(advertiseData)
+                advertiseExtended(effectiveData)
                 return
             }
         }
-        advertiseLegacy(advertiseData, scanResponse)
+        advertiseLegacy(effectiveData, effectiveScanResponse)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_ADVERTISE)
@@ -117,6 +127,14 @@ class BluetoothAdvertiser {
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_ADVERTISE)
     fun stopAdvertising() {
+        val pluginDecision = PluginBluetoothHooks.action("bluetooth.advertising.stop", JSONObject().put("source", "ble_spam"))
+        if (pluginDecision.cancelled) return
+        if (pluginDecision.handled) {
+            extendedCallbackActive = false
+            extCallback = null
+            legacyCallbackActive = false
+            return
+        }
         if (extendedCallbackActive) {
             extCallback?.let {
                 try {

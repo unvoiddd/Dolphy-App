@@ -250,8 +250,8 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        window.statusBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.BLACK
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
@@ -317,10 +317,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
 
             val accentColor = Color(accentColorInt)
 
-            val liquidGlassEnabled = remember {
-                settingsPrefs.getBoolean("liquid_glass_enabled", false) ||
-                    settingsPrefs.getBoolean("liquid_glass", false)
-            }
+            val liquidGlassEnabled = false
             val liquidButtons = remember { settingsPrefs.getBoolean("liquid_glass_buttons", true) }
             val liquidTopBars = remember { settingsPrefs.getBoolean("liquid_glass_topbars", true) }
             val liquidNav = remember { settingsPrefs.getBoolean("liquid_glass_nav", true) }
@@ -520,9 +517,9 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                                 }
                             }
 
-                            Button(
+                            com.droid.dolphy.AccentButton(
                                 onClick = {
-                                    val addr = selectedAddress ?: return@Button
+                                    val addr = selectedAddress ?: return@AccentButton
                                     val isPaired = selectedDevice?.paired == true
                                     stopDiscoveryIfRunning()
                                     saveLastTarget(addr, selectedName ?: addr, selectedKind)
@@ -554,9 +551,9 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                             ) { Text(stringResource(R.string.hid_connect)) }
 
                             Box(modifier = Modifier.fillMaxWidth()) {
-                                OutlinedButton(
+                                com.droid.dolphy.AccentButton(
                                     onClick = {
-                                        val addr = selectedAddress ?: return@OutlinedButton
+                                        val addr = selectedAddress ?: return@AccentButton
                                         stopDiscoveryIfRunning()
                                         saveLastTarget(addr, selectedName ?: addr, selectedKind)
                                         userInitiatedSession = true
@@ -619,7 +616,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                                 Text(stringResource(R.string.hid_blueducky_info_body))
                             },
                             confirmButton = {
-                                TextButton(onClick = { showBlueDuckyInfoDialog.value = false }) {
+                                com.droid.dolphy.AccentButton(onClick = { showBlueDuckyInfoDialog.value = false }) {
                                     Text(stringResource(R.string.got_it))
                                 }
                             },
@@ -633,9 +630,9 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                             title = { Text(stringResource(R.string.hid_reconnect_title)) },
                             text = { Text(stringResource(R.string.hid_reconnect_message, dn)) },
                             confirmButton = {
-                                Button(onClick = {
+                                com.droid.dolphy.AccentButton(onClick = {
                                     showFailedDialog.value = false
-                                    val addr = pendingDeviceAddress ?: return@Button
+                                    val addr = pendingDeviceAddress ?: return@AccentButton
                                     userInitiatedSession = true
                                     hidStatus.value = HidStatus.Connecting
                                     scheduleLongConnectingWarning()
@@ -643,7 +640,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                                 }) { Text(stringResource(R.string.retry)) }
                             },
                             dismissButton = {
-                                OutlinedButton(onClick = {
+                                com.droid.dolphy.AccentButton(onClick = {
                                     showFailedDialog.value = false
                                     pendingDeviceAddress?.let { keyboardService?.removeBond(it) }
                                     hidStatus.value = HidStatus.Disconnected
@@ -658,7 +655,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                             title = { Text(stringResource(R.string.hid_long_connection_title)) },
                             text = { Text(stringResource(R.string.hid_long_connection_message)) },
                             confirmButton = {
-                                Button(onClick = { showLongConnectingDialog.value = false }) {
+                                com.droid.dolphy.AccentButton(onClick = { showLongConnectingDialog.value = false }) {
                                     Text(stringResource(R.string.got_it))
                                 }
                             }

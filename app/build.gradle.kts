@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.chaquopy)
 }
 
 
@@ -20,8 +21,8 @@ android {
         applicationId = "com.droid.dolphy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "2.3"
+        versionCode = 25
+        versionName = "2.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -91,6 +92,15 @@ android {
     }
 }
 
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        pyc {
+            src = false
+        }
+    }
+}
+
 
 
 
@@ -104,7 +114,8 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material3:material3:1.5.0-alpha15")
+    implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("io.coil-kt:coil-compose:2.6.0")
@@ -114,8 +125,6 @@ dependencies {
 
     implementation("no.nordicsemi.android:ble:2.7.2")
     implementation("no.nordicsemi.android:ble-ktx:2.7.2")
-    implementation("dev.chrisbanes.haze:haze:1.7.2")
-    implementation("dev.chrisbanes.haze:haze-materials:1.7.2")
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.websockets)
@@ -128,6 +137,8 @@ dependencies {
 
     implementation("org.mozilla:rhino:1.7.15")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    implementation("com.hp.jipp:jipp-core:0.7.18")
+    implementation("com.hp.jipp:jipp-pdl:0.7.18")
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
     implementation(libs.androidx.room.runtime)

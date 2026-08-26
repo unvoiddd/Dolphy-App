@@ -508,7 +508,7 @@ fun SmartTvCastScreen(navController: NavController) {
 
 
                 if (selectedVideo != null && serverUrl != null) {
-                    FilledTonalButton(
+                    com.droid.dolphy.AccentButton(
                         onClick = {
 
                             val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(serverUrl))

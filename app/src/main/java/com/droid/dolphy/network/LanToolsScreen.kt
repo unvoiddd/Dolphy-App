@@ -153,7 +153,7 @@ private fun LanToolRow(
     ) {
         Surface(
             onClick = onClick,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = MaterialTheme.shapes.extraLarge,
         ) {
             Row(

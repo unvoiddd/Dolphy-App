@@ -217,7 +217,7 @@ fun DolphyZeroScreen(navController: NavController) {
                         .fillMaxWidth()
                         .aspectRatio(0.58f)
                         .clip(RoundedCornerShape(36.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .padding(20.dp)
                 ) {
                     Column(
@@ -377,7 +377,7 @@ private fun MiniFirmwareScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if(selected) accent else Color.Transparent)
+                        .background(if(selected) accent else MaterialTheme.colorScheme.surfaceContainerHigh)
                         .padding(horizontal = 6.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -494,7 +494,7 @@ private fun CircleActionButton(
             .size(size)
             .clip(CircleShape)
             .background(
-                if(accent == Color.Black) Color.Transparent else accent.copy(alpha = 0.18f)
+                if(accent == Color.Black) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.secondaryContainer
             )
             .border(1.dp, accent.copy(alpha = 0.7f), CircleShape)
             .clickable(onClick = onClick),

@@ -549,7 +549,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                 }
             },
             confirmButton = {
-                TextButton(
+                com.droid.dolphy.AccentButton(
                     onClick = {
                         val name = emulationName.trim().ifBlank { "Копия метки" }
                         val url = buildEmulationUrl(scan)
@@ -566,7 +566,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                 ) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCopyDialog = false }) { Text(stringResource(R.string.cancel)) }
+                com.droid.dolphy.AccentButton(onClick = { showCopyDialog = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -577,7 +577,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
             title = { Text(stringResource(R.string.nfc_saved_title)) },
             text = { Text(stringResource(R.string.nfc_saved_message)) },
             confirmButton = {
-                TextButton(
+                com.droid.dolphy.AccentButton(
                     onClick = {
                         showSavedDialog = false
                 navController.navigate("other/nfc_emulator_list")
@@ -585,7 +585,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                 ) { Text(stringResource(R.string.nfc_go)) }
             },
             dismissButton = {
-                TextButton(onClick = { showSavedDialog = false }) { Text(stringResource(R.string.close)) }
+                com.droid.dolphy.AccentButton(onClick = { showSavedDialog = false }) { Text(stringResource(R.string.close)) }
             }
         )
     }

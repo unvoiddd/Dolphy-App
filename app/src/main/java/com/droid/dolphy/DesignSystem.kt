@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -185,7 +186,7 @@ fun VolumetricButton(
             backdrop = LocalLiquidGlassBackdrop.current!!,
             modifier = modifier.fillMaxWidth(),
             tint = if (isActive) GreenSuccess else currentAccent,
-            surfaceColor = (if (isActive) GreenSuccess else currentAccent).copy(alpha = 0.92f),
+            surfaceColor = if (isActive) GreenSuccess else currentAccent,
         ) {
             if (icon != null) {
                 Icon(icon, contentDescription = null, tint = Color.Black)
@@ -713,22 +714,21 @@ fun MaterialCard(
     content: @Composable () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val expressive = LocalExpressiveEnabled.current
-    val baseRadius = if (cornerRadius < 20.dp) 20.dp else cornerRadius
-    val targetRadius = if (expressive) baseRadius * 1.6f else baseRadius
-    val animatedRadius by androidx.compose.animation.core.animateDpAsState(
-        targetValue = targetRadius,
-        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 300f),
-        label = "card_radius"
-    )
-
-    val resolvedShape = shape ?: RoundedCornerShape(animatedRadius)
+    val resolvedShape = shape ?: MaterialTheme.shapes.extraLarge
+    val containerColor = when (containerType) {
+        "primary" -> colorScheme.primaryContainer
+        "secondary" -> colorScheme.secondaryContainer
+        "tertiary" -> colorScheme.tertiaryContainer
+        "low" -> colorScheme.surfaceContainerLow
+        "highest" -> colorScheme.surfaceContainerHighest
+        else -> colorScheme.surfaceContainerHigh
+    }
 
     Card(
-        modifier = if (expressive) modifier.animateContentSize() else modifier,
+        modifier = modifier,
         shape = resolvedShape,
         colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surfaceContainerHighest
+            containerColor = containerColor
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = elevation
@@ -767,6 +767,39 @@ fun MaterialCardWithBorder(
 
 
 @Composable
+fun AccentButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = MaterialTheme.shapes.extraLarge,
+    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    elevation: ButtonElevation? = ButtonDefaults.buttonElevation(),
+    border: BorderStroke? = null,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    interactionSource: MutableInteractionSource? = null,
+    content: @Composable RowScope.() -> Unit,
+) {
+    androidx.compose.material3.Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primaryFixed,
+            contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        ),
+        elevation = elevation,
+        border = border,
+        contentPadding = contentPadding,
+        interactionSource = interactionSource,
+        content = content,
+    )
+}
+
+
+@Composable
 fun MaterialButton(
     text: String,
     onClick: () -> Unit,
@@ -775,50 +808,22 @@ fun MaterialButton(
     enabled: Boolean = true,
     isActive: Boolean = false
 ) {
-    val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
-    val containerColor = if (isActive) GreenSuccess else currentAccent
-    if (isLiquidGlassChrome() && enabled) {
-        LiquidButton(
-            onClick = onClick,
-            backdrop = LocalLiquidGlassBackdrop.current!!,
-            modifier = modifier.fillMaxWidth(),
-            tint = containerColor,
-            surfaceColor = containerColor.copy(alpha = 0.92f),
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-            )
-        }
-    } else {
-        val expressive = LocalExpressiveEnabled.current
-        val targetRadius = if (expressive) 30.dp else 24.dp
-        val animatedRadius by animateDpAsState(
-            targetValue = targetRadius,
-            animationSpec = spring(dampingRatio = 0.75f, stiffness = 320f),
-            label = "button_radius"
+    val colorScheme = MaterialTheme.colorScheme
+    AccentButton(
+        onClick = onClick,
+        modifier = modifier.height(56.dp),
+        enabled = enabled,
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = colorScheme.primaryFixed,
+            contentColor = colorScheme.onPrimaryFixed,
         )
-
-        Button(
-            onClick = onClick,
-            modifier = modifier.height(56.dp),
-            enabled = enabled,
-            shape = RoundedCornerShape(animatedRadius),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = containerColor,
-                contentColor = contrastingContentColor(containerColor),
-                disabledContainerColor = Color.Gray.copy(alpha = 0.5f),
-                disabledContentColor = TextGray
-            )
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -833,39 +838,22 @@ fun MaterialOutlinedButton(
     accentColor: Color = Color.Unspecified,
     enabled: Boolean = true
 ) {
-    val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
-    if (isLiquidGlassChrome() && enabled) {
-        LiquidButton(
-            onClick = onClick,
-            backdrop = LocalLiquidGlassBackdrop.current!!,
-            modifier = modifier.fillMaxWidth(),
-            tint = currentAccent,
-            surfaceColor = currentAccent.copy(alpha = 0.88f),
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-            )
+    AccentButton(
+        onClick = onClick,
+        modifier = modifier.height(56.dp),
+        enabled = enabled,
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primaryFixed,
+            contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+        )
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
         }
-    } else {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = modifier.height(56.dp),
-            enabled = enabled,
-            shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = currentAccent
-            )
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
 }
 
 
@@ -973,75 +961,24 @@ fun MaterialTabRow(
     modifier: Modifier = Modifier,
     accentColor: Color = Color.Unspecified
 ) {
-    val currentAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
-
-    if (isLiquidGlassChrome() && tabs.isNotEmpty()) {
-        val labelStyle = MaterialTheme.typography.labelLarge.copy(
-            color = Color.White,
-            fontWeight = FontWeight.Black,
-        )
-        LiquidBottomTabs(
-            selectedTabIndex = { selectedTabIndex },
-            onTabSelected = onTabSelected,
-            backdrop = LocalLiquidGlassBackdrop.current!!,
-            tabsCount = tabs.size,
-            modifier = modifier.fillMaxWidth(),
-            barHeight = 46.dp,
-        ) {
-            tabs.forEachIndexed { index, title ->
-                LiquidBottomTab(onClick = { onTabSelected(index) }) {
-                    Text(text = title, style = labelStyle, maxLines = 1)
-                }
-            }
-        }
-    } else {
-        Surface(
-            modifier = modifier.height(56.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            border = BorderStroke(1.dp, currentAccent.copy(alpha = 0.35f))
-        ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(4.dp)) {
-                val tabWidth = maxWidth / tabs.size
-                val indicatorOffset by animateDpAsState(
-                    targetValue = tabWidth * selectedTabIndex,
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f),
-                    label = "tabIndicator"
-                )
-
-                Box(
-                    modifier = Modifier
-                        .offset(x = indicatorOffset)
-                        .width(tabWidth)
-                        .fillMaxHeight()
-                        .background(currentAccent, CircleShape)
-                )
-
-                Row(modifier = Modifier.fillMaxSize()) {
-                    tabs.forEachIndexed { index, title ->
-                        val selected = selectedTabIndex == index
-                        val textColor by animateColorAsState(
-                            targetValue = if (selected) contrastingContentColor(currentAccent) else MaterialTheme.colorScheme.onSurfaceVariant,
-                            label = "tab_text"
-                        )
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(CircleShape)
-                                .clickable { onTabSelected(index) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black,
-                                color = textColor
-                            )
-                        }
-                    }
-                }
-            }
+    PrimaryTabRow(
+        selectedTabIndex = selectedTabIndex,
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.primary,
+    ) {
+        tabs.forEachIndexed { index, title ->
+            Tab(
+                selected = selectedTabIndex == index,
+                onClick = { onTabSelected(index) },
+                text = {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
+            )
         }
     }
 }
@@ -1119,8 +1056,8 @@ fun getSegmentedShape(
 
 
 val M3SegmentedListItemSpacing: Dp = 2.dp
-val M3SegmentedListOuterRadius: Dp = 28.dp
-val M3SegmentedListInnerRadius: Dp = 8.dp
+val M3SegmentedListOuterRadius: Dp = 24.dp
+val M3SegmentedListInnerRadius: Dp = 4.dp
 
 
 
@@ -1405,8 +1342,8 @@ fun M3SegmentedListItemContainer(
     )
     val colorScheme = MaterialTheme.colorScheme
     val containerColor = when {
-        selected -> colorScheme.secondaryContainer
-        else -> colorScheme.surfaceContainerHighest
+        selected -> colorScheme.primaryFixed
+        else -> colorScheme.surfaceContainerHigh
     }
     val clickableMod = if (onClick != null && enabled) {
         Modifier.clickable(onClick = onClick)
@@ -1420,7 +1357,7 @@ fun M3SegmentedListItemContainer(
             .then(clickableMod),
         shape = shape,
         color = containerColor,
-        contentColor = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurface,
+        contentColor = if (selected) colorScheme.onPrimaryFixed else colorScheme.onSurface,
         tonalElevation = if (selected) 2.dp else 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -1447,12 +1384,6 @@ fun M3SegmentedListItem(
     onClick: (() -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val iconTint = if (leadingIconTint != Color.Unspecified) {
-        leadingIconTint
-    } else {
-        colorScheme.primary
-    }
-
     M3SegmentedListItemContainer(
         index = index,
         count = count,
@@ -1465,7 +1396,7 @@ fun M3SegmentedListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .defaultMinSize(minHeight = 56.dp),
+                .defaultMinSize(minHeight = 76.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -1474,15 +1405,15 @@ fun M3SegmentedListItem(
                 leadingIcon != null -> {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .background(iconTint.copy(alpha = 0.12f), CircleShape),
+                            .size(42.dp)
+                            .background(colorScheme.primaryFixed, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = leadingIcon,
                             contentDescription = null,
-                            tint = iconTint,
-                            modifier = Modifier.size(22.dp),
+                            tint = colorScheme.onPrimaryFixed,
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }
@@ -1500,8 +1431,9 @@ fun M3SegmentedListItem(
                     text = headline,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurface,
+                    color = if (selected) colorScheme.onPrimaryFixed else colorScheme.onSurface,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if (!supporting.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
@@ -1509,6 +1441,8 @@ fun M3SegmentedListItem(
                         text = supporting,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurfaceVariant,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -1519,8 +1453,8 @@ fun M3SegmentedListItem(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
+                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
@@ -1766,7 +1700,7 @@ fun ExpressiveBounceButton(
             backdrop = LocalLiquidGlassBackdrop.current!!,
             modifier = modifier.fillMaxWidth(),
             tint = containerColor,
-            surfaceColor = containerColor.copy(alpha = 0.92f),
+            surfaceColor = containerColor,
             content = content,
         )
     } else {
@@ -1790,7 +1724,7 @@ fun ExpressiveBounceButton(
 
         val buttonShape = shape ?: RoundedCornerShape(cornerRadius)
 
-        Button(
+        AccentButton(
             onClick = onClick,
             modifier = modifier
                 .scale(scale)

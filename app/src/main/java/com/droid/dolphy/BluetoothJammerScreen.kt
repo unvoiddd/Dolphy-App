@@ -129,7 +129,7 @@ fun BluetoothJammerScanScreen(onBack: () -> Unit, accentColor: Color) {
 
     MaterialBackground(accentColor = accentColor) {
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 SectionTopBar(
                     title = stringResource(R.string.bt_jammer_title),
@@ -227,7 +227,7 @@ fun BluetoothJammerAttackScreen(
 
     MaterialBackground(accentColor = accentColor) {
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 SectionTopBar(
                     title = stringResource(R.string.bt_jammer_jamming),

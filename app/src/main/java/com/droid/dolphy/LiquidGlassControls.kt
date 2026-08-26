@@ -43,7 +43,7 @@ fun DolphyIconButton(
             backdrop = backdrop,
             modifier = Modifier.size(44.dp),
             tint = tint,
-            surfaceColor = tint.copy(alpha = 0.92f),
+            surfaceColor = tint,
             applyDefaultHeight = false,
             contentPaddingHorizontal = 0.dp,
         ) {
@@ -81,12 +81,11 @@ fun DolphyButton(
             backdrop = backdrop,
             modifier = modifier,
             tint = if (tint != Color.Unspecified) tint else MaterialTheme.colorScheme.primary,
-            surfaceColor = if (tint != Color.Unspecified) tint.copy(alpha = 0.92f)
-            else MaterialTheme.colorScheme.primary.copy(alpha = 0.92f),
+            surfaceColor = if (tint != Color.Unspecified) tint else MaterialTheme.colorScheme.primary,
             content = content,
         )
     } else {
-        Button(
+        AccentButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
@@ -112,13 +111,13 @@ fun DolphyTextButton(
             backdrop = backdrop,
             modifier = modifier,
             tint = primary,
-            surfaceColor = primary.copy(alpha = 0.88f),
+            surfaceColor = primary,
             applyDefaultHeight = true,
             contentPaddingHorizontal = 12.dp,
             content = content,
         )
     } else {
-        TextButton(onClick = onClick, modifier = modifier, enabled = enabled, content = content)
+        AccentButton(onClick = onClick, modifier = modifier, enabled = enabled, content = content)
     }
 }
 
@@ -137,7 +136,7 @@ fun DolphyLiquidTitlePill(
             modifier = modifier.height(44.dp),
             isInteractive = false,
             tint = tint,
-            surfaceColor = tint.copy(alpha = 0.90f),
+            surfaceColor = tint,
             applyDefaultHeight = false,
             contentPaddingHorizontal = 16.dp,
             content = content,

@@ -12,6 +12,17 @@ data class PluginManifest(
     val isLibrary: Boolean = false,
     
     val isDesignLibrary: Boolean = false,
+    val icon: String = "extension",
+    val dependencies: List<String> = emptyList(),
+)
+
+data class PluginPreview(
+    val manifest: PluginManifest,
+    val fileName: String,
+    val sizeBytes: Long,
+    val runtime: String,
+    val installed: Boolean,
+    val capabilities: List<String> = emptyList(),
 )
 
 
@@ -107,11 +118,42 @@ data class SettingsSectionContribution(
     val order: Int = 0,
 )
 
-data class LoadedJsPlugin(
+data class LoadedPlugin(
     val manifest: PluginManifest,
     val sourceFile: java.io.File,
     val sourceCode: String,
     val enabled: Boolean = true,
+    val runtime: String = "python",
+    val pinned: Boolean = false,
+)
+
+data class PluginScreenContribution(
+    val pluginId: String,
+    val routePattern: String,
+    val screenId: String,
+    val mode: String = "overlay",
+    val priority: Int = 0,
+)
+
+data class PluginServiceContribution(
+    val pluginId: String,
+    val serviceId: String,
+    val priority: Int = 0,
+)
+
+data class PluginActionHookContribution(
+    val pluginId: String,
+    val actionPattern: String,
+    val priority: Int = 0,
+)
+
+data class PluginBleModeContribution(
+    val pluginId: String,
+    val modeId: String,
+    val title: String,
+    val description: String = "",
+    val icon: String = "bluetooth_searching",
+    val order: Int = 0,
 )
 
 

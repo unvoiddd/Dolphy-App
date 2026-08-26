@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.droid.dolphy
 
@@ -48,6 +48,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -55,9 +56,11 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -86,7 +89,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
-import coil.compose.rememberAsyncImagePainter
 import com.droid.dolphy.bluetooth.audio.AudioScannerScreen
 import com.droid.dolphy.bluetooth.audio.BtAudioStressRunScreen
 import com.droid.dolphy.bluetooth.audio.BtAudioStressScanScreen
@@ -101,13 +103,24 @@ import com.droid.dolphy.nfc.ui.*
 import com.droid.dolphy.plugin.ui.PluginHostScreen
 import com.droid.dolphy.plugin.ui.PluginManagerScreen
 import com.droid.dolphy.plugin.ui.PluginAboutScreen
+import com.droid.dolphy.plugin.ui.PluginScreenExtensionHost
+import com.droid.dolphy.plugin.ui.PluginSurfaceExtensionHost
+import com.droid.dolphy.plugin.ui.PluginPreviewScreen
+import com.droid.dolphy.plugin.ui.PluginSafeModeSheet
+import com.droid.dolphy.plugin.PluginBleModeRegistry
+import com.droid.dolphy.plugin.ui.PluginSettingsSections
 import com.droid.dolphy.plugin.PluginManager
+import com.droid.dolphy.plugin.PluginBluetoothHooks
+import com.droid.dolphy.plugin.PluginRuntimeAccess
 import com.droid.dolphy.printer.WifiPrintScreen
 import com.droid.dolphy.qr.*
 import com.droid.dolphy.tvcast.SmartTvCastScreen
 import com.droid.dolphy.ui.theme.ExpressiveShapes
 import com.droid.dolphy.ui.theme.buildAppTypography
 import com.droid.dolphy.ui.theme.buildExpressiveTypography
+import com.google.android.material.color.utilities.Hct
+import com.google.android.material.color.utilities.MaterialDynamicColors
+import com.google.android.material.color.utilities.SchemeTonalSpot
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -175,32 +188,32 @@ data class AdvertisePreset(
     val intervalMs: Int
 )
 
+private fun AdvertisePreset.toPluginJson(): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("name", name)
+        .put("companyCode", companyCode)
+        .put("payloadHex", payloadHex)
+        .put("randomizeMac", randomizeMac)
+        .put("intervalMs", intervalMs)
+}
+
+private fun JSONObject.toAdvertisePreset(fallback: AdvertisePreset): AdvertisePreset {
+    return fallback.copy(
+        id = optLong("id", fallback.id),
+        name = optString("name", fallback.name),
+        companyCode = optInt("companyCode", fallback.companyCode),
+        payloadHex = optString("payloadHex", fallback.payloadHex),
+        randomizeMac = optBoolean("randomizeMac", fallback.randomizeMac),
+        intervalMs = optInt("intervalMs", fallback.intervalMs).coerceIn(200, 1000),
+    )
+}
+
 sealed class AdvertiseStartResult {
     data object Started : AdvertiseStartResult()
     data object PermissionRequired : AdvertiseStartResult()
     data class Error(val message: String) : AdvertiseStartResult()
 }
-
-private data class AppIconOption(
-    val id: String,
-    val title: String,
-    val drawableRes: Int,
-    val aliasClassName: String,
-)
-
-private val appIconOptions = listOf(
-    AppIconOption("material_1", "Material 1", R.drawable.material_1, "com.droid.dolphy.MainActivityMaterial1"),
-    AppIconOption("default", "Default", R.drawable.app_icon, "com.droid.dolphy.MainActivityDefault"),
-    AppIconOption("cyber", "Cyber", R.drawable.cyber, "com.droid.dolphy.MainActivityCyber"),
-    AppIconOption("orange", "Orange", R.drawable.orange, "com.droid.dolphy.MainActivityOrange"),
-    AppIconOption("purple", "Purple", R.drawable.purple, "com.droid.dolphy.MainActivityPurple"),
-    AppIconOption("retro", "Retro", R.drawable.retro, "com.droid.dolphy.MainActivityRetro"),
-    AppIconOption("material", "Material", R.drawable.material, "com.droid.dolphy.MainActivityMaterial"),
-    AppIconOption("astro_dolphy", "Astro Dolphy", R.drawable.astro_dolphy, "com.droid.dolphy.MainActivityAstroDolphy"),
-    AppIconOption("photo_1", "Dolphy 2.0", R.drawable.photo_icon_1, "com.droid.dolphy.MainActivityPhoto1"),
-    AppIconOption("photo_2", "D-Profile", R.drawable.photo_icon_2, "com.droid.dolphy.MainActivityPhoto2"),
-    AppIconOption("photo_3", "TrollDroid", R.drawable.photo_icon_3, "com.droid.dolphy.MainActivityPhoto3"),
-)
 
 @Composable
 fun DolphyTheme(
@@ -216,140 +229,10 @@ fun DolphyTheme(
 ) {
     val context = LocalContext.current
 
-    val finalAccentColor = if (isAdaptiveColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val dynamicScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        dynamicScheme.primary
-    } else {
-        accentColor
-    }
-
-    val tonalPalette = generateTonalPalette(finalAccentColor)
-    val themePrimary = if (darkTheme) finalAccentColor else lerp(finalAccentColor, Color(0xFF374151), 0.28f)
-
-    val surfaceColor = if (darkTheme) {
-        BrighterSurface
-    } else {
-        Color(0xFFFFFBFE)
-    }
-    val backgroundColor = if (darkTheme) {
-        DarkBackground
-    } else {
-        Color(0xFFF7F6F3)
-    }
-
-    val baseColorScheme = if (darkTheme) {
-        darkColorScheme(
-            primary = finalAccentColor,
-            onPrimary = TextWhite,
-            primaryContainer = tonalPalette.primaryContainer,
-            onPrimaryContainer = tonalPalette.onPrimaryContainer,
-
-            secondary = tonalPalette.secondary,
-            onSecondary = TextWhite,
-            secondaryContainer = tonalPalette.secondaryContainer,
-            onSecondaryContainer = tonalPalette.onSecondaryContainer,
-
-            tertiary = tonalPalette.tertiary,
-            onTertiary = TextWhite,
-            tertiaryContainer = tonalPalette.tertiaryContainer,
-            onTertiaryContainer = TextWhite,
-
-            background = backgroundColor,
-            onBackground = TextWhite,
-            surface = surfaceColor,
-            onSurface = TextWhite,
-
-            surfaceVariant = tonalPalette.surfaceVariant,
-            onSurfaceVariant = tonalPalette.onSurfaceVariant,
-            surfaceContainerHighest = tonalPalette.surfaceContainerHighest,
-            surfaceContainerHigh = tonalPalette.surfaceContainerHighest.copy(alpha = 0.9f),
-            surfaceContainer = tonalPalette.surfaceContainerHighest.copy(alpha = 0.8f),
-            surfaceContainerLow = tonalPalette.surfaceContainerHighest.copy(alpha = 0.7f),
-            surfaceContainerLowest = backgroundColor,
-
-            outline = tonalPalette.outline,
-            outlineVariant = tonalPalette.outlineVariant,
-
-            error = GreenSuccess,
-            onError = TextWhite,
-            errorContainer = tonalPalette.errorContainer,
-            onErrorContainer = TextWhite,
-
-            inverseSurface = LightBackground,
-            inverseOnSurface = Color.Black,
-            inversePrimary = tonalPalette.inversePrimary,
-
-            scrim = Color.Black
-        )
-    } else {
-        lightColorScheme(
-            primary = themePrimary,
-            onPrimary = contrastingContentColor(themePrimary),
-            primaryContainer = lerp(themePrimary, Color.White, 0.82f),
-            onPrimaryContainer = Color(0xFF28180C),
-
-            secondary = lerp(themePrimary, Color(0xFF5D5A62), 0.45f),
-            onSecondary = Color.White,
-            secondaryContainer = Color(0xFFECE6E1),
-            onSecondaryContainer = Color(0xFF241F1C),
-
-            tertiary = lerp(themePrimary, Color(0xFF52665B), 0.5f),
-            onTertiary = Color.White,
-            tertiaryContainer = Color(0xFFE4EAE5),
-            onTertiaryContainer = Color(0xFF18211B),
-
-            background = backgroundColor,
-            onBackground = Color(0xFF1D1B20),
-            surface = surfaceColor,
-            onSurface = Color(0xFF1D1B20),
-
-            surfaceVariant = Color(0xFFE8E4E0),
-            onSurfaceVariant = Color(0xFF514A46),
-            surfaceContainerHighest = Color(0xFFE5E1DE),
-            surfaceContainerHigh = Color(0xFFEBE7E4),
-            surfaceContainer = Color(0xFFF1EDEA),
-            surfaceContainerLow = Color(0xFFF7F3F1),
-            surfaceContainerLowest = Color.White,
-
-            outline = Color(0xFF7D7470),
-            outlineVariant = Color(0xFFCDC5C0),
-
-            error = Color(0xFFBA1A1A),
-            onError = TextWhite,
-            errorContainer = Color(0xFFFFDAD6),
-            onErrorContainer = Color(0xFF410002),
-
-            inverseSurface = Color(0xFF1C1B1F),
-            inverseOnSurface = Color(0xFFF4EFF4),
-            inversePrimary = tonalPalette.inversePrimary,
-
-            scrim = Color.Black
-        )
-    }
-
-    val expressiveScheme = if (expressiveEnabled) {
-        val boost = if (darkTheme) 0.18f else 0.12f
-        val surfaceBoost = if (darkTheme) 0.08f else 0.05f
-        baseColorScheme.copy(
-            primary = themePrimary,
-            secondary = tonalPalette.tertiary,
-            tertiary = tonalPalette.secondary,
-            surfaceVariant = baseColorScheme.surfaceVariant.copy(alpha = 1f),
-            surface = baseColorScheme.surface.copy(alpha = 1f),
-            background = baseColorScheme.background.copy(alpha = 1f),
-            primaryContainer = baseColorScheme.primaryContainer.copy(alpha = 1f),
-            secondaryContainer = baseColorScheme.secondaryContainer.copy(alpha = 1f),
-            tertiaryContainer = baseColorScheme.tertiaryContainer.copy(alpha = 1f),
-        ).let { scheme ->
-
-            scheme.copy(
-                outline = scheme.outline.copy(alpha = 1f - surfaceBoost),
-                outlineVariant = scheme.outlineVariant.copy(alpha = 1f - surfaceBoost),
-                surfaceVariant = scheme.surfaceVariant.copy(alpha = 1f - boost)
-            )
-        }
-    } else {
-        baseColorScheme
+    val expressiveScheme = if (isAdaptiveColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else remember(accentColor, darkTheme) {
+        googleExpressiveColorScheme(accentColor, darkTheme)
     }
 
     val typography = if (expressiveEnabled) {
@@ -365,24 +248,76 @@ fun DolphyTheme(
     }
 
     androidx.compose.runtime.CompositionLocalProvider(
-        LocalExpressiveEnabled provides expressiveEnabled,
+        LocalExpressiveEnabled provides true,
         LocalAnimatedBackgroundEnabled provides animatedBackgroundEnabled,
         LocalDensity provides scaledDensity,
     ) {
-        val appShapes = Shapes(
-            extraSmall = RoundedCornerShape(14.dp),
-            small = RoundedCornerShape(20.dp),
-            medium = RoundedCornerShape(26.dp),
-            large = RoundedCornerShape(32.dp),
-            extraLarge = RoundedCornerShape(40.dp)
-        )
-        MaterialTheme(
+        MaterialExpressiveTheme(
             colorScheme = expressiveScheme,
             typography = typography,
-            shapes = if (expressiveEnabled) ExpressiveShapes else appShapes,
+            motionScheme = MotionScheme.expressive(),
             content = content
         )
     }
+}
+
+private fun googleExpressiveColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme {
+    val scheme = SchemeTonalSpot(Hct.fromInt(seedColor.toArgb()), darkTheme, 0.0)
+    val colors = MaterialDynamicColors()
+    fun role(value: com.google.android.material.color.utilities.DynamicColor): Color =
+        Color(value.getArgb(scheme))
+
+    val base = if (darkTheme) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = role(colors.primary()),
+        onPrimary = role(colors.onPrimary()),
+        primaryContainer = role(colors.primaryContainer()),
+        onPrimaryContainer = role(colors.onPrimaryContainer()),
+        inversePrimary = role(colors.inversePrimary()),
+        secondary = role(colors.secondary()),
+        onSecondary = role(colors.onSecondary()),
+        secondaryContainer = role(colors.secondaryContainer()),
+        onSecondaryContainer = role(colors.onSecondaryContainer()),
+        tertiary = role(colors.tertiary()),
+        onTertiary = role(colors.onTertiary()),
+        tertiaryContainer = role(colors.tertiaryContainer()),
+        onTertiaryContainer = role(colors.onTertiaryContainer()),
+        background = role(colors.background()),
+        onBackground = role(colors.onBackground()),
+        surface = role(colors.surface()),
+        onSurface = role(colors.onSurface()),
+        surfaceVariant = role(colors.surfaceVariant()),
+        onSurfaceVariant = role(colors.onSurfaceVariant()),
+        surfaceTint = role(colors.surfaceTint()),
+        inverseSurface = role(colors.inverseSurface()),
+        inverseOnSurface = role(colors.inverseOnSurface()),
+        error = role(colors.error()),
+        onError = role(colors.onError()),
+        errorContainer = role(colors.errorContainer()),
+        onErrorContainer = role(colors.onErrorContainer()),
+        outline = role(colors.outline()),
+        outlineVariant = role(colors.outlineVariant()),
+        scrim = role(colors.scrim()),
+        surfaceBright = role(colors.surfaceBright()),
+        surfaceDim = role(colors.surfaceDim()),
+        surfaceContainer = role(colors.surfaceContainer()),
+        surfaceContainerHigh = role(colors.surfaceContainerHigh()),
+        surfaceContainerHighest = role(colors.surfaceContainerHighest()),
+        surfaceContainerLow = role(colors.surfaceContainerLow()),
+        surfaceContainerLowest = role(colors.surfaceContainerLowest()),
+        primaryFixed = role(colors.primaryFixed()),
+        primaryFixedDim = role(colors.primaryFixedDim()),
+        onPrimaryFixed = role(colors.onPrimaryFixed()),
+        onPrimaryFixedVariant = role(colors.onPrimaryFixedVariant()),
+        secondaryFixed = role(colors.secondaryFixed()),
+        secondaryFixedDim = role(colors.secondaryFixedDim()),
+        onSecondaryFixed = role(colors.onSecondaryFixed()),
+        onSecondaryFixedVariant = role(colors.onSecondaryFixedVariant()),
+        tertiaryFixed = role(colors.tertiaryFixed()),
+        tertiaryFixedDim = role(colors.tertiaryFixedDim()),
+        onTertiaryFixed = role(colors.onTertiaryFixed()),
+        onTertiaryFixedVariant = role(colors.onTertiaryFixedVariant()),
+    )
 }
 
 private data class TonalPalette(
@@ -575,6 +510,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        PluginManager.dispatchEvent("activity_destroy", this)
+        PluginRuntimeAccess.detach(this)
         super.onDestroy()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
@@ -590,6 +527,7 @@ class MainActivity : ComponentActivity() {
     private val dolphyViewModel: DolphyViewModel by viewModels { DolphyViewModelFactory(application) }
     private val nfcViewModel: NfcViewModel by viewModels { NfcViewModelFactory(application) }
     private val pendingNavRoute = mutableStateOf<String?>(null)
+    private val pendingPluginUri = mutableStateOf<String?>(null)
 
     private val requestBluetoothPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
         if (permissions.values.any { it }) spamViewModel.onPermissionsGranted() else spamViewModel.onPermissionsDenied()
@@ -597,34 +535,30 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            try {
-                val crashFile = java.io.File(filesDir, "crash_stack.txt")
-                crashFile.writeText("Thread: ${thread.name}\n${android.util.Log.getStackTraceString(throwable)}")
-            } catch (e: Exception) {
-            }
-            previousHandler?.uncaughtException(thread, throwable)
-        }
-
+        PluginRuntimeAccess.attach(this)
+        PluginManager.dispatchEvent("activity_create", this)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        window.statusBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.BLACK
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
 
         DolphyRepository.initializeNewUser(applicationContext)
 
-        requestPermissions()
+        val openedPluginUri = pluginUriFromIntent(intent)
+        if (openedPluginUri == null) requestPermissions()
         nfcViewModel.handleNfcIntent(intent)
         pendingNavRoute.value = intent.getStringExtra(EXTRA_NAV_ROUTE)
+        pendingPluginUri.value = openedPluginUri
 
         window.decorView.post {
             IrRepository.warmIndexInBackground(applicationContext)
             window.decorView.postDelayed({
-                requestShizukuPermissionOnLaunch()
-                requestRootOnLaunch()
+                if (openedPluginUri == null) {
+                    requestShizukuPermissionOnLaunch()
+                    requestRootOnLaunch()
+                }
             }, 2500L)
         }
 
@@ -665,8 +599,8 @@ class MainActivity : ComponentActivity() {
                 val backgroundColor = MaterialTheme.colorScheme.background
 
                 SideEffect {
-                    window.statusBarColor = android.graphics.Color.TRANSPARENT
-                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    window.statusBarColor = backgroundColor.toArgb()
+                    window.navigationBarColor = backgroundColor.toArgb()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         window.isNavigationBarContrastEnforced = false
                     }
@@ -681,7 +615,7 @@ class MainActivity : ComponentActivity() {
                         onSplashComplete = { showSplash = false }
                     )
                 } else {
-                    MainScreen(spamViewModel, dolphyViewModel, nfcViewModel, pendingNavRoute)
+                    MainScreen(spamViewModel, dolphyViewModel, nfcViewModel, pendingNavRoute, pendingPluginUri)
                 }
             }
         }
@@ -689,8 +623,30 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         nfcViewModel.handleNfcIntent(intent)
         pendingNavRoute.value = intent.getStringExtra(EXTRA_NAV_ROUTE)
+        pluginUriFromIntent(intent)?.let { pendingPluginUri.value = it }
+    }
+
+    private fun pluginUriFromIntent(intent: Intent): String? {
+        if (intent.action != Intent.ACTION_VIEW) return null
+        val uri = intent.data ?: return null
+        val name = runCatching {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+            }
+        }.getOrNull()
+        val mime = intent.type ?: runCatching { contentResolver.getType(uri) }.getOrNull()
+        val accepted = name?.endsWith(".dolphyplugin", true) == true ||
+            uri.path?.endsWith(".dolphyplugin", true) == true ||
+            mime.equals("application/x-dolphy-plugin", true)
+        if (!accepted) return null
+        runCatching {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        return uri.toString()
     }
 
     private fun requestPermissions() {
@@ -760,13 +716,24 @@ fun MainScreen(
     spamViewModel: SpamViewModel,
     dolphyViewModel: DolphyViewModel,
     nfcViewModel: NfcViewModel,
-    pendingNavRoute: MutableState<String?>
+    pendingNavRoute: MutableState<String?>,
+    pendingPluginUri: MutableState<String?>,
 ) {
     val navController = rememberNavController()
     val expressiveEnabled by spamViewModel.expressiveEnabled.collectAsState()
     val lastSeenVersion by spamViewModel.lastSeenVersion.collectAsState()
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    var activePluginUri by rememberSaveable { mutableStateOf(pendingPluginUri.value) }
+
+    LaunchedEffect(pendingPluginUri.value) {
+        val uri = pendingPluginUri.value ?: return@LaunchedEffect
+        activePluginUri = uri
+        navController.navigate("plugin_preview") {
+            launchSingleTop = true
+        }
+        pendingPluginUri.value = null
+    }
 
     val currentVersion = remember {
         runCatching {
@@ -776,15 +743,19 @@ fun MainScreen(
 
 
     if (lastSeenVersion != currentVersion) {
-        WelcomeDialog(
-            onDismiss = { spamViewModel.completeWelcomeDialog() },
-            onSubscribe = {
-                runCatching { uriHandler.openUri("https://t.me/Dolphy_app_official") }
-            },
-            onSupport = {
-                runCatching { uriHandler.openUri("https://yoomoney.ru/fundraise/1GT6KC59M2D.260402") }
-            }
-        )
+        if (currentVersion == "2.5") {
+            PluginSystemWarningDialog(onConfirm = { spamViewModel.completeWelcomeDialog() })
+        } else {
+            WelcomeDialog(
+                onDismiss = { spamViewModel.completeWelcomeDialog() },
+                onSubscribe = {
+                    runCatching { uriHandler.openUri("https://t.me/Dolphy_app_official") }
+                },
+                onSupport = {
+                    runCatching { uriHandler.openUri("https://yoomoney.ru/fundraise/1GT6KC59M2D.260402") }
+                }
+            )
+        }
     }
 
     NavHost(
@@ -798,7 +769,14 @@ fun MainScreen(
         composable("main_scaffold") { MainScaffold(spamViewModel, dolphyViewModel, nfcViewModel, navController, pendingNavRoute) }
         composable("accent_color") { AccentColorScreen(spamViewModel) { navController.popBackStack() } }
         composable("theme_mode") { ThemeModeScreen(spamViewModel) { navController.popBackStack() } }
+        composable("plugin_preview") {
+            PluginPreviewScreen(activePluginUri) { navController.popBackStack() }
+        }
     }
+    val safeModeNotice by PluginManager.safeModeNotice.collectAsState()
+    if (safeModeNotice) PluginSafeModeSheet()
+    com.droid.dolphy.plugin.ui.PluginDownloadPermissionHost()
+    DolphyToastHost()
 }
 
 
@@ -816,10 +794,13 @@ fun MainScaffold(
     val accentColor = MaterialTheme.colorScheme.primary
     val animatedBackgroundEnabled by spamViewModel.animatedBackgroundEnabled.collectAsState()
     val expressiveEnabled by spamViewModel.expressiveEnabled.collectAsState()
-    val liquidGlassEnabled by spamViewModel.liquidGlassEnabled.collectAsState()
-    val liquidGlassButtons by spamViewModel.liquidGlassButtons.collectAsState()
-    val liquidGlassTopBars by spamViewModel.liquidGlassTopBars.collectAsState()
-    val liquidGlassNav by spamViewModel.liquidGlassNav.collectAsState()
+    val liquidGlassEnabled = false
+    val liquidGlassButtons = false
+    val liquidGlassTopBars = false
+    val liquidGlassNav = false
+    val fabDestinationRoute by spamViewModel.fabDestinationRoute.collectAsState()
+    val functionDestinations = functionDestinationSections().flatMap { it.second }
+    val fabDestination = functionDestinations.firstOrNull { it.route == fabDestinationRoute }
 
     LaunchedEffect(nfcViewModel) {
         nfcViewModel.openResultEvents.collect { id ->
@@ -841,10 +822,26 @@ fun MainScaffold(
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route.orEmpty()
     val visibleRoute = currentRoute.ifEmpty { "bluetooth" }
+    val sectionTopBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    LaunchedEffect(visibleRoute) {
+        sectionTopBarScrollBehavior.state.heightOffset = 0f
+        sectionTopBarScrollBehavior.state.contentOffset = 0f
+        PluginManager.dispatchEvent("navigation", visibleRoute)
+    }
 
     val bluetoothSelected = visibleRoute == "bluetooth" || visibleRoute.startsWith("ble_section/")
     val settingsSelected = isSettingsSectionRoute(visibleRoute)
     val otherSelected = isOtherSectionRoute(visibleRoute)
+    val usesCollapsingTopBar = visibleRoute !in setOf(
+        "bluetooth",
+        "settings",
+        "other",
+        "ir_storm",
+        "other/ir_storm",
+        "ir_jammer",
+        "other/ir_jammer",
+    )
 
     fun navigateToSectionRoot(route: String) {
         if (currentRoute == route) return
@@ -868,20 +865,25 @@ fun MainScaffold(
         LocalLiquidGlassTopBars provides liquidGlassTopBars,
         LocalLiquidGlassNav provides liquidGlassNav,
         LocalLiquidGlassBackdrop provides controlsBackdrop,
-        LocalLiquidGlassContentBackdrop provides if (liquidGlassEnabled) contentBackdrop else null,
+        LocalLiquidGlassContentBackdrop provides null,
+        LocalSectionTopBarScrollBehavior provides sectionTopBarScrollBehavior,
     ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .then(
+                if (usesCollapsingTopBar) {
+                    Modifier.nestedScroll(sectionTopBarScrollBehavior.nestedScrollConnection)
+                } else {
+                    Modifier
+                }
+            )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(
-                    if (liquidGlassEnabled) Modifier.layerBackdrop(contentBackdrop)
-                    else Modifier
-                )
+                .background(MaterialTheme.colorScheme.background)
         ) {
         if (animatedBackgroundEnabled) {
             MatrixIconField(
@@ -903,11 +905,27 @@ fun MainScaffold(
             )
         }
 
+        val density = LocalDensity.current
+        val topBlurHeight = with(density) {
+            WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx() * 1.15f
+        }
+        val bottomBlurHeight = with(density) { 150.dp.toPx() }
+
         NavHost(
             navController = screenNavController,
             startDestination = "bluetooth",
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .progressiveBlur(
+                    blurRadius = 40f,
+                    height = topBlurHeight,
+                    direction = BlurDirection.TOP
+                )
+                .progressiveBlur(
+                    blurRadius = 40f,
+                    height = bottomBlurHeight,
+                    direction = BlurDirection.BOTTOM
+                ),
             enterTransition = {
                 rootSectionEnterTransition(
                     initialRoute = initialState.destination.route.orEmpty(),
@@ -1230,6 +1248,10 @@ fun MainScaffold(
                 PluginManagerScreen(navController = screenNavController)
             }
 
+            composable("plugin_security") {
+                com.droid.dolphy.plugin.ui.PluginSecurityScreen(navController = screenNavController)
+            }
+
             composable("plugin_about") {
                 PluginAboutScreen(navController = screenNavController)
             }
@@ -1237,59 +1259,150 @@ fun MainScaffold(
             composable("plugin_install_helper") {
                 PluginManagerScreen(navController = screenNavController)
             }
-        }
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-        ) {
-            if (liquidGlassEnabled && liquidGlassNav) {
-                LiquidGlassBottomNavigation(
-                    backdrop = contentBackdrop,
-                    bluetoothSelected = bluetoothSelected,
-                    otherSelected = otherSelected,
-                    settingsSelected = settingsSelected,
-                    onBluetoothClick = { navigateToSectionRoot("bluetooth") },
-                    onOtherClick = { navigateToSectionRoot("other") },
-                    onSettingsClick = { navigateToSectionRoot("settings") },
-                )
-            } else {
-                NavigationBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = MaterialTheme.colorScheme.surface
-                ) {
-                    val itemColors = NavigationBarItemDefaults.colors(
-                        indicatorColor = accentColor.copy(alpha = 0.2f),
-                        selectedIconColor = accentColor,
-                        selectedTextColor = accentColor
-                    )
-                    NavigationBarItem(
-                        selected = bluetoothSelected,
-                        onClick = { navigateToSectionRoot("bluetooth") },
-                        icon = { Icon(Icons.Default.Bluetooth, contentDescription = "Bluetooth") },
-                        label = { Text("Bluetooth") },
-                        colors = itemColors
-                    )
-                    NavigationBarItem(
-                        selected = otherSelected,
-                        onClick = { navigateToSectionRoot("other") },
-                        icon = { Icon(Icons.Default.Extension, contentDescription = "Other") },
-                        label = { Text("Other") },
-                        colors = itemColors
-                    )
-                    NavigationBarItem(
-                        selected = settingsSelected,
-                        onClick = { navigateToSectionRoot("settings") },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings") },
-                        colors = itemColors
-                    )
+            composable("plugin_file_preview") {
+                val pluginPreviewUri = screenNavController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>("plugin_preview_uri")
+                PluginPreviewScreen(pluginPreviewUri) {
+                    screenNavController.popBackStack()
                 }
             }
         }
+        PluginScreenExtensionHost(visibleRoute, screenNavController)
+        }
+
+        AnimatedVisibility(
+            visible = true,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            PluginSurfaceExtensionHost("bottom_bar", screenNavController) {
+                DolphyUnifiedBottomBar(
+                    bluetoothSelected = bluetoothSelected,
+                    modulesSelected = otherSelected,
+                    settingsSelected = settingsSelected,
+                    onBluetoothClick = { navigateToSectionRoot("bluetooth") },
+                    onModulesClick = { navigateToSectionRoot("other") },
+                    onSettingsClick = { navigateToSectionRoot("settings") },
+                    fabIcon = fabDestination?.icon ?: Icons.Default.Extension,
+                    fabTitle = fabDestination?.title ?: stringResource(R.string.nav_modules),
+                    onFabClick = {
+                        if (fabDestination == null) {
+                            navigateToSectionRoot("other")
+                        } else {
+                            openFunctionDestination(fabDestination, screenNavController, context)
+                        }
+                    },
+                )
+            }
+        }
     }
+    }
+}
+
+private data class DolphyNavigationItem(
+    val title: String,
+    val icon: ImageVector,
+    val selected: Boolean,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun DolphyUnifiedBottomBar(
+    bluetoothSelected: Boolean,
+    modulesSelected: Boolean,
+    settingsSelected: Boolean,
+    onBluetoothClick: () -> Unit,
+    onModulesClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    fabIcon: ImageVector,
+    fabTitle: String,
+    onFabClick: () -> Unit,
+) {
+    val items = listOf(
+        DolphyNavigationItem(stringResource(R.string.nav_bluetooth), Icons.Default.Bluetooth, bluetoothSelected, onBluetoothClick),
+        DolphyNavigationItem(stringResource(R.string.nav_modules), Icons.Default.Extension, modulesSelected, onModulesClick),
+        DolphyNavigationItem(stringResource(R.string.nav_settings), Icons.Default.Settings, settingsSelected, onSettingsClick),
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 16.dp)
+            .navigationBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        HorizontalFloatingToolbar(
+            expanded = true,
+            floatingActionButton = {
+                FloatingToolbarDefaults.VibrantFloatingActionButton(
+                    onClick = onFabClick,
+                    containerColor = MaterialTheme.colorScheme.primaryFixed,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+                ) {
+                    Icon(
+                        imageVector = fabIcon,
+                        contentDescription = fabTitle,
+                    )
+                }
+            },
+            modifier = Modifier.widthIn(max = 480.dp),
+            colors = FloatingToolbarDefaults.standardFloatingToolbarColors(
+                toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        ) {
+            items.forEach { item ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = expandHorizontally(
+                        expandFrom = Alignment.CenterHorizontally,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    ) + fadeIn(),
+                    exit = shrinkHorizontally(
+                        shrinkTowards = Alignment.CenterHorizontally,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    ) + fadeOut(),
+                ) {
+                    val shape = RoundedCornerShape(24.dp)
+                    val containerColor by animateColorAsState(
+                        targetValue = if (item.selected) MaterialTheme.colorScheme.primaryFixed else MaterialTheme.colorScheme.surfaceContainer,
+                        label = "bottom_bar_container",
+                    )
+                    val contentColor by animateColorAsState(
+                        targetValue = if (item.selected) MaterialTheme.colorScheme.onPrimaryFixed else MaterialTheme.colorScheme.onSurfaceVariant,
+                        label = "bottom_bar_content",
+                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(shape)
+                            .background(containerColor, shape)
+                            .clickable(onClick = item.onClick)
+                            .padding(horizontal = if (item.selected) 16.dp else 12.dp, vertical = 12.dp)
+                            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            tint = contentColor,
+                        )
+                        if (item.selected) {
+                            Spacer(Modifier.size(8.dp))
+                            Text(
+                                text = item.title,
+                                color = contentColor,
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1367,7 +1480,7 @@ private fun rootSectionIndex(route: String): Int? {
 
 private fun isSettingsSectionRoute(route: String): Boolean {
 
-    if (route == "plugin_manager" ||
+    if (route == "plugin_manager" || route == "plugin_security" ||
         route == "plugin_about" ||
         route == "plugin_install_helper"
     ) {
@@ -1384,7 +1497,7 @@ private fun isOtherSectionRoute(route: String): Boolean {
 
     if (route.startsWith("plugin/")) return true
 
-    if (route == "plugin_manager" || route == "plugin_about" || route == "plugin_install_helper") {
+    if (route == "plugin_manager" || route == "plugin_security" || route == "plugin_about" || route == "plugin_install_helper") {
         return false
     }
 
@@ -1527,6 +1640,7 @@ fun BluetoothContainerScreen(viewModel: SpamViewModel, navController: NavControl
     val savedTabIndex by viewModel.bleTabIndex.collectAsState()
     var tabIndex by remember { mutableIntStateOf(savedTabIndex) }
     val tabs = listOf("All", "BLE", "Advert")
+    val tabRoutes = listOf("all", "ble", "advert")
     var showBluetoothDialog by remember { mutableStateOf(false) }
     val accentColor = MaterialTheme.colorScheme.primary
 
@@ -1542,7 +1656,7 @@ fun BluetoothContainerScreen(viewModel: SpamViewModel, navController: NavControl
                 )
             },
             confirmButton = {
-                Button(onClick = {
+                AccentButton(onClick = {
                     val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
                     context.startActivity(intent)
                     showBluetoothDialog = false
@@ -1551,7 +1665,7 @@ fun BluetoothContainerScreen(viewModel: SpamViewModel, navController: NavControl
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showBluetoothDialog = false }) {
+                AccentButton(onClick = { showBluetoothDialog = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -1569,7 +1683,6 @@ fun BluetoothContainerScreen(viewModel: SpamViewModel, navController: NavControl
     Box(modifier = Modifier.fillMaxSize()) {
 
         MaterialBackground(accentColor = accentColor) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1577,27 +1690,74 @@ fun BluetoothContainerScreen(viewModel: SpamViewModel, navController: NavControl
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            MaterialTabRow(
-                selectedTabIndex = tabIndex,
-                tabs = tabs,
-                onTabSelected = {
-                    tabIndex = it
-                    viewModel.setBleTabIndex(it)
-                },
+            SingleChoiceSegmentedButtonRow(
                 modifier = Modifier
                     .padding(top = 16.dp, start = 16.dp, end = 16.dp)
-                    .fillMaxWidth(),
-                accentColor = accentColor
-            )
+                    .fillMaxWidth()
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    SegmentedButton(
+                        selected = tabIndex == index,
+                        onClick = {
+                            val decision = PluginBluetoothHooks.action(
+                                "bluetooth.section.select",
+                                JSONObject().put("current", tabRoutes[tabIndex]).put("section", tabRoutes[index]).put("index", index),
+                            )
+                            if (!decision.cancelled && !decision.handled) {
+                                val changed = runCatching { JSONObject(decision.payloadJson) }.getOrNull()
+                                val requested = changed?.optString("section")?.lowercase()
+                                val effectiveIndex = tabRoutes.indexOf(requested).takeIf { it >= 0 }
+                                    ?: changed?.optInt("index", index)?.coerceIn(0, tabs.lastIndex)
+                                    ?: index
+                                tabIndex = effectiveIndex
+                                viewModel.setBleTabIndex(effectiveIndex)
+                            }
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index, tabs.size),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primaryFixed,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+                            activeBorderColor = MaterialTheme.colorScheme.primaryFixed,
+                            inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        ),
+                        icon = {},
+                        label = {
+                            Text(
+                                text = title,
+                                fontWeight = if (tabIndex == index) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
                 when (tabIndex) {
-                    0 -> AllSpamScreen(viewModel)
-                    1 -> BleSpamScreen(viewModel) { section ->
-                        navController.navigate("ble_section/${section.route}")
+                    0 -> Box(Modifier.fillMaxSize()) {
+                        AllSpamScreen(viewModel)
+                        PluginScreenExtensionHost("bluetooth/all", navController)
                     }
-                    2 -> AdvertiseSpamScreen(viewModel)
+                    1 -> Box(Modifier.fillMaxSize()) {
+                        BleSpamScreen(viewModel) { section ->
+                            val decision = PluginBluetoothHooks.action(
+                                "bluetooth.ble.section.open",
+                                JSONObject().put("section", section.route),
+                            )
+                            if (!decision.cancelled && !decision.handled) {
+                                val changed = runCatching { JSONObject(decision.payloadJson) }.getOrNull()
+                                val route = changed?.optString("section")?.ifBlank { section.route } ?: section.route
+                                navController.navigate("ble_section/$route")
+                            }
+                        }
+                        PluginScreenExtensionHost("bluetooth/ble", navController)
+                    }
+                    2 -> Box(Modifier.fillMaxSize()) {
+                        AdvertiseSpamScreen(viewModel)
+                        PluginScreenExtensionHost("bluetooth/advert", navController)
+                    }
                 }
         }
         }
@@ -1749,7 +1909,7 @@ private fun AdvertiseSpamScreen(viewModel: SpamViewModel) {
             title = { Text(stringResource(R.string.ble_device_actions)) },
             text = { Text(preset.name) },
             confirmButton = {
-                TextButton(onClick = {
+                AccentButton(onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     editingPreset = preset
                     actionPreset = null
@@ -1760,7 +1920,7 @@ private fun AdvertiseSpamScreen(viewModel: SpamViewModel) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
+                AccentButton(onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.Reject)
                     viewModel.deleteAdvertisePreset(preset.id)
                     actionPreset = null
@@ -1877,7 +2037,7 @@ private fun AdvertiseSpamScreen(viewModel: SpamViewModel) {
             }
         }
 
-        Button(
+        AccentButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 showAddDialog = true
@@ -1970,14 +2130,14 @@ private fun AdvertiseAddDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
+            AccentButton(onClick = {
                 onAdd(name, companyCode, payload, randomizeMac, interval)
             }) {
                 Text(confirmText)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AccentButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -2308,6 +2468,8 @@ fun BleSpamScreen(viewModel: SpamViewModel, onSectionClick: (BleSection) -> Unit
     val bottomScrollPadding = 220.dp
     val spammingStates by viewModel.spammingStates.collectAsState()
     val kitchenSinkActive by viewModel.kitchenSinkActive.collectAsState()
+    val pluginBleModes by PluginBleModeRegistry.modes.collectAsState()
+    val activePluginBleModes by PluginBleModeRegistry.active.collectAsState()
 
     val bleDelay by viewModel.bleDelay.collectAsState()
     val accent = MaterialTheme.colorScheme.primary
@@ -2512,6 +2674,32 @@ fun BleSpamScreen(viewModel: SpamViewModel, onSectionClick: (BleSection) -> Unit
             )
         }
 
+        if (pluginBleModes.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.ble_plugin_modes),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            items(pluginBleModes, key = { "${it.pluginId}::${it.modeId}" }) { mode ->
+                val modeKey = "${mode.pluginId}::${mode.modeId}"
+                AnimatedBleButton(
+                    text = mode.title,
+                    isActive = modeKey in activePluginBleModes,
+                    onClick = {
+                        ensureBluetoothEnabled {
+                            PluginBleModeRegistry.toggle(mode.pluginId, mode.modeId, bleDelay)
+                        }
+                    },
+                    blinkIntervalMs = bleDelay.toLong(),
+                    modifier = Modifier.fillMaxWidth(),
+                    fullyRounded = true,
+                )
+            }
+        }
+
         item {
             Text(
                 text = "All in one",
@@ -2597,14 +2785,14 @@ fun WelcomeDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
+                AccentButton(
                     onClick = onSubscribe,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(stringResource(R.string.welcome_dialog_btn_tg))
                 }
-                Button(
+                AccentButton(
                     onClick = onSupport,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -2613,7 +2801,7 @@ fun WelcomeDialog(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.welcome_dialog_btn_support))
                 }
-                OutlinedButton(
+                AccentButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -2628,14 +2816,68 @@ fun WelcomeDialog(
 }
 
 @Composable
+fun PluginSystemWarningDialog(onConfirm: () -> Unit) {
+    var secondsRemaining by remember { mutableIntStateOf(10) }
+
+    LaunchedEffect(Unit) {
+        while (secondsRemaining > 0) {
+            delay(1000)
+            secondsRemaining--
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = {},
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Security,
+                contentDescription = null,
+                modifier = Modifier.size(36.dp),
+            )
+        },
+        title = {
+            Text(
+                text = stringResource(R.string.plugin_system_warning_title),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.plugin_system_warning_text),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        },
+        confirmButton = {
+            AccentButton(
+                onClick = onConfirm,
+                enabled = secondsRemaining == 0,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Text(
+                    if (secondsRemaining > 0) {
+                        stringResource(R.string.plugin_system_warning_countdown, secondsRemaining)
+                    } else {
+                        stringResource(R.string.welcome_dialog_btn_ok)
+                    }
+                )
+            }
+        },
+        shape = RoundedCornerShape(28.dp),
+    )
+}
+
+@Composable
 fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewModel, navController: NavController) {
     val bottomScrollPadding = 180.dp
     val isDarkTheme by spamViewModel.isDarkTheme.collectAsState()
     val accentColor = MaterialTheme.colorScheme.primary
+    val selectedAccentColor by spamViewModel.accentColor.collectAsState()
     val flipperFontEnabled by spamViewModel.flipperFontEnabled.collectAsState()
     val uiScale by spamViewModel.uiScale.collectAsState()
     val cyclicDolphinAnimationEnabled by spamViewModel.cyclicDolphinAnimationEnabled.collectAsState()
-    val appIconId by spamViewModel.appIconId.collectAsState()
     val dolphyState by dolphyViewModel.dolphyState.collectAsState()
     val context = LocalContext.current
     var showAuthDialog by remember { mutableStateOf(false) }
@@ -2676,7 +2918,6 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                 }
             }
 
-
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)) {
                     M3SegmentedListSectionHeader(title = "PASSPORT")
@@ -2695,16 +2936,15 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)) {
-                    M3SegmentedListSectionHeader(title = stringResource(R.string.settings_interface).uppercase())
+                    M3SegmentedListSectionHeader(title = stringResource(R.string.settings_general).uppercase())
 
-                    val interfaceItems = 8
-                    val liquidGlassEnabled by spamViewModel.liquidGlassEnabled.collectAsState()
+                    val generalItems = 3
 
 
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(0, interfaceItems),
+                        shape = getSegmentedShape(0, generalItems),
                         contentPadding = 16.dp
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2723,19 +2963,22 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
-                            ConnectedButtonGroup(
-                                options = listOf(
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                listOf(
                                     stringResource(R.string.language_russian) to "ru",
-                                    "English" to "en"
-                                ),
-                                selectedValue = appLanguage,
-                                onValueSelected = { lang ->
-                                    spamViewModel.setAppLanguage(lang)
-                                    applyInAppLocale(context)
-                                },
-                                accentColor = accentColor,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                                    "English" to "en",
+                                ).forEachIndexed { index, (label, language) ->
+                                    SegmentedButton(
+                                        selected = appLanguage == language,
+                                        onClick = {
+                                            spamViewModel.setAppLanguage(language)
+                                            applyInAppLocale(context)
+                                        },
+                                        shape = SegmentedButtonDefaults.itemShape(index, 2),
+                                        label = { Text(label) },
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -2744,7 +2987,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(1, interfaceItems),
+                        shape = getSegmentedShape(1, generalItems),
                         contentPadding = 0.dp
                     ) {
                         Row(
@@ -2770,11 +3013,39 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                         }
                     }
 
+                    MaterialCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        accentColor = accentColor,
+                        shape = getSegmentedShape(2, generalItems),
+                        contentPadding = 0.dp,
+                    ) {
+                        SettingsItem(onClick = { navController.navigate("plugin_manager") }) {
+                            Icon(Icons.Default.Extension, null, tint = accentColor, modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.settings_plugins), style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    stringResource(R.string.settings_plugins_summary),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)) {
+                    M3SegmentedListSectionHeader(title = stringResource(R.string.settings_personalisation).uppercase())
+                    val liquidGlassEnabled by spamViewModel.liquidGlassEnabled.collectAsState()
+                    val interfaceItems = if (liquidGlassEnabled) 6 else 5
 
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(2, interfaceItems),
+                        shape = getSegmentedShape(0, interfaceItems),
                         contentPadding = 0.dp
                     ) {
                         Row(
@@ -2797,7 +3068,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(3, interfaceItems),
+                        shape = getSegmentedShape(1, interfaceItems),
                         contentPadding = 10.dp
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)) {
@@ -2839,7 +3110,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(4, interfaceItems),
+                        shape = getSegmentedShape(2, interfaceItems),
                         contentPadding = 0.dp
                     ) {
                         Row(
@@ -2869,7 +3140,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(5, interfaceItems),
+                        shape = getSegmentedShape(3, interfaceItems),
                         contentPadding = 0.dp
                     ) {
                         Box {
@@ -2913,7 +3184,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(6, interfaceItems),
+                        shape = getSegmentedShape(4, interfaceItems),
                         contentPadding = 12.dp,
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2926,7 +3197,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                             AccentColorCarousel(
                                 options = colorOptions,
                                 isAdaptiveColor = isAdaptiveColor,
-                                currentAccent = accentColor,
+                                currentAccent = selectedAccentColor,
                                 onSelect = { option ->
                                     if (option.isAdaptive) {
                                         spamViewModel.setAdaptiveColor(true)
@@ -2938,6 +3209,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                         }
                     }
 
+                    if (liquidGlassEnabled) {
                     val liquidGlassButtonsPref by spamViewModel.liquidGlassButtons.collectAsState()
                     val liquidGlassTopBarsPref by spamViewModel.liquidGlassTopBars.collectAsState()
                     val liquidGlassNavPref by spamViewModel.liquidGlassNav.collectAsState()
@@ -2946,7 +3218,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
                         accentColor = accentColor,
-                        shape = getSegmentedShape(7, interfaceItems),
+                        shape = getSegmentedShape(5, interfaceItems),
                         contentPadding = 0.dp
                     ) {
                         Column {
@@ -3056,23 +3328,16 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                             }
                         }
                     }
+                    }
                 }
             }
 
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)) {
-                    Text(
-                        text = stringResource(R.string.settings_general).uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
-                    )
-
                     val sensitivityMove by spamViewModel.hidTouchpadSensitivityMove.collectAsState()
                     val sensitivityScroll by spamViewModel.hidTouchpadSensitivityScroll.collectAsState()
-                    val generalCount = 3
+                    val generalCount = 2
 
                     MaterialCard(
                         modifier = Modifier.fillMaxWidth(),
@@ -3116,68 +3381,15 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                         }
                     }
 
-                    MaterialCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        accentColor = accentColor,
-                        shape = getSegmentedShape(2, generalCount),
-                        contentPadding = 0.dp
-                    ) {
-                        SettingsItem(onClick = { navController.navigate("plugin_manager") }) {
-                            Icon(Icons.Default.Extension, null, tint = accentColor, modifier = Modifier.size(22.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(stringResource(R.string.settings_plugins), style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    stringResource(R.string.settings_plugins_summary),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
                 }
             }
 
+            item {
+                PluginSettingsSections(navController)
+            }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)) {
-                    Text(
-                        text = stringResource(R.string.settings_app_icon).uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
-                    )
-                    MaterialCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        accentColor = accentColor,
-                        shape = RoundedCornerShape(28.dp),
-                        contentPadding = 16.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            appIconOptions.forEach { option ->
-                                val selected = option.id == appIconId
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { spamViewModel.setAppIcon(option.id) }.padding(4.dp)
-                                ) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(model = option.drawableRes),
-                                        contentDescription = option.title,
-                                        modifier = Modifier.size(56.dp).border(width = if(selected) 2.dp else 1.dp, color = if(selected) accentColor else MaterialTheme.colorScheme.outlineVariant, shape = RoundedCornerShape(12.dp)).padding(4.dp),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(text = option.title, style = MaterialTheme.typography.labelSmall, color = if(selected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
-                }
+                NavigationCustomizationSections(spamViewModel)
             }
 
 
@@ -3610,6 +3822,7 @@ fun BleSectionScreen(section: BleSection, onBack: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 fun AccentColorScreen(viewModel: SpamViewModel, onNavigateBack: () -> Unit) {
     val accentColor = MaterialTheme.colorScheme.primary
+    val selectedAccentColor by viewModel.accentColor.collectAsState()
     val isAdaptive by viewModel.isAdaptiveColor.collectAsState()
     val context = LocalContext.current
 
@@ -3668,7 +3881,7 @@ fun AccentColorScreen(viewModel: SpamViewModel, onNavigateBack: () -> Unit) {
         ) {
             items(themes.size) { index ->
                 val theme = themes[index]
-                val isSelected = if (theme.isAdaptive) isAdaptive else (!isAdaptive && accentColor.toArgb() == theme.accent.toArgb())
+                val isSelected = if (theme.isAdaptive) isAdaptive else (!isAdaptive && selectedAccentColor.toArgb() == theme.accent.toArgb())
 
 
                 MaterialCard(
@@ -3676,7 +3889,7 @@ fun AccentColorScreen(viewModel: SpamViewModel, onNavigateBack: () -> Unit) {
                     accentColor = theme.accent,
                     cornerRadius = 12.dp
                 ) {
-                    Button(
+                    AccentButton(
                         onClick = {
                             vibrate(context)
                             if (theme.isAdaptive) {
@@ -3690,7 +3903,7 @@ fun AccentColorScreen(viewModel: SpamViewModel, onNavigateBack: () -> Unit) {
                             .height(60.dp)
                             .border(if (isSelected) 3.dp else 0.dp, if (isSelected) theme.accent else Color.Transparent, RoundedCornerShape(12.dp)),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface
                         )
                     ) {
@@ -3782,7 +3995,7 @@ fun ThemeModeScreen(viewModel: SpamViewModel, onNavigateBack: () -> Unit) {
                             accentColor = if (isSelected) accentColor else MaterialTheme.colorScheme.surfaceVariant,
                             cornerRadius = 12.dp
                         ) {
-                            Button(
+                            AccentButton(
                                 onClick = {
                                     vibrate(context)
                                     viewModel.setThemeMode(option.mode)
@@ -3796,7 +4009,7 @@ fun ThemeModeScreen(viewModel: SpamViewModel, onNavigateBack: () -> Unit) {
                                         RoundedCornerShape(12.dp)
                                     ),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = MaterialTheme.colorScheme.onSurface
                                 )
                             ) {
@@ -3893,7 +4106,7 @@ fun AnimatedBleButton(
             backdrop = LocalLiquidGlassBackdrop.current!!,
             modifier = modifier.fillMaxWidth(),
             tint = pulseTint,
-            surfaceColor = pulseTint.copy(alpha = 0.94f),
+            surfaceColor = pulseTint,
         ) {
             TintedFrameAnimation(
                 frames = if (isActive) {
@@ -3939,7 +4152,7 @@ fun AnimatedBleButton(
                     activeColor.copy(alpha = 1f - (1f - 0.6f) * progress)
                 )
             )
-            Button(
+            AccentButton(
                 onClick = {
                     vibrate(context)
                     onClick()
@@ -3947,7 +4160,7 @@ fun AnimatedBleButton(
                 modifier = modifier.height(56.dp).scale(scale),
                 shape = buttonShape,
                 interactionSource = interactionSource,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentPadding = PaddingValues()
             ) {
                 Box(
@@ -3972,7 +4185,7 @@ fun AnimatedBleButton(
                 }
             }
         } else {
-            Button(
+            AccentButton(
                 onClick = {
                     vibrate(context)
                     onClick()
@@ -4092,7 +4305,7 @@ fun DolphyScreen(viewModel: DolphyViewModel) {
                 )
             },
             confirmButton = {
-                Button(onClick = { showInfoDialog = false }) {
+                AccentButton(onClick = { showInfoDialog = false }) {
                     Text(stringResource(R.string.ok))
                 }
             },
@@ -4122,7 +4335,7 @@ fun DolphyScreen(viewModel: DolphyViewModel) {
                 }
             },
             confirmButton = {
-                Button(
+                AccentButton(
                     onClick = {
                         DolphyRepository.setDolphinName(context, renameInput)
                         showRenameDialog = false
@@ -4133,7 +4346,7 @@ fun DolphyScreen(viewModel: DolphyViewModel) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) {
+                AccentButton(onClick = { showRenameDialog = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -4169,13 +4382,7 @@ fun DolphyScreen(viewModel: DolphyViewModel) {
                 modifier = Modifier
                     .matchParentSize()
                     .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.58f),
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.42f),
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.62f)
-                            )
-                        )
+                        MaterialTheme.colorScheme.surfaceContainerHigh
                     )
             )
 
@@ -4329,7 +4536,7 @@ fun SettingsItem(onClick: (() -> Unit)? = null, content: @Composable RowScope.()
     val modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -4357,101 +4564,23 @@ fun ConnectedButtonGroup(
     accentColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    if (isLiquidGlassChrome() && options.isNotEmpty()) {
-        val selectedIndex = options.indexOfFirst { it.second == selectedValue }
-            .let { if (it < 0) 0 else it }
-        val labelStyle = MaterialTheme.typography.labelSmall.copy(color = Color.White)
-        LiquidBottomTabs(
-            selectedTabIndex = { selectedIndex },
-            onTabSelected = { index ->
-                options.getOrNull(index)?.second?.let(onValueSelected)
-            },
-            backdrop = LocalLiquidGlassBackdrop.current!!,
-            tabsCount = options.size,
-            modifier = modifier.fillMaxWidth(),
-            barHeight = 46.dp,
-        ) {
-            options.forEach { (label, value) ->
-                LiquidBottomTab(onClick = { onValueSelected(value) }) {
+    ButtonGroup(modifier = modifier.fillMaxWidth()) {
+        options.forEach { (label, value) ->
+            toggleableItem(
+                selectedValue == value,
+                label,
+                { if (it) onValueSelected(value) },
+                {
                     Text(
                         text = label,
-                        style = labelStyle,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selectedValue == value) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1,
                     )
-                }
-            }
-        }
-    } else {
-        val outerR = 24.dp
-        val innerR = 8.dp
-        val gap = 2.dp
-        val unselectedContainer = lerp(colorScheme.surfaceContainerHighest, Color.Black, 0.22f)
-
-        Row(
-            modifier = modifier.height(48.dp),
-            horizontalArrangement = Arrangement.spacedBy(gap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            options.forEachIndexed { index, (label, value) ->
-                val selected = selectedValue == value
-                val count = options.size
-                val shape = when {
-                    selected || count == 1 -> RoundedCornerShape(outerR)
-                    index == 0 -> RoundedCornerShape(
-                        topStart = outerR,
-                        bottomStart = outerR,
-                        topEnd = innerR,
-                        bottomEnd = innerR,
-                    )
-                    index == count - 1 -> RoundedCornerShape(
-                        topStart = innerR,
-                        bottomStart = innerR,
-                        topEnd = outerR,
-                        bottomEnd = outerR,
-                    )
-                    else -> RoundedCornerShape(innerR)
-                }
-                val weight by animateFloatAsState(
-                    targetValue = if (selected) 1.35f else 1f,
-                    animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
-                    label = "cbg_weight_$index",
-                )
-                val container by animateColorAsState(
-                    targetValue = if (selected) accentColor else unselectedContainer,
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
-                    label = "cbg_bg_$index",
-                )
-                val content by animateColorAsState(
-                    targetValue = if (selected) Color.White else colorScheme.onSurface,
-                    label = "cbg_fg_$index",
-                )
-
-                Surface(
-                    onClick = { onValueSelected(value) },
-                    modifier = Modifier
-                        .weight(weight)
-                        .fillMaxHeight(),
-                    shape = shape,
-                    color = container,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 0.dp,
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = content,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                            maxLines = 1,
-                        )
-                    }
-                }
-            }
+                },
+                1f,
+                true,
+            )
         }
     }
 }
@@ -4629,7 +4758,7 @@ fun GradientButton(
             backdrop = LocalLiquidGlassBackdrop.current!!,
             modifier = modifier.fillMaxWidth(),
             tint = tint,
-            surfaceColor = tint.copy(alpha = 0.94f),
+            surfaceColor = tint,
         ) {
             Text(text = text, fontWeight = FontWeight.Bold, color = Color.Black)
         }
@@ -4662,7 +4791,7 @@ fun GradientButton(
         )
     }
 
-    Button(
+    AccentButton(
         onClick = {
             vibrate(context)
             onClick()
@@ -4670,7 +4799,7 @@ fun GradientButton(
         modifier = modifier,
         enabled = enabled,
         shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.Black),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface),
         contentPadding = PaddingValues()
     ) {
         Box(
@@ -4706,7 +4835,7 @@ fun ModernGradientButton(
             backdrop = LocalLiquidGlassBackdrop.current!!,
             modifier = modifier.fillMaxWidth(),
             tint = tint,
-            surfaceColor = tint.copy(alpha = 0.94f),
+            surfaceColor = tint,
         ) {
             Text(
                 text = text,
@@ -4774,7 +4903,7 @@ fun FeatureCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = CardBackgroundDark.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -4902,7 +5031,7 @@ fun DeviceSelectionButton(viewModel: SpamViewModel, selectedDevice: BluetoothDev
                     }
                 }
             },
-            confirmButton = {}, dismissButton = { Button(onClick = { showDeviceDialog = false }) { Text(stringResource(R.string.cancel)) } },
+            confirmButton = {}, dismissButton = { AccentButton(onClick = { showDeviceDialog = false }) { Text(stringResource(R.string.cancel)) } },
             containerColor = MaterialTheme.colorScheme.surface
         )
     }
@@ -5028,7 +5157,7 @@ fun OnboardingSetupScreen(viewModel: SpamViewModel) {
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = CardBackgroundDark.copy(alpha = 0.8f)
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -5202,9 +5331,7 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     val flipperFontScale: StateFlow<Float> = _flipperFontScale
     private val _uiScale = MutableStateFlow(prefs.getFloat("ui_scale", 0.9f).coerceIn(0.8f, 1.2f))
     val uiScale: StateFlow<Float> = _uiScale
-    private val _appIconId = MutableStateFlow(prefs.getString("app_icon_id", "default") ?: "default")
-    val appIconId: StateFlow<String> = _appIconId
-    private val _liquidGlassEnabled = MutableStateFlow(prefs.getBoolean("liquid_glass_enabled", false))
+    private val _liquidGlassEnabled = MutableStateFlow(false)
     val liquidGlassEnabled: StateFlow<Boolean> = _liquidGlassEnabled
     private val _liquidGlassButtons = MutableStateFlow(prefs.getBoolean("liquid_glass_buttons", true))
     val liquidGlassButtons: StateFlow<Boolean> = _liquidGlassButtons
@@ -5224,6 +5351,8 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     val cyclicDolphinAnimationEnabled: StateFlow<Boolean> = _cyclicDolphinAnimationEnabled
     private val _quickStartupEnabled = MutableStateFlow(prefs.getBoolean("quick_startup_enabled", false))
     val quickStartupEnabled: StateFlow<Boolean> = _quickStartupEnabled
+    private val _fabDestinationRoute = MutableStateFlow(prefs.getString("fab_destination_route", "other") ?: "other")
+    val fabDestinationRoute: StateFlow<String> = _fabDestinationRoute
 
     private val _hidTouchpadSensitivityMove = MutableStateFlow(prefs.getFloat("hid_touchpad_sensitivity_move", 1.5f))
     val hidTouchpadSensitivityMove: StateFlow<Float> = _hidTouchpadSensitivityMove
@@ -5325,28 +5454,9 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
         _uiScale.value = stepped
     }
 
-    fun setAppIcon(iconId: String) {
-        val selected = appIconOptions.firstOrNull { it.id == iconId } ?: return
-        val pm = application.packageManager
-        appIconOptions.forEach { option ->
-            val state = if(option.id == selected.id) {
-                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-            } else {
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-            }
-            pm.setComponentEnabledSetting(
-                ComponentName(application, option.aliasClassName),
-                state,
-                PackageManager.DONT_KILL_APP
-            )
-        }
-        prefs.edit { putString("app_icon_id", selected.id) }
-        _appIconId.value = selected.id
-    }
-
     fun setLiquidGlassEnabled(enabled: Boolean) {
-        prefs.edit { putBoolean("liquid_glass_enabled", enabled) }
-        _liquidGlassEnabled.value = enabled
+        prefs.edit { putBoolean("liquid_glass_enabled", false) }
+        _liquidGlassEnabled.value = false
     }
 
     fun setLiquidGlassButtons(enabled: Boolean) {
@@ -5390,6 +5500,11 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     fun setQuickStartupEnabled(enabled: Boolean) {
         prefs.edit { putBoolean("quick_startup_enabled", enabled) }
         _quickStartupEnabled.value = enabled
+    }
+
+    fun setFabDestinationRoute(route: String) {
+        prefs.edit { putString("fab_destination_route", route) }
+        _fabDestinationRoute.value = route
     }
 
     fun setHidTouchpadSensitivityMove(value: Float) {
@@ -5546,7 +5661,6 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
 
     init {
         BleSpamRuntime.init(application)
-        runCatching { setAppIcon(_appIconId.value) }
         checkBluetoothState()
         application.registerReceiver(bluetoothStateReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
         val discoveryFilter = IntentFilter().apply {
@@ -5567,10 +5681,23 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     fun onPermissionsGranted() { _hasPermissions.value = true; checkBluetoothState() }
     fun onPermissionsDenied() { _hasPermissions.value = false }
     fun onDeviceNameChanged(newName: String) { _deviceName.value = newName }
-    fun onSliderValueChanged(newValue: Float) { _sliderValue.value = newValue }
-    fun selectDevice(device: BluetoothDevice) { _selectedDevice.value = device }
+    fun onSliderValueChanged(newValue: Float) {
+        val decision = PluginBluetoothHooks.action("bluetooth.all.interval.change", JSONObject().put("intervalMs", newValue))
+        if (decision.cancelled || decision.handled) return
+        _sliderValue.value = runCatching { JSONObject(decision.payloadJson).optDouble("intervalMs", newValue.toDouble()).toFloat() }
+            .getOrDefault(newValue).coerceIn(0f, 2000f)
+    }
+    fun selectDevice(device: BluetoothDevice) {
+        val decision = PluginBluetoothHooks.action(
+            "bluetooth.all.device.select",
+            JSONObject().put("address", device.address).put("name", runCatching { device.name }.getOrNull()),
+        )
+        if (!decision.cancelled && !decision.handled) _selectedDevice.value = device
+    }
 
     fun startDeviceScan() {
+        val pluginDecision = PluginBluetoothHooks.action("bluetooth.all.scan.start")
+        if (pluginDecision.cancelled || pluginDecision.handled) return
         if (!_hasPermissions.value || !_bluetoothEnabled.value) return
         if (ActivityCompat.checkSelfPermission(application, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) return
         if (ActivityCompat.checkSelfPermission(application, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
@@ -5599,6 +5726,14 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     }
 
     fun startSpam() {
+        val device = _selectedDevice.value
+        val pluginDecision = PluginBluetoothHooks.action(
+            "bluetooth.all.start",
+            JSONObject().put("address", device?.address).put("name", runCatching { device?.name }.getOrNull()).put("intervalMs", _sliderValue.value),
+        )
+        if (pluginDecision.cancelled || pluginDecision.handled) return
+        runCatching { JSONObject(pluginDecision.payloadJson).optDouble("intervalMs", _sliderValue.value.toDouble()).toFloat() }
+            .getOrNull()?.let { _sliderValue.value = it.coerceIn(0f, 2000f) }
         if (!_hasPermissions.value || !_bluetoothEnabled.value || _selectedDevice.value == null) return
         if (ActivityCompat.checkSelfPermission(application, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
 
@@ -5616,6 +5751,8 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     }
 
     fun stopSpam() {
+        val pluginDecision = PluginBluetoothHooks.action("bluetooth.all.stop", JSONObject().put("active", _isSpamming.value))
+        if (pluginDecision.cancelled || pluginDecision.handled) return
         classicSpamRunnable?.let { handler.removeCallbacks(it) }
         _isSpamming.value = false
     }
@@ -5635,26 +5772,37 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
         randomizeMac: Boolean,
         intervalMs: Int
     ) {
+        val decision = PluginBluetoothHooks.action(
+            "bluetooth.advert.preset.add",
+            JSONObject().put("name", name).put("companyCode", companyCode).put("payloadHex", payloadHex).put("randomizeMac", randomizeMac).put("intervalMs", intervalMs),
+        )
+        if (decision.cancelled || decision.handled) return
+        val changed = runCatching { JSONObject(decision.payloadJson) }.getOrNull()
         val newPreset = AdvertisePreset(
             id = System.nanoTime(),
-            name = name,
-            companyCode = companyCode,
-            payloadHex = payloadHex,
-            randomizeMac = randomizeMac,
-            intervalMs = intervalMs
+            name = changed?.optString("name", name) ?: name,
+            companyCode = changed?.optInt("companyCode", companyCode) ?: companyCode,
+            payloadHex = changed?.optString("payloadHex", payloadHex) ?: payloadHex,
+            randomizeMac = changed?.optBoolean("randomizeMac", randomizeMac) ?: randomizeMac,
+            intervalMs = (changed?.optInt("intervalMs", intervalMs) ?: intervalMs).coerceIn(200, 1000),
         )
         _advertisePresets.value = _advertisePresets.value + newPreset
         persistAdvertisePresets(_advertisePresets.value)
     }
 
     fun updateAdvertisePreset(updated: AdvertisePreset) {
+        val decision = PluginBluetoothHooks.action("bluetooth.advert.preset.update", updated.toPluginJson())
+        if (decision.cancelled || decision.handled) return
+        val effective = runCatching { JSONObject(decision.payloadJson) }.getOrNull()?.toAdvertisePreset(updated) ?: updated
         _advertisePresets.value = _advertisePresets.value.map { current ->
-            if (current.id == updated.id) updated else current
+            if (current.id == effective.id) effective else current
         }
         persistAdvertisePresets(_advertisePresets.value)
     }
 
     fun deleteAdvertisePreset(presetId: Long) {
+        val decision = PluginBluetoothHooks.action("bluetooth.advert.preset.delete", JSONObject().put("id", presetId))
+        if (decision.cancelled || decision.handled) return
         if (_activeAdvertisePresetId.value == presetId) {
             stopAdvertisePreset()
         }
@@ -5663,8 +5811,15 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     }
 
     fun startAdvertisePreset(presetId: Long): AdvertiseStartResult {
-        val preset = _advertisePresets.value.firstOrNull { it.id == presetId }
+        val storedPreset = _advertisePresets.value.firstOrNull { it.id == presetId }
             ?: return AdvertiseStartResult.Error(application.getString(R.string.error_preset_not_found))
+        val decision = PluginBluetoothHooks.action("bluetooth.advert.preset.start", storedPreset.toPluginJson())
+        if (decision.cancelled) return AdvertiseStartResult.Error("Cancelled by plugin")
+        if (decision.handled) {
+            _activeAdvertisePresetId.value = storedPreset.id
+            return AdvertiseStartResult.Started
+        }
+        val preset = runCatching { JSONObject(decision.payloadJson) }.getOrNull()?.toAdvertisePreset(storedPreset) ?: storedPreset
 
         if (_activeAdvertisePresetId.value != null) {
             return AdvertiseStartResult.Error(application.getString(R.string.error_advertising_already_running))
@@ -5698,7 +5853,7 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
         customAdvertiseLoopRunnable = object : Runnable {
             override fun run() {
                 if (_activeAdvertisePresetId.value != preset.id) return
-                stopCustomAdvertiseInternal(clearActive = false)
+                stopCustomAdvertiseInternal(clearActive = false, clearLoop = false)
                 val error = startAdvertiseCycleOnce(preset, payloadBytes)
                 if (error != null) {
                     stopAdvertisePreset()
@@ -5713,6 +5868,15 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     }
 
     fun stopAdvertisePreset() {
+        val decision = PluginBluetoothHooks.action("bluetooth.advert.preset.stop", JSONObject().put("id", _activeAdvertisePresetId.value))
+        if (decision.cancelled) return
+        if (decision.handled) {
+            customAdvertiseLoopRunnable?.let { handler.removeCallbacks(it) }
+            customAdvertiseLoopRunnable = null
+            customAdvertiseCallback = null
+            _activeAdvertisePresetId.value = null
+            return
+        }
         stopCustomAdvertiseInternal(clearActive = true)
     }
 
@@ -5729,6 +5893,15 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
             .setIncludeTxPowerLevel(false)
             .addManufacturerData(preset.companyCode, payloadBytes)
             .build()
+        val pluginDecision = PluginBluetoothHooks.interceptAdvertising(
+            data,
+            null,
+            JSONObject().put("source", "advert").put("preset", preset.toPluginJson()),
+        )
+        if (pluginDecision.skipNative) {
+            _activeAdvertisePresetId.value = preset.id
+            return null
+        }
 
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
@@ -5742,7 +5915,7 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
 
         customAdvertiseCallback = callback
         return try {
-            bleAdvertiser.startAdvertising(settings, data, callback)
+            bleAdvertiser.startAdvertising(settings, pluginDecision.advertiseData, pluginDecision.scanResponse, callback)
             null
         } catch (_: SecurityException) {
             application.getString(R.string.error_no_ble_advertise_permission)
@@ -5751,10 +5924,17 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
         }
     }
 
-    private fun stopCustomAdvertiseInternal(clearActive: Boolean) {
-        customAdvertiseLoopRunnable?.let { handler.removeCallbacks(it) }
-        customAdvertiseLoopRunnable = null
-        customAdvertiseCallback?.let { callback ->
+    private fun stopCustomAdvertiseInternal(clearActive: Boolean, clearLoop: Boolean = clearActive) {
+        val pluginDecision = PluginBluetoothHooks.action(
+            "bluetooth.advertising.stop",
+            JSONObject().put("source", "advert").put("presetId", _activeAdvertisePresetId.value).put("clearActive", clearActive).put("clearLoop", clearLoop),
+        )
+        if (pluginDecision.cancelled) return
+        if (clearLoop) {
+            customAdvertiseLoopRunnable?.let { handler.removeCallbacks(it) }
+            customAdvertiseLoopRunnable = null
+        }
+        if (!pluginDecision.handled) customAdvertiseCallback?.let { callback ->
             try {
                 advertiser?.stopAdvertising(callback)
             } catch (_: SecurityException) {

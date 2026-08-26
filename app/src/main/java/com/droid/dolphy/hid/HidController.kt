@@ -15,6 +15,10 @@ interface HidController {
     fun mouseWheel(delta: Int, horizontal: Boolean = false)
     fun mediaDown(key: String)
     fun mediaUp(key: String)
+    fun consumerDown(usageMask: Int) {}
+    fun consumerUp(usageMask: Int) {}
+    fun launchApplication(usage: Int) {}
+    fun controlApplication(usage: Int) {}
 
     fun checkDevices(): Boolean = true
 }

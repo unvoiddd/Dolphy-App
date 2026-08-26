@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 val DarkBackground = Color(0xFF0F0E0D)
 val LightBackground = Color(0xFFF9F9F9)
 val BrighterSurface = Color(0xFF22201E)
-val OrangeAccent = Color(0xFFFF9800)
+val OrangeAccent = Color(0xFFFF7A1A)
 val OrangeBorder = Color(0xFFFFCC80)
 val TextWhite = Color(0xFFFFFFFF)
 val TextGray = Color(0xFFCFD8DC)

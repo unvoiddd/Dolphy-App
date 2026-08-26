@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.droid.dolphy.plugin.PluginBluetoothHooks
+import com.droid.dolphy.plugin.PluginBleModeRegistry
+import org.json.JSONObject
 
 object BleSpamRuntime {
     private const val PREFS = "DolphyPrefs"
@@ -47,9 +50,13 @@ object BleSpamRuntime {
     }
 
     fun setBleDelay(delay: Int) {
-        val clamped = delay.coerceIn(10, 1000)
+        val decision = PluginBluetoothHooks.action("bluetooth.ble.delay.change", JSONObject().put("delayMs", delay))
+        if (decision.cancelled || decision.handled) return
+        val effectiveDelay = runCatching { JSONObject(decision.payloadJson).optInt("delayMs", delay) }.getOrDefault(delay)
+        val clamped = effectiveDelay.coerceIn(10, 1000)
         _bleDelay.value = clamped
         Helper.delay = clamped
+        PluginBleModeRegistry.delayChanged(clamped)
     }
 
     fun trackSentPackets(count: Int = 1) {
@@ -62,6 +69,11 @@ object BleSpamRuntime {
     }
 
     fun toggleBleSpam(type: SpamType, subtype: Any?) {
+        val decision = PluginBluetoothHooks.action(
+            "bluetooth.ble.mode.toggle",
+            JSONObject().put("type", type.name.lowercase()).put("subtype", subtype?.toString()).put("active", _spammingStates.value[Pair(type, subtype)] == true),
+        )
+        if (decision.cancelled || decision.handled) return
         val key = Pair(type, subtype)
         val isCurrentlySpamming = _spammingStates.value[key] == true
         if (isCurrentlySpamming) {
@@ -79,6 +91,8 @@ object BleSpamRuntime {
     }
 
     fun toggleKitchenSink() {
+        val decision = PluginBluetoothHooks.action("bluetooth.ble.kitchen_sink.toggle", JSONObject().put("active", kitchenSinkJob != null))
+        if (decision.cancelled || decision.handled) return
         if (kitchenSinkJob != null) {
             stopKitchenSink()
         } else {
@@ -89,15 +103,20 @@ object BleSpamRuntime {
     }
 
     fun stopAllBleSpam() {
+        val decision = PluginBluetoothHooks.action("bluetooth.ble.stop_all", JSONObject().put("activeCount", spammers.size).put("kitchenSinkActive", kitchenSinkJob != null))
+        if (decision.cancelled || decision.handled) return
         spammers.values.forEach { it.stop() }
         spammers.clear()
         _spammingStates.value = emptyMap()
         stopKitchenSink()
+        PluginBleModeRegistry.stopAll()
         updateNotification()
         updateWidgets()
     }
 
     fun toggleSection(section: BleSection) {
+        val decision = PluginBluetoothHooks.action("bluetooth.ble.section.toggle", JSONObject().put("section", section.route).put("active", isSectionActive(section)))
+        if (decision.cancelled || decision.handled) return
         val keys = sectionKeys(section)
         val anyActive = keys.any { _spammingStates.value[it] == true }
         if (anyActive) {

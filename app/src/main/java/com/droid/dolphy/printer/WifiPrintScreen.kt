@@ -116,7 +116,7 @@ fun WifiPrintScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        OutlinedButton(
+                        com.droid.dolphy.AccentButton(
                             onClick = viewModel::startDiscovery,
                             enabled = !state.scanning,
                             modifier = Modifier.weight(1f),
@@ -129,7 +129,7 @@ fun WifiPrintScreen(
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(if (state.scanning) R.string.wifi_print_searching else R.string.wifi_print_scan))
                         }
-                        OutlinedButton(
+                        com.droid.dolphy.AccentButton(
                             onClick = { showManual = true },
                             modifier = Modifier.weight(1f),
                         ) {
@@ -189,7 +189,7 @@ fun WifiPrintScreen(
                     }
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button(
+                            com.droid.dolphy.AccentButton(
                                 onClick = viewModel::printDocument,
                                 enabled = state.document != null && !state.printing,
                                 modifier = Modifier
@@ -208,7 +208,7 @@ fun WifiPrintScreen(
                                 Spacer(Modifier.width(10.dp))
                                 Text(stringResource(if (state.printing) R.string.wifi_print_sending else R.string.wifi_print_print))
                             }
-                            OutlinedButton(
+                            com.droid.dolphy.AccentButton(
                                 onClick = viewModel::printTestPage,
                                 enabled = !state.printing && capabilities.formats.any { it.equals(PrintDocumentPreparer.PWG_MIME, true) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -268,7 +268,7 @@ private fun PrinterCard(printer: IppPrinter, selected: Boolean, onClick: () -> U
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
             else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
         ),
     ) {
@@ -370,7 +370,7 @@ private fun DocumentCard(document: PrintDocument?, onPick: () -> Unit) {
                     }
                 }
             }
-            OutlinedButton(onClick = onPick, modifier = Modifier.fillMaxWidth()) {
+            com.droid.dolphy.AccentButton(onClick = onPick, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(if (document == null) R.string.wifi_print_choose_file else R.string.wifi_print_change_file))
             }
         }
@@ -556,12 +556,12 @@ private fun ManualPrinterDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            com.droid.dolphy.AccentButton(
                 onClick = { onAdd(host, port.toIntOrNull() ?: 631, path, secure) },
                 enabled = host.isNotBlank(),
             ) { Text(stringResource(R.string.wifi_print_add)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.wifi_print_cancel)) } },
+        dismissButton = { com.droid.dolphy.AccentButton(onClick = onDismiss) { Text(stringResource(R.string.wifi_print_cancel)) } },
     )
 }
 
@@ -570,7 +570,7 @@ private fun AppCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ),
     ) {
         Column(
@@ -603,7 +603,7 @@ private fun SettingLabel(text: String) {
 @Composable
 private fun NoticeCard(icon: ImageVector, message: String, color: Color) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -1,9 +1,16 @@
 <resources>
+    <string name="ble_plugin_modes">Plugins</string>
     
     <string name="app_name">Dolphy</string>
     
     
     <string name="nav_bluetooth">Bluetooth</string>
+    <string name="nav_modules">Functions</string>
+    <string name="settings_personalisation">Personalisation</string>
+    <string name="settings_bottom_panel">Bottom panel</string>
+    <string name="settings_fab_summary">Action opened by the central bottom-panel button</string>
+    <string name="settings_fab_choose">Choose a FAB action</string>
+    <string name="settings_fab_functions_summary">Open the complete Functions screen</string>
     <string name="nav_other">Other</string>
     <string name="nav_settings">Settings</string>
     
@@ -25,7 +32,6 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_accent_color">Accent Color</string>
-    <string name="settings_app_icon">App Icon</string>
     <string name="settings_developer">Developer @oosthemes</string>
     
     
@@ -130,7 +136,7 @@
     <string name="ir_remove_from_favorites">Remove from favorites</string>
     <string name="ir_universal_remotes">Universal Remotes</string>
     <string name="ir_user_remotes">Your Remotes</string>
-    <string name="ir_storm">IR Storm</string>
+    <string name="ir_storm">TV Be Gone</string>
     <string name="ir_jammer">IR Jammer</string>
     <string name="ir_search_brand">Search Brand</string>
     <string name="ir_smart_search">Smart Search</string>
@@ -225,6 +231,7 @@
     <string name="hid_home_spam">Home Spam</string>
     <string name="hid_pc_mouse">Mouse</string>
     <string name="hid_pc_keyboard">Keyboard</string>
+    <string name="hid_pc_controls">Controls</string>
     <string name="hid_pc_bad_hid">BAD HID</string>
     <string name="hid_flipper_win">Flipper Win</string>
     <string name="hid_flipper_mac">Flipper Mac</string>
@@ -381,7 +388,7 @@
     <string name="other_ir_tv_desc">IR remote database from TV folder (best IR database)</string>
     <string name="other_ir_flipper">IR Remotes (Flipper)</string>
     <string name="other_ir_flipper_desc">IR remote database from Flipper-IRDB-main</string>
-    <string name="other_ir_storm">IR Storm</string>
+    <string name="other_ir_storm">TV Be Gone</string>
     <string name="other_ir_storm_desc">Send power off signals to all TVs</string>
     <string name="other_ir_jammer">IR Jammer</string>
     <string name="other_ir_jammer_desc">Prevents others from controlling your jammed device with remote</string>
@@ -797,7 +804,7 @@
     <string name="brand_unknown">Unknown</string>
 
     
-    <string name="audio_scanner_title">Audio Scanner</string>
+    <string name="audio_scanner_title">BT-Audio Hijack</string>
     <string name="audio_scanner_desc">Search and test Bluetooth audio devices. Connect to speakers and headphones.</string>
 
     <string name="audio_connect">Connect</string>
@@ -982,26 +989,84 @@
     <string name="settings_liquid_glass_topbars">Top bars</string>
     <string name="settings_liquid_glass_nav">Navigation</string>
     <string name="settings_plugins">Plugins</string>
-    <string name="settings_plugins_summary">Install and manage JS plugins</string>
+    <string name="settings_plugins_summary">Manage and install plugins</string>
     <string name="settings_general">General</string>
 
     <!-- Plugins -->
     <string name="plugin_manager_title">Plugins</string>
-    <string name="plugin_manager_card_title">Dolphy JS plugins</string>
-    <string name="plugin_manager_card_body">A .js file: screens, Other, Wi-Fi, BLE, NFC, IR, WebView, root, Shizuku.</string>
+    <string name="plugin_manager_card_title">Dolphy Python plugins</string>
+    <string name="plugin_manager_card_body">One textual .dolphyplugin file: custom screens, Bluetooth, Wi-Fi, NFC, IR, USB, Root, Shizuku, Shell, and direct Android API access.</string>
     <string name="plugin_manager_pick_file">Choose file</string>
     <string name="plugin_manager_about">Learn more</string>
     <string name="plugin_manager_installed">Installed</string>
-    <string name="plugin_manager_empty">No plugins yet. Choose a .js file above.</string>
+    <string name="plugin_manager_empty">No plugins yet. Choose a .dolphyplugin file above.</string>
     <string name="plugin_manager_installed_toast">Plugin %1$s installed</string>
     <string name="plugin_manager_installed_msg">Installed: %1$s</string>
     <string name="plugin_manager_error">Error: %1$s</string>
     <string name="plugin_about_title">About plugins</string>
     <string name="plugin_about_guide_title">Author guide</string>
-    <string name="plugin_about_guide_body">A plugin is a .js file. Import: Settings → General → Plugins → Choose file.\n\nYou can build screens (ui.m3 / expressive), Other cards, Wi-Fi, BLE spam, NFC, IR, HTTP, download, media/camera pick, WebView, Root (extended), Shizuku, shell, crypto, timers, snackbar, assets, and publish your own APIs via library plugins.</string>
+    <string name="plugin_about_guide_body">A plugin is one textual Python .dolphyplugin file. Import it from Settings → General → Plugins → Choose file.\n\nPlugins can build Material 3 Expressive screens, add modules, use Bluetooth, Wi-Fi, NFC, IR, USB, files, networking, Root, Shizuku and Shell, import Android Java classes, and access Dolphy internals.</string>
+    <string name="plugin_preview_title">Dolphy plugin</string>
+    <string name="plugin_preview_install">Install</string>
+    <string name="plugin_preview_update">Update</string>
+    <string name="plugin_preview_installed">Installed</string>
+    <string name="plugin_preview_about">About this plugin</string>
+    <string name="plugin_preview_details">Details</string>
+    <string name="plugin_preview_author">Developer</string>
+    <string name="plugin_preview_identifier">Identifier</string>
+    <string name="plugin_preview_file">File</string>
+    <string name="plugin_preview_size">Size</string>
+    <string name="plugin_preview_security">Full access</string>
+    <string name="plugin_preview_security_body">The plugin runs inside Dolphy and can use app permissions, Android APIs, Bluetooth, Wi-Fi, USB, Root, and Shizuku. Only install files from developers you trust.</string>
+    <string name="plugin_preview_no_description">The developer did not provide a description.</string>
+    <string name="plugin_preview_invalid">Could not open plugin</string>
+    <string name="plugin_preview_install_success">Plugin installed</string>
+    <string name="plugin_preview_install_error">Installation error: %1$s</string>
+    <string name="plugin_safe_mode_crash_title">The app was closed because of a plugin error</string>
+    <string name="plugin_safe_mode_crash_body">Safe Mode is enabled and your plugins have been disabled.</string>
+    <string name="plugin_safe_mode_copy_log">Copy log</string>
+    <string name="plugin_safe_mode_disable">Disable Safe Mode</string>
+    <string name="plugin_safe_mode_log_copied">Log copied</string>
+    <string name="plugin_safe_mode_title">Safe Mode</string>
+    <string name="plugin_safe_mode_on">on</string>
+    <string name="plugin_safe_mode_enabled">All plugins are disabled</string>
+    <string name="plugin_pin">Pin</string>
+    <string name="plugin_unpin">Unpin</string>
+    <string name="plugin_share">Share</string>
+    <string name="plugin_delete">Delete</string>
+    <string name="plugin_empty_center">You don’t have any installed plugins yet</string>
     <string name="plugin_host_title">Plugin</string>
-    <string name="plugin_host_not_installed">Plugin “%1$s” is not installed.\nImport a .js file from Plugin manager.</string>
+    <string name="plugin_host_not_installed">Plugin “%1$s” is not installed.\nImport a .dolphyplugin file from Plugin manager.</string>
     <string name="plugin_host_empty_screen">Empty screen</string>
+    <string name="plugin_settings_title">Plugin settings</string>
+    <string name="plugin_security_section">SECURITY</string>
+    <string name="plugin_ask_download_title">Ask before plugins download files</string>
+    <string name="plugin_ask_download_body">When disabled, all plugin files will be downloaded automatically</string>
+    <string name="plugin_download_permission_title">File download</string>
+    <string name="plugin_download_permission_body">Plugin %1$s requests permission to download %2$d files (%3$s).</string>
+    <string name="plugin_download_allow">Allow</string>
+    <string name="plugin_download_deny">Deny</string>
+    <string name="plugin_download_unknown_size">unknown size</string>
+    <string name="plugin_documentation_site">Documentation website</string>
+    <string name="plugin_open_with_hint">Open the plugin file with “Open with” and select Dolphy to install it</string>
+    <string name="plugin_system_warning_title">Dolphy 2.5 plugin system</string>
+    <string name="plugin_system_warning_text">This version introduces a powerful plugin system with broad freedom of action. The price of that freedom and extensive capability is security. Install plugins only from trusted sources and check them for malicious code. The developer is not responsible for damage caused by malicious code in a user plugin.</string>
+    <string name="plugin_system_warning_countdown">OK (%1$d)</string>
+    <string name="plugin_preview_permissions">Capabilities and access</string>
+    <string name="plugin_preview_permissions_none">No special capabilities were detected in the code</string>
+    <string name="plugin_capability_dex">DEX loading and class access</string>
+    <string name="plugin_capability_download">File downloads</string>
+    <string name="plugin_capability_network">Network requests</string>
+    <string name="plugin_capability_files">Plugin files and assets</string>
+    <string name="plugin_capability_ble_spam">Custom BLE Spam modes</string>
+    <string name="plugin_capability_bluetooth">Bluetooth and BLE</string>
+    <string name="plugin_capability_wifi">Wi‑Fi</string>
+    <string name="plugin_capability_infrared">Infrared transmitter</string>
+    <string name="plugin_capability_usb">USB and Bad HID</string>
+    <string name="plugin_capability_root">Root</string>
+    <string name="plugin_capability_shizuku">Shizuku</string>
+    <string name="plugin_capability_shell">Shell commands</string>
+    <string name="plugin_capability_hooks">Screen and logic modification</string>
 
     <!-- ScooterHack -->
     <string name="scooter_hack_title">ScooterHack</string>

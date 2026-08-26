@@ -355,8 +355,8 @@ private fun ActionChip(
             modifier = Modifier.size(48.dp),
             shape = CircleShape,
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = accent.copy(alpha = 0.18f),
-                contentColor = accent,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             ),
         ) {
             Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp))

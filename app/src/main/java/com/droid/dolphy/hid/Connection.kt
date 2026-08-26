@@ -329,32 +329,76 @@ class Connection(
         }, 20)
     }
 
-    private var mediaByte: Byte = 0x00
+    private var consumerBits: Int = 0
+    private var launcherUsage: Int = 0
+    private var applicationControlUsage: Int = 0
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun sendMediaReport(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
-        val report = ByteArray(1)
-        report[0] = mediaByte
+        val report = byteArrayOf(
+            (consumerBits and 0xFF).toByte(),
+            ((consumerBits ushr 8) and 0xFF).toByte(),
+            (launcherUsage and 0xFF).toByte(),
+            ((launcherUsage ushr 8) and 0xFF).toByte(),
+            (applicationControlUsage and 0xFF).toByte(),
+            ((applicationControlUsage ushr 8) and 0xFF).toByte(),
+        )
         return service?.sendReport(hostDevice, 0x03, report) ?: false
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mediaDown(key: String) {
-        val code = keyCodes[key] ?: return
+        val code = consumerControlCodes[key] ?: return
         Log.d("Connection", "mediaDown $key ($code)")
         synchronized(this) {
-            mediaByte = mediaByte or code
+            consumerBits = consumerBits or code
             sendMediaReport()
         }
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mediaUp(key: String) {
-        val code = keyCodes[key] ?: return
+        val code = consumerControlCodes[key] ?: return
         Log.d("Connection", "mediaUp $key ($code)")
         synchronized(this) {
-            mediaByte = mediaByte and code.inv()
+            consumerBits = consumerBits and code.inv()
+            sendMediaReport()
+        }
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun consumerDown(usageMask: Int) {
+        synchronized(this) {
+            consumerBits = consumerBits or usageMask
+            sendMediaReport()
+        }
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun consumerUp(usageMask: Int) {
+        synchronized(this) {
+            consumerBits = consumerBits and usageMask.inv()
+            sendMediaReport()
+        }
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun launchApplication(usage: Int) {
+        synchronized(this) {
+            launcherUsage = usage
+            sendMediaReport()
+            launcherUsage = 0
+            sendMediaReport()
+        }
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun controlApplication(usage: Int) {
+        synchronized(this) {
+            applicationControlUsage = usage
+            sendMediaReport()
+            applicationControlUsage = 0
             sendMediaReport()
         }
     }

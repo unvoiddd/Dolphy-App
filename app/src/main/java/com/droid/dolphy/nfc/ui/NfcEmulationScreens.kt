@@ -206,18 +206,18 @@ fun NfcTagEmulationListScreen(navController: NavController) {
                 }
             },
             confirmButton = {
-                TextButton(
+                com.droid.dolphy.AccentButton(
                     onClick = {
                         val fixedName = name.trim()
                         val fixedUrl = normalizeUrl(url.trim())
                         val isValid = isValidWebUrl(fixedUrl)
                         if (fixedName.isBlank()) {
                             error = context.getString(R.string.nfc_error_empty_name)
-                            return@TextButton
+                            return@AccentButton
                         }
                         if (!isValid) {
                             error = context.getString(R.string.nfc_error_invalid_url)
-                            return@TextButton
+                            return@AccentButton
                         }
 
                         val updated = listOf(
@@ -239,7 +239,7 @@ fun NfcTagEmulationListScreen(navController: NavController) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
+                com.droid.dolphy.AccentButton(onClick = { showAddDialog = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

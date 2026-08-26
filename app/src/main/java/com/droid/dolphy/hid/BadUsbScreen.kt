@@ -55,6 +55,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 
 @Composable
@@ -68,7 +69,7 @@ fun BadUsbScreen(navController: NavController) {
     var status by remember { mutableStateOf(RootHidController.UsbLinkStatus.SETUP) }
     var script by remember {
         mutableStateOf(
-            """
+            File(context.filesDir, "plugin_bad_usb_script.txt").takeIf { it.isFile }?.readText(Charsets.UTF_8) ?: """
             REM Dolphy BAD USB example
             DELAY 500
             GUI r

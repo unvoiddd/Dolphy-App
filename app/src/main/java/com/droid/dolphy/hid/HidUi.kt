@@ -229,7 +229,7 @@ fun HidMainScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val accentColor = MaterialTheme.colorScheme.primary
-                Button(
+                com.droid.dolphy.AccentButton(
                     onClick = { onModeChange(true) },
                     modifier = Modifier.height(40.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -681,7 +681,7 @@ private fun ScreenshotSpamScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     OutlinedTextField(
@@ -695,7 +695,7 @@ private fun ScreenshotSpamScreen(
                         singleLine = true
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(
+                    com.droid.dolphy.AccentButton(
                         onClick = {
                             scope.launch {
                                 try {
@@ -733,7 +733,7 @@ private fun ScreenshotSpamScreen(
                 }
             }
 
-            Button(
+            com.droid.dolphy.AccentButton(
                 onClick = { centerCursor() },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -981,7 +981,7 @@ private fun PcKeyboardScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
         ) {
-            Button(
+            com.droid.dolphy.AccentButton(
                 onClick = onSwitchToTouchpad,
                 colors = ButtonDefaults.buttonColors(containerColor = accentColor)
             ) {
@@ -1033,7 +1033,7 @@ private fun PcTouchpadScreen(
                 .fillMaxWidth(),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
         ) {
-            Button(
+            com.droid.dolphy.AccentButton(
                 onClick = onSwitchToKeyboard,
                 colors = ButtonDefaults.buttonColors(containerColor = accentColor)
             ) {
@@ -1409,7 +1409,7 @@ fun Plum(
         modifier = modifier
             .padding(2.dp)
     ) {
-        Button(
+        com.droid.dolphy.AccentButton(
             onClick = {},
             modifier = Modifier
                 .matchParentSize()

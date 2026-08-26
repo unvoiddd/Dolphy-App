@@ -199,7 +199,7 @@ fun BleSmartHomeScanScreen(navController: NavController) {
                 if (!hasPerm) {
                     Text(stringResource(R.string.ble_smarthome_need_perms), color = MaterialTheme.colorScheme.onBackground)
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { ensurePerms() }) { Text(stringResource(R.string.ble_allow)) }
+                    com.droid.dolphy.AccentButton(onClick = { ensurePerms() }) { Text(stringResource(R.string.ble_allow)) }
                     return@Column
                 }
                 if (bluetoothAdapter.isEnabled != true) {
@@ -377,7 +377,7 @@ fun BleSmartHomeDeviceScreen(navController: NavController, address: String) {
                     )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(
+                        com.droid.dolphy.AccentButton(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 powerOn = true
@@ -388,7 +388,7 @@ fun BleSmartHomeDeviceScreen(navController: NavController, address: String) {
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = accent)
                         ) { Text(stringResource(R.string.ble_on)) }
-                        Button(
+                        com.droid.dolphy.AccentButton(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 powerOn = false

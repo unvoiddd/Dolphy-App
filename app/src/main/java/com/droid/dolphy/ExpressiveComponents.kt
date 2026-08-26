@@ -66,42 +66,23 @@ fun DolphySwitch(
         }
     }
 
-    when {
-        isLiquidGlassChrome() -> {
-            com.kyant.backdrop.catalog.components.LiquidToggle(
-                selected = { checked },
-                onSelect = onToggle,
-                backdrop = LocalLiquidGlassBackdrop.current!!,
-                modifier = modifier,
-                accentColor = MaterialTheme.colorScheme.primary,
-            )
+    Switch(
+        checked = checked,
+        onCheckedChange = onToggle,
+        modifier = modifier,
+        enabled = enabled,
+        colors = colors,
+        interactionSource = interactionSource,
+        thumbContent = {
+            if (checked) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
         }
-        LocalExpressiveEnabled.current -> {
-            ExpressiveSwitch(
-                checked = checked,
-                onCheckedChange = onToggle,
-                modifier = modifier,
-                enabled = enabled
-            )
-        }
-        else -> {
-            Switch(
-                checked = checked,
-                onCheckedChange = onToggle,
-                modifier = modifier,
-                enabled = enabled,
-                colors = colors,
-                interactionSource = interactionSource,
-                thumbContent = {
-                    Icon(
-                        imageVector = if (checked) Icons.Default.Check else Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
-            )
-        }
-    }
+    )
 }
 
 @Composable
@@ -116,45 +97,17 @@ fun DolphySlider(
     colors: androidx.compose.material3.SliderColors = SliderDefaults.colors(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
 ) {
-    when {
-        isLiquidGlassChrome() && enabled -> {
-            val rangeSpan = (valueRange.endInclusive - valueRange.start).coerceAtLeast(0.0001f)
-            val visibilityThreshold = (rangeSpan / 5000f).coerceAtLeast(0.00005f)
-            com.kyant.backdrop.catalog.components.LiquidSlider(
-                value = { value },
-                onValueChange = { v -> onValueChange(v.coerceIn(valueRange)) },
-                valueRange = valueRange,
-                visibilityThreshold = visibilityThreshold,
-                backdrop = LocalLiquidGlassBackdrop.current!!,
-                modifier = modifier.fillMaxWidth(),
-                accentColor = MaterialTheme.colorScheme.primary,
-            )
-        }
-        LocalExpressiveEnabled.current -> {
-            ExpressiveSlider(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = modifier,
-                enabled = enabled,
-                valueRange = valueRange,
-                steps = steps,
-                onValueChangeFinished = onValueChangeFinished
-            )
-        }
-        else -> {
-            Slider(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = modifier,
-                enabled = enabled,
-                valueRange = valueRange,
-                steps = steps,
-                onValueChangeFinished = onValueChangeFinished,
-                colors = colors,
-                interactionSource = interactionSource
-            )
-        }
-    }
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        enabled = enabled,
+        valueRange = valueRange,
+        steps = steps,
+        onValueChangeFinished = onValueChangeFinished,
+        colors = colors,
+        interactionSource = interactionSource
+    )
 }
 
 @Composable

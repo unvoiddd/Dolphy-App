@@ -64,7 +64,7 @@ fun NrfScannerScreen(
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(
+            com.droid.dolphy.AccentButton(
                 onClick = {
                     if (isScanning) {
                         viewModel.stopScanning()

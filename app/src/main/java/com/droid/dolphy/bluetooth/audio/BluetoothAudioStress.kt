@@ -57,7 +57,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -523,9 +523,9 @@ fun BtAudioStressScanScreen(navController: NavController) {
     MaterialBackground(accentColor = accentColor) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background.copy(alpha = 0.74f)) {
             Scaffold(
-                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0f),
+                containerColor = MaterialTheme.colorScheme.background,
                 topBar = {
-                    TopAppBar(
+                    CenterAlignedTopAppBar(
                         title = {
                             Text(
                                 text = "BT-Audio sttest",
@@ -543,7 +543,7 @@ fun BtAudioStressScanScreen(navController: NavController) {
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             titleContentColor = MaterialTheme.colorScheme.onSurface,
                             navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                         )
@@ -557,7 +557,7 @@ fun BtAudioStressScanScreen(navController: NavController) {
                         .padding(padding)
                         .padding(horizontal = 16.dp)
                 ) {
-                    Button(
+                    com.droid.dolphy.AccentButton(
                         onClick = {
                             val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
                             if (!hasPermissions()) {
@@ -579,7 +579,7 @@ fun BtAudioStressScanScreen(navController: NavController) {
                         items(devices.values.sortedByDescending { it.rssi }, key = { it.address }) { device ->
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                                 )
                             ) {
                                 Column(Modifier.fillMaxWidth().padding(12.dp)) {
@@ -599,7 +599,7 @@ fun BtAudioStressScanScreen(navController: NavController) {
                                     )
                                     Text("Source: ${device.source}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(Modifier.height(8.dp))
-                                    Button(
+                                    com.droid.dolphy.AccentButton(
                                         onClick = {
                                             val route = "other/bt_audio_stress_run/${Uri.encode(device.name)}/${Uri.encode(device.address)}/${device.rssi}"
                                             navController.navigate(route)
@@ -669,7 +669,7 @@ fun BtAudioStressRunScreen(
     val accentColor = MaterialTheme.colorScheme.primary
     MaterialBackground(accentColor = accentColor) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background.copy(alpha = 0.74f)) {
-            Scaffold(containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0f)) { padding ->
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -707,7 +707,7 @@ fun BtAudioStressRunScreen(
                         }
                     }
                     Spacer(Modifier.height(10.dp))
-                    Button(
+                    com.droid.dolphy.AccentButton(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { if (running) stopService() else startService() }
                     ) {
@@ -745,7 +745,7 @@ fun BtAudioStressRunScreen(
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
                             itemsIndexed(items = logs, key = { index, line -> "$index-$line" }) { _, line ->
-                                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))) {
+                                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                                     Text(
                                         text = line,
                                         modifier = Modifier.padding(10.dp),

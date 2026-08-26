@@ -47,7 +47,7 @@ import android.os.ParcelUuid
 
 
 
-class PluginDeviceApis(private val context: Context) {
+class PluginDeviceApis(private val context: Context, private val pluginId: String) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val io = Executors.newCachedThreadPool()
     private val bleCallbacks = ConcurrentHashMap<String, ScanCallback>()
@@ -573,6 +573,32 @@ class PluginDeviceApis(private val context: Context) {
         destFile: java.io.File,
         headersJson: String?,
         maxBytes: Long = 50_000_000L,
+        callback: (String) -> Unit,
+    ) {
+        val base = java.io.File(context.filesDir, "dolphy_plugins_data/$pluginId").apply { mkdirs() }.canonicalFile
+        val destination = runCatching { destFile.canonicalFile }.getOrNull()
+        if (destination == null || (destination.path != base.path && !destination.path.startsWith(base.path + java.io.File.separator))) {
+            mainHandler.post {
+                callback(JSONObject().put("ok", false).put("error", "invalid_destination").toString())
+            }
+            return
+        }
+        com.droid.dolphy.plugin.PluginDownloadPolicy.request(pluginId, 1, maxBytes) { allowed ->
+            if (!allowed) {
+                mainHandler.post {
+                    callback(JSONObject().put("ok", false).put("error", "download_denied").toString())
+                }
+                return@request
+            }
+            httpDownloadApproved(url, destination, headersJson, maxBytes.coerceIn(1L, 100_000_000L), callback)
+        }
+    }
+
+    fun httpDownloadApproved(
+        url: String,
+        destFile: java.io.File,
+        headersJson: String?,
+        maxBytes: Long,
         callback: (String) -> Unit,
     ) {
         io.execute {

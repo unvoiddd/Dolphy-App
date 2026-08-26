@@ -245,7 +245,7 @@ fun QrGeneratorMainScreen(navController: NavController) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                com.droid.dolphy.AccentButton(onClick = {
                     if (name.isNotBlank() && content.isNotBlank()) {
                         val newId = viewModel.addQr(name, content)
                         showAddDialog = false
@@ -256,7 +256,7 @@ fun QrGeneratorMainScreen(navController: NavController) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
+                com.droid.dolphy.AccentButton(onClick = { showAddDialog = false }) {
                     Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
@@ -310,7 +310,7 @@ fun QrSavedCard(qr: SavedQrCode, onDelete: () -> Unit, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(20.dp)
     ) {
         Row(
@@ -422,7 +422,7 @@ fun QrDetailScreen(qrId: String, navController: NavController) {
                         Spacer(modifier = Modifier.height(24.dp))
 
                         val clipboardManager = LocalClipboardManager.current
-                        Button(
+                        com.droid.dolphy.AccentButton(
                             onClick = {
                                 clipboardManager.setText(AnnotatedString(qr.content))
                                 Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
@@ -503,7 +503,7 @@ fun QrAudioSpooferScreen(
             title = { Text(stringResource(R.string.audio_spoof_info_title), color = MaterialTheme.colorScheme.onSurface) },
             text = { Text(stringResource(R.string.audio_spoof_info_text), color = MaterialTheme.colorScheme.onSurfaceVariant) },
             confirmButton = {
-                TextButton(onClick = { viewModel.dismissFirstTimeInfo() }) {
+                com.droid.dolphy.AccentButton(onClick = { viewModel.dismissFirstTimeInfo() }) {
                     Text(stringResource(R.string.got_it), color = accentColor)
                 }
             },
@@ -513,7 +513,7 @@ fun QrAudioSpooferScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text(stringResource(R.string.qr_audio_spoofer), color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     DolphyIconButton(onClick = { navController.popBackStack() }) {
@@ -531,10 +531,10 @@ fun QrAudioSpooferScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color.Transparent
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -606,7 +606,7 @@ fun QrAudioSpooferScreen(
                 Card(
                     onClick = { expanded = true },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -656,7 +656,7 @@ fun QrAudioSpooferScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
+                com.droid.dolphy.AccentButton(
                     onClick = { htmlPickerLauncher.launch("*/*") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -725,7 +725,7 @@ fun QrAudioSpooferScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true
                 )
-                Button(
+                com.droid.dolphy.AccentButton(
                     onClick = {
                         if (ttsText.isNotBlank()) {
                             viewModel.sendCommand("TTS:$ttsText")
@@ -782,7 +782,7 @@ fun RowScope.SoundButton(label: String, icon: ImageVector?, color: Color, emoji:
     Card(
         onClick = onClick,
         modifier = Modifier.height(80.dp).weight(1f),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(

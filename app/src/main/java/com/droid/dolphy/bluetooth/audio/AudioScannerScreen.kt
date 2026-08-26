@@ -312,7 +312,7 @@ fun AudioScannerScreen(navController: NavController) {
 
     MaterialBackground(accentColor = accentColor) {
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 Column {
@@ -343,7 +343,7 @@ fun AudioScannerScreen(navController: NavController) {
                                     .weight(1f)
                                     .clip(RoundedCornerShape(50))
                                     .clickable { selectedTab = index },
-                                color = if (isSelected) accentColor else Color.Transparent,
+                                color = if (isSelected) accentColor else MaterialTheme.colorScheme.surfaceContainerHigh,
                                 shape = RoundedCornerShape(50),
                                 border = BorderStroke(
                                     1.5.dp,
@@ -548,7 +548,7 @@ fun AudioScannerScreen(navController: NavController) {
                         )
                     },
                     confirmButton = {
-                        TextButton(
+                        com.droid.dolphy.AccentButton(
                             onClick = { showQuietConnectDialog = false }
                         ) {
                             Text(
@@ -945,7 +945,7 @@ fun ListeningDialog(
                 Spacer(modifier = Modifier.height(40.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(
+                    com.droid.dolphy.AccentButton(
                         onClick = {
                             if (!isRecording) {
                                 val musicDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_MUSIC)
@@ -964,7 +964,7 @@ fun ListeningDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color.Red else MaterialTheme.colorScheme.secondaryContainer)
                     ) { Text(if (isRecording) stringResource(R.string.audio_stop) else stringResource(R.string.audio_record)) }
 
-                    Button(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.audio_close)) }
+                    com.droid.dolphy.AccentButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.audio_close)) }
                 }
 
                 if (recordingFile != null) {

@@ -322,10 +322,28 @@ fun PluginHostScreen(
             }
     }
 
-    DisposableEffect(pluginId, session) {
+    val bindingOwner = remember { Any() }
+    DisposableEffect(pluginId, session, navController, bindingOwner) {
+        if (session != null) {
+            PluginSessionUiBindings.attach(
+                session,
+                bindingOwner,
+                PluginSessionUiBinding(
+                    navigate = { target ->
+                        if (target.startsWith("__app__:")) {
+                            navController.navigate(target.removePrefix("__app__:"))
+                        } else {
+                            navController.navigate("plugin/$pluginId/$target")
+                        }
+                    },
+                    refresh = { tick += 1 },
+                    media = { request -> pendingMedia = request },
+                    permission = { request -> pendingPermission = request },
+                ),
+            )
+        }
         onDispose {
-            session?.mediaRequestHandler = null
-            session?.permissionRequestHandler = null
+            if (session != null) PluginSessionUiBindings.detach(session, bindingOwner)
         }
     }
 
@@ -455,7 +473,7 @@ fun PluginHostScreen(
                                     )
                                 }
                                 sh.buttons.forEach { btn ->
-                                    TextButton(
+                                    com.droid.dolphy.AccentButton(
                                         onClick = { session.onBottomSheetButton(btn.onClickId) },
                                         modifier = Modifier.padding(top = 4.dp),
                                     ) {

@@ -45,7 +45,7 @@ fun NrfDeviceCard(
             .clickable { expanded = !expanded },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = colorScheme.surfaceContainerHigh
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -402,7 +402,7 @@ fun NrfDeviceCard(
                     ) {
 
                         if (!device.isConnected && device.gattServices.isEmpty()) {
-                            Button(
+                            com.droid.dolphy.AccentButton(
                                 onClick = {
                                     connectionState = ConnectionState.CONNECTING
                                     onProfile(device)
@@ -432,7 +432,7 @@ fun NrfDeviceCard(
 
 
                         if (device.isConnected) {
-                            Button(
+                            com.droid.dolphy.AccentButton(
                                 onClick = {
 
                                 },
@@ -460,7 +460,7 @@ fun NrfDeviceCard(
 
 
                         if (device.isVulnerable) {
-                            Button(
+                            com.droid.dolphy.AccentButton(
                                 onClick = {
                                     connectionState = ConnectionState.BYPASS_1
 

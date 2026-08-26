@@ -1,0 +1,172 @@
+import json
+import time
+
+DEX_DATA = "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PgIAAA60tAAJAQAOWlqHeGlph5aWltLDlrSWWh4AMwEADrQBEw94eGl4eAJ5ARcOACUBAA54eHh4AAYADgAAAAIAAAAAAAAAAgAAAAEAAQABAAAAAQAAAAIAAAAGAAEAAQAAAAAAAAABAAAABgAAAAIAAAAGAAYAAQAAAAgAAAACAAAACAAIAAIAAAAGAAAAAgAAAAYABQAAAAY8aW5pdD4ABUFwcGxlABBCbGVBbmFseXplci5qYXZhAAtDb21wYW55IElEIAABRAADREREAANESUkACUV4Y2VsbGVudAAERmFpcgAVR2VuZXJpYyBhZHZlcnRpc2VtZW50AARHb29kAAZHb29nbGUAAUkAAklJAANJSUkAA0lMSQABSgACSkQAAUwAAkxJAAJMTAADTExEAANMTEkAA0xMTAAlTGNvbS9kb2xwaHkvZXhhbXBsZXMvYmxlL0JsZUFuYWx5emVyOwAQTGphdmEvbGFuZy9NYXRoOwASTGphdmEvbGFuZy9PYmplY3Q7ABJMamF2YS9sYW5nL1N0cmluZzsAGUxqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsAFExvcmcvanNvbi9KU09OQXJyYXk7ABVMb3JnL2pzb24vSlNPTk9iamVjdDsAGk1hbnVmYWN0dXJlciBhZHZlcnRpc2VtZW50AAlNaWNyb3NvZnQAFE5vcmRpYyBTZW1pY29uZHVjdG9yAAdTYW1zdW5nABVTZXJ2aWNlIGFkdmVydGlzZW1lbnQAB1Vua25vd24AAVYAAlZMAAlWZXJ5IHdlYWsABFdlYWsAEWFkdmVydGlzZW1lbnRUeXBlAAdhbmFseXplAAZhcHBlbmQAEWVzdGltYXRlZERpc3RhbmNlAAJpZAAGbGVuZ3RoABFtYW51ZmFjdHVyZXJDb3VudAAQbWFudWZhY3R1cmVyRGF0YQAQbWFudWZhY3R1cmVyTmFtZQADbWF4AANtaW4ABm9wdEludAAMb3B0SlNPTkFycmF5AA1vcHRKU09OT2JqZWN0AAlvcHRTdHJpbmcADHBheWxvYWRCeXRlcwADcG93AANwdXQAA3JhdwAFcm91bmQABHJzc2kADHNlcnZpY2VDb3VudAAMc2VydmljZVV1aWRzAAtzaWduYWxMYWJlbAANc2lnbmFsUGVyY2VudAAIdG9TdHJpbmcAB3R4UG93ZXIAnAF+fkQ4eyJiYWNrZW5kIjoiZGV4IiwiY29tcGlsYXRpb24tbW9kZSI6ImRlYnVnIiwiaGFzLWNoZWNrc3VtcyI6ZmFsc2UsIm1pbi1hcGkiOjI2LCJzaGEtMSI6IjA4NGE4OTEyNmFlMDU5NmM1OTkxNDNkZjU3YTY1NDY0NmFmMjgzMTMiLCJ2ZXJzaW9uIjoiOS4yLjQtZGV2In0AAAAGAQCBgATgDQEC5AgCArQHAQLQCwECkA0BAogIAgGoCQAADAAAAAAAAAABAAAAAAAAAAEAAABGAAAAcAAAAAIAAAALAAAAiAEAAAMAAAAWAAAAtAEAAAUAAAAbAAAAvAIAAAYAAAABAAAAlAMAAAEgAAAHAAAAtAMAAAMgAAAHAAAA+AYAAAEQAAALAAAASAcAAAIgAABGAAAAoAcAAAAgAAABAAAANAsAAAAQAAABAAAAWAsAAA=="
+DEX_SHA256 = "7d4adbe2adfcdbe52bedbb9dd517d3ff09559a574fe699d4ffa6b8e08603c054"
+
+__id__ = "ble_scanner_dex_md3e"
+__name__ = "BLE Scanner DEX MD3E"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Detailed Material 3 Expressive BLE scanner with an embedded DEX analyzer"
+__icon__ = "rounded:bluetooth_searching"
+__permissions__ = ["bluetooth", "dex"]
+
+
+class BleScannerDexMd3e(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.scanning = False
+        self.devices = {}
+        self.selected = None
+        self.filter = "all"
+        self.analyzer = None
+        self.last_refresh = 0.0
+
+    def on_plugin_load(self):
+        self.load_dex_base64("ble_analyzer", DEX_DATA, DEX_SHA256)
+        self.analyzer = self.new_dex_instance("ble_analyzer", "com.dolphy.examples.ble.BleAnalyzer")
+        self.add_module(
+            "BLE Scanner DEX",
+            "Detailed BLE advertisements analyzed by embedded DEX",
+            "bluetooth_searching",
+            "main",
+            "BLUETOOTH",
+            11,
+        )
+
+    def on_plugin_unload(self):
+        self.api.bleStopScan("ble_scanner_dex_md3e")
+
+    def toggle_scan(self):
+        if self.scanning:
+            self.api.bleStopScan("ble_scanner_dex_md3e")
+            self.scanning = False
+        else:
+            self.devices = {}
+            self.scanning = bool(self.api.bleStartScan("ble_scanner_dex_md3e", self.on_device, 350, 256))
+            if not self.scanning:
+                self.toast("BLE scan could not start. Check Bluetooth and permissions.")
+        self.refresh()
+
+    def on_device(self, payload):
+        raw = str(payload)
+        try:
+            analyzed = str(self.invoke_java(self.analyzer, "analyze", raw))
+            device = json.loads(analyzed)
+        except Exception:
+            device = json.loads(raw)
+        address = device.get("address") or "unknown"
+        self.devices[address] = device
+        now = time.monotonic()
+        if now - self.last_refresh >= 0.4:
+            self.last_refresh = now
+            self.refresh()
+
+    def set_filter(self, value):
+        self.filter = str(value)
+        self.refresh()
+
+    def visible_devices(self):
+        devices = list(self.devices.values())
+        if self.filter == "connectable":
+            devices = [item for item in devices if item.get("connectable", False)]
+        elif self.filter == "beacons":
+            devices = [item for item in devices if int(item.get("manufacturerCount", 0)) > 0]
+        return sorted(devices, key=lambda item: int(item.get("rssi", -127)), reverse=True)
+
+    def open_device(self, device):
+        self.selected = device
+        self.navigate("details")
+
+    def device_callback(self, device):
+        def callback():
+            self.open_device(device)
+        return callback
+
+    def manufacturer_lines(self, device):
+        lines = []
+        for item in device.get("manufacturerData", []):
+            lines.append("ID " + str(item.get("id", "?")) + " · " + str(item.get("hex", "")))
+        return lines
+
+    def screen_main(self, ui, api, state):
+        capabilities = json.loads(str(api.getDevice().btCapabilitiesJson()))
+        visible = self.visible_devices()
+        rows = []
+        for device in visible:
+            name = device.get("name") or "Unnamed BLE device"
+            subtitle = str(device.get("address", "")) + " · " + str(device.get("rssi", "?")) + " dBm · " + str(device.get("signalLabel", "Unknown"))
+            rows.append(ui.function_row(name, subtitle, "bluetooth", on_click=self.device_callback(device)))
+        if not rows:
+            rows.append(ui.card([
+                ui.icon("bluetooth_searching", 46),
+                ui.text("No BLE advertisements yet", "titleMedium"),
+                ui.text("Start scanning and keep Bluetooth and Nearby devices permissions enabled.", "bodyMedium"),
+            ]))
+        return ui.scaffold(
+            title="BLE Scanner DEX",
+            content=ui.lazy_column([
+                ui.card([
+                    ui.row([
+                        ui.icon("memory", 36),
+                        ui.column([
+                            ui.text("DEX analyzer active", "titleLarge"),
+                            ui.text("Every advertisement is enriched by com.dolphy.examples.ble.BleAnalyzer", "bodySmall"),
+                        ], spacing=2),
+                    ], spacing=12),
+                    ui.row([
+                        ui.chip("Bluetooth on" if capabilities.get("enabled") else "Bluetooth off", bool(capabilities.get("enabled"))),
+                        ui.chip("Scanner ready" if capabilities.get("leScanner") else "No LE scanner", bool(capabilities.get("leScanner"))),
+                        ui.chip("Batching" if capabilities.get("offloadedScanBatching") else "Live results", False),
+                    ], spacing=6),
+                    ui.button("Stop scan" if self.scanning else "Start BLE scan", self.toggle_scan, fill_max_width=True),
+                ]),
+                ui.button_group([["all", "All"], ["connectable", "Connectable"], ["beacons", "Beacons"]], self.filter, self.set_filter),
+                ui.text(str(len(visible)) + " devices · " + str(len(self.devices)) + " total", "titleMedium"),
+                ui.segmented_list(rows),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )
+
+    def screen_details(self, ui, api, state):
+        device = self.selected or {}
+        name = device.get("name") or "Unnamed BLE device"
+        rssi = int(device.get("rssi", -127))
+        signal = int(device.get("signalPercent", 0))
+        distance = float(device.get("estimatedDistance", -1.0))
+        services = device.get("serviceUuids", [])
+        manufacturers = self.manufacturer_lines(device)
+        service_nodes = [ui.settings_row("Service UUID", value, "data_object") for value in services]
+        manufacturer_nodes = [ui.settings_row("Manufacturer data", value, "memory") for value in manufacturers]
+        if not service_nodes:
+            service_nodes = [ui.settings_row("Service UUIDs", "None advertised", "data_object")]
+        if not manufacturer_nodes:
+            manufacturer_nodes = [ui.settings_row("Manufacturer data", "None advertised", "memory")]
+        return ui.scaffold(
+            title=name,
+            content=ui.lazy_column([
+                ui.card([
+                    ui.icon("bluetooth", 52),
+                    ui.text(name, "headlineSmall"),
+                    ui.text(str(device.get("address", "Unknown address")), "bodyMedium"),
+                    ui.linear_progress(signal / 100.0),
+                    ui.text(str(rssi) + " dBm · " + str(device.get("signalLabel", "Unknown")) + " · " + str(signal) + "%", "titleMedium"),
+                ]),
+                ui.segmented_list([
+                    ui.settings_row("Advertisement", str(device.get("advertisementType", "Unknown")), "sensors"),
+                    ui.settings_row("Manufacturer", str(device.get("manufacturerName", "Unknown")), "info"),
+                    ui.settings_row("Connectable", "Yes" if device.get("connectable") else "No", "link"),
+                    ui.settings_row("TX power", str(device.get("txPower", 0)) + " dBm", "sensors"),
+                    ui.settings_row("Estimated distance", (str(distance) + " m") if distance >= 0 else "Unavailable", "speed"),
+                    ui.settings_row("Payload", str(device.get("payloadBytes", 0)) + " bytes", "code"),
+                ]),
+                ui.text("Services", "titleMedium"),
+                ui.segmented_list(service_nodes),
+                ui.text("Manufacturer records", "titleMedium"),
+                ui.segmented_list(manufacturer_nodes),
+                ui.card([
+                    ui.text("Raw advertisement", "titleMedium"),
+                    ui.log_panel(str(device.get("raw", "No raw payload")), 180),
+                ]),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )
