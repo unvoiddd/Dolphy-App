@@ -1,3 +1,7 @@
+// NsdManager.resolveService and NsdServiceInfo.host are deprecated on API 34+;
+// their replacements (registerServiceInfoCallback) require API 34, but minSdk is 26.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.network
 
 import com.droid.dolphy.DolphyIconButton
@@ -332,8 +336,11 @@ fun LanScannerScreen(navController: NavController) {
                 return@launch
             }
 
-            val selfIp = localIp.hostAddress
-            val subnet = localIp.hostAddress.substringBeforeLast(".")
+            val selfIp = localIp.hostAddress ?: run {
+                withContext(Dispatchers.Main) { isScanning = false }
+                return@launch
+            }
+            val subnet = selfIp.substringBeforeLast(".")
             currentSubnet = "$subnet.*"
 
             val foundDevices = mutableListOf<LanDevice>()
@@ -893,7 +900,7 @@ private fun getLocalIpAddress(): InetAddress? {
             val addrs = Collections.list(intf.inetAddresses)
             for (addr in addrs) {
                 if (!addr.isLoopbackAddress) {
-                    val sAddr = addr.hostAddress
+                    val sAddr = addr.hostAddress ?: continue
                     if (sAddr.contains(":")) continue
                     return addr
                 }

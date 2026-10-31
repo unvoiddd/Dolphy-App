@@ -1,6 +1,7 @@
 package com.droid.dolphy.chat
 
 import com.droid.dolphy.DolphyIconButton
+import com.droid.dolphy.R
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -138,7 +140,7 @@ fun GlobalChatScreen(navController: NavController) {
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
-                    placeholder = { Text("Введите сообщение") },
+                    placeholder = { Text(stringResource(R.string.chat_enter_message)) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
                     colors = TextFieldDefaults.colors(
@@ -168,7 +170,7 @@ fun GlobalChatScreen(navController: NavController) {
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Отправить",
+                        contentDescription = stringResource(R.string.cd_send),
                         tint = Color.White
                     )
                 }

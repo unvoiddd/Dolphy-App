@@ -153,8 +153,8 @@ class ContinuitySpam(private val type: ContinuityType, private val crashMode: Bo
         isSpamming = false
     }
 
-    override fun setBlinkRunnable(blinkRunnable: Runnable?) {
-        this.blinkRunnable = blinkRunnable
+    override fun setBlinkRunnable(runnable: Runnable?) {
+        this.blinkRunnable = runnable
     }
 
     override fun getBlinkRunnable(): Runnable? = blinkRunnable

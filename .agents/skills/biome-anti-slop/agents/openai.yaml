@@ -1,0 +1,4 @@
+interface:
+  display_name: "Biome anti-slop"
+  short_description: "Install and configure the vendored Biome anti-slop GritQL rules"
+  default_prompt: "Use $biome-anti-slop to add or update the vendored Biome anti-slop GritQL rules in this repository."

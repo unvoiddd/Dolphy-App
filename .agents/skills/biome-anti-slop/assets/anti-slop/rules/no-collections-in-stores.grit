@@ -1,0 +1,30 @@
+language js(typescript)
+
+// scope: global
+
+// A `Map` or `Set` in a store's initial value. `isWrappable` rejects platform
+// objects, so the store serves the collection raw and mutating it notifies
+// nothing - only replacing the whole property does.
+//
+// A type argument changes the shape of the call node, and every store in this
+// repository is written `createStore<T>({...})`, so all four spellings have to
+// be listed or the rule walks past every site it exists for. The second
+// argument is the `{ shallow: true }` options object.
+or {
+  `new Map($...)`,
+  `new Set($...)`,
+  `new Map<$...>($...)`,
+  `new Set<$...>($...)`
+} as $collection where {
+  $collection <: within or {
+    `createStore($_)`,
+    `createStore($_, $_)`,
+    `createStore<$_>($_)`,
+    `createStore<$_>($_, $_)`
+  },
+  register_diagnostic(
+    span=$collection,
+    message="A `Map` or `Set` in a store is served raw: mutating it notifies nothing, and only replacing the whole property does. Hold it in a signal written copy-on-write, or store an array - unless you always replace this field whole.",
+    severity="warn"
+  )
+}

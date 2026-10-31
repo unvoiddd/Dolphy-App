@@ -1,0 +1,22 @@
+language js(typescript)
+
+// The key is a metavariable rather than the four spellings of a built-in key
+// type, so an alias or a branded key - `Record<AgentId, unknown>` - is covered
+// too. Listing them cost `no-known-value-widening` its own `Record<$key, …>`
+// arm, which used to be the only thing catching those.
+//
+// The `any` value type is deliberately absent: `noExplicitAny` is already an
+// error, and a second diagnostic on the same line adds nothing to read.
+
+// scope: global
+
+or {
+  `Record<$key, unknown>`,
+  `Record<$key, object>`
+} as $dictionary where {
+  register_diagnostic(
+    span=$dictionary,
+    message="This dictionary value type gives callers no concrete contract. Use an owner/schema-derived value type and parse external payloads before insertion.",
+    severity="error"
+  )
+}

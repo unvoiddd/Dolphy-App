@@ -289,7 +289,7 @@ fun PluginHostScreen(
                 }
                 PluginMediaAction.TAKE_PHOTO -> {
                     val target = session?.createCameraCaptureTarget(
-                        req.destPath?.substringAfterLast('/') ?: null,
+                        req.destPath?.substringAfterLast('/'),
                     )
                     if (target == null) {
                         pendingMedia = null

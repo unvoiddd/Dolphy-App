@@ -1,0 +1,66 @@
+# creating.md — gates, then the PR
+
+Entry: finished work on a branch, no PR yet. Saves the body draft at
+`.thinkrail/context/pr-body.md`. Creating defaults to snapshot mode; an explicit remote-completion ask
+selects wait mode. Control continues with the selected mode at `screenshots.md` (UI-visible change) or
+`checks.md`.
+
+## Gates — all five pass before `gh pr create`, in this order
+
+1. **Committed, clean worktree.** Everything that ships is committed — `git status --porcelain`
+   comes back empty. Work git doesn't hold (uncommitted edits, untracked files) will not reach the
+   PR, and the rebase in the next gate needs a clean tree anyway.
+2. **Fresh base.** `git fetch origin`, then rebase onto the base branch (default `origin/main`).
+   Conflicts are resolved now, not after review starts.
+3. **Clean branch.** Remove throwaway artifacts — repro tests, capture specs, scratch files, test
+   output dirs. Read `git log --oneline <base>..HEAD` and `git status --short` as the reviewer will:
+   every file in the diff must be explainable in one line.
+4. **Verification evidence.** Apply the spine's final-tree rule: collect the exact checks already run
+   during development, reuse results whose covered inputs are unchanged, and run only missing or
+   invalidated project gates. Do not rerun a passing command merely because PR creation started.
+   Changed commit IDs alone do not invalidate evidence; relevant changes in the resulting tree do.
+   Report the exact commands and results in the body's Testing section; a project with no gates is
+   verified by hand and reported as exactly that, never silently treated as verified.
+5. **Self-review.** Re-read the full diff (`git diff <base>...HEAD` plus working tree) as a
+   reviewer, holding the project's handoff-hygiene bar: no silent lint/type suppressions, no comment
+   creep, no half-migrated patterns, no leftovers. Fix what you find; don't annotate it.
+
+Red flags — stop, a gate is being rationalized away:
+
+- "PR creation always means rerunning everything" — valid final-change evidence is reusable.
+- "That earlier result probably still applies" — later changes may have invalidated it.
+- "The rebase can wait until review starts."
+- "That file is probably fine" — you couldn't explain it to a reviewer in one line.
+
+## The PR
+
+- **Title**: `scope: imperative summary` — e.g. `feat(web): …`, `fix(website): …`, `ci: …`.
+- **Body** → `.thinkrail/context/pr-body.md`. Read the project's
+  `.github/PULL_REQUEST_TEMPLATE.md` at the point of drafting and preserve its sections, order, and
+  every checklist item; replace prompts with concrete content and tick only checks actually completed.
+  Drop a related-issues section only when the PR closes nothing. If the project has no template, use
+  the three-section PR-body shape — `## Summary` (what and why, plus `Closes #NNN` when issue-driven),
+  `## Changes` (including exclusions or migration steps when material), and `## Testing` (exact
+  commands and results, never a bare "tests pass"). **When a chat TODO plan drove the work, don't
+  write the body from memory — pull the material from the plan:** `plan.summary` already carries the
+  cross-cutting intent and testing in the same three-section shape (see the `todos` skill — plan
+  summary), each step carries its own `summary` + `verification` + `commitSubject`, and the app's PR
+  preview body already renders the whole plan. With a repo template, reshape the plan material into the
+  template's sections rather than restating it; with no template, the plan summary IS the body shape —
+  take it verbatim and let the auto `## Plan` section cover the per-step detail.
+- **Stabilize the tree, push, then create.** Gates 3–5 may edit the tree gate 1 checked. When they do,
+  commit everything, then repeat gates 3–5 against the new head; push only after a pass makes no
+  further edits and `git status --porcelain` is empty *now* (the spine's point-of-action rule). Then
+  push the reviewed, final-change-verified head —
+  `gh pr create --head` does **not** push for you: `git push -u origin <branch>`
+  (`--force-with-lease` when the remote branch exists and was rebased) — then
+  `gh pr create --base <base> --head <branch> --title "…" --body-file .thinkrail/context/pr-body.md`
+  — add `--repo` when the remote is ambiguous; `--draft` only when the user asked for a draft.
+  Never pass the body inline: long inline/heredoc bodies have truncated and failed; the body file
+  *is* the recipe. Delete the body file once the PR exists.
+
+## Next
+
+- The change is UI-visible → offer screenshots proactively (don't wait to be asked), then read and
+  follow `screenshots.md`, carrying the selected completion mode.
+- Otherwise → read and follow `checks.md` in the selected completion mode.

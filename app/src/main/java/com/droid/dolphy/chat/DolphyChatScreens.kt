@@ -1,3 +1,7 @@
+// Legacy BLE GATT APIs (connectGatt, writeCharacteristic, characteristic.value) are
+// kept for minSdk 26; their replacements require API 33+ branches.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.chat
 
 import com.droid.dolphy.DolphyIconButton
@@ -22,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -31,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.AbsoluteRoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
@@ -145,6 +151,7 @@ class DolphyChatManager(private val context: Context) {
             offset: Int,
             value: ByteArray?
         ) {
+            val targetDevice = device ?: return
             value?.let { data ->
                 try {
 
@@ -168,7 +175,7 @@ class DolphyChatManager(private val context: Context) {
             }
 
 
-            gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+            gattServer?.sendResponse(targetDevice, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
         }
     }
 
@@ -331,7 +338,7 @@ class DolphyChatManager(private val context: Context) {
             .build()
 
         try {
-            bluetoothLeScanner?.startScan(scanCallback)
+            bluetoothLeScanner.startScan(scanCallback)
             isScanning.value = true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -513,7 +520,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
             DolphyChatManager(context)
         } catch (e: Exception) {
             hasError = true
-            errorMessage = "Ошибка инициализации: ${e.message}"
+            errorMessage = context.getString(R.string.chat_init_error, e.message)
             null
         }
     }
@@ -528,7 +535,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
             bluetoothAdapter != null
         } catch (e: Exception) {
             hasError = true
-            errorMessage = "Ошибка Bluetooth: ${e.message}"
+            errorMessage = context.getString(R.string.chat_bt_error, e.message)
             false
         }
     }
@@ -553,7 +560,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Произошла ошибка",
+                    text = stringResource(R.string.chat_error_title),
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold,
@@ -580,7 +587,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Bluetooth недоступен",
+                    text = stringResource(R.string.chat_bluetooth_unavailable),
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold,
@@ -590,7 +597,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Для работы Dolphy Chat необходим Bluetooth",
+                    text = stringResource(R.string.chat_bluetooth_required),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -598,7 +605,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
             } else {
 
                 Icon(
-                    imageVector = Icons.Default.Chat,
+                    imageVector = Icons.AutoMirrored.Filled.Chat,
                     contentDescription = null,
                     tint = accentColor,
                     modifier = Modifier.size(80.dp)
@@ -618,7 +625,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
 
 
                 Text(
-                    text = "Чат по BLE, дистанция 10-30 метров",
+                    text = stringResource(R.string.chat_ble_distance),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -632,7 +639,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
                 OutlinedTextField(
                     value = userName,
                     onValueChange = { userName = it },
-                    label = { Text("Введите имя") },
+                    label = { Text(stringResource(R.string.chat_enter_name)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
@@ -662,7 +669,7 @@ fun DolphyChatWelcomeScreen(navController: NavController) {
                     enabled = userName.isNotBlank()
                 ) {
                     Text(
-                        text = "Далее",
+                        text = stringResource(R.string.onboarding_next),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
@@ -720,31 +727,31 @@ fun DolphyChatMainScreen(userName: String, navController: NavController) {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Поиск устройств...",
+                            text = stringResource(R.string.chat_searching_devices),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Реклама включена",
+                            text = stringResource(R.string.chat_advertising_on),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                         )
                     } else if (isAdvertising.value) {
                         Text(
-                            text = "Реклама включена",
+                            text = stringResource(R.string.chat_advertising_on),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Ожидание сканирования...",
+                            text = stringResource(R.string.chat_waiting_scan),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                         )
                     } else {
                         Text(
-                            text = "Инициализация...",
+                            text = stringResource(R.string.chat_initializing),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                         )
@@ -768,7 +775,7 @@ fun DolphyChatMainScreen(userName: String, navController: NavController) {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Пользователи не найдены\nУбедитесь что у них запущен Dolphy Chat",
+                                text = stringResource(R.string.chat_no_users),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center
@@ -842,7 +849,7 @@ fun ChatUserCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Доступен для чата",
+                    text = stringResource(R.string.chat_available),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
@@ -909,7 +916,7 @@ fun DolphyChatConversationScreen(
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
-                    placeholder = { Text("Введите сообщение") },
+                    placeholder = { Text(stringResource(R.string.chat_enter_message)) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
                     colors = TextFieldDefaults.colors(
@@ -936,7 +943,7 @@ fun DolphyChatConversationScreen(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Отправить",
+                        contentDescription = stringResource(R.string.cd_send),
                         tint = Color.White
                     )
                 }

@@ -4,6 +4,9 @@ Dolphy is a powerful Android multi-tool developed for wireless protocol research
 
 Dolphy releases telegram channel - https://t.me/Dolphy_app_official
 
+> **Security model:** core features work without root. Optional Root/Shizuku features are explicit and gated by user consent. Release builds are signed with a private keystore and are never signed with the debug key. See [`docs/security/THREAT-MODEL.md`](docs/security/THREAT-MODEL.md) and [`docs/security/P0-HARDENING.md`](docs/security/P0-HARDENING.md).
+
+
 ## The project is protected by a license; please review it!
 
 ## Features & Modules
@@ -43,6 +46,8 @@ Special thanks to the developers and researchers who helped bring this project t
 # Dolphy
 
 Dolphy — это мощный Android-мультитул, созданный для исследования беспроводных протоколов, тестирования кибербезопасности и эмуляции работы различного железа. Приложение переносит продвинутый технический функционал на обычные Android-смартфоны полностью без необходимости получения root-прав.
+
+> **Модель безопасности:** базовые функции работают без root. Дополнительные функции Root/Shizuku включаются только явно и с согласия пользователя. Release-сборки подписываются приватным ключом и никогда не используют debug-ключ. Подробнее: [`docs/security/THREAT-MODEL.md`](docs/security/THREAT-MODEL.md).
 
 ---
 

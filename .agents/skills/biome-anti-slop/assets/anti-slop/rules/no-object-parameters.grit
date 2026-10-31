@@ -1,0 +1,19 @@
+engine biome(1.0)
+language js(typescript)
+
+// scope: global
+
+// A warning, never an error. Preferring a named type to bare `object` is a good
+// default, but whether a parameter list should be positional or an options
+// object is a readability judgement, not a defect: four booleans read better
+// named, and every Solid component takes a props object by construction. An
+// error here would be a linter arguing with the developer.
+
+or {
+  JsFormalParameter(type_annotation=TsTypeAnnotation(ty=TsNonPrimitiveType())) as $parameter,
+  JsFormalParameter(type_annotation=TsTypeAnnotation(ty=TsParenthesizedType(ty=TsNonPrimitiveType()))) as $parameter,
+  JsRestParameter(type_annotation=TsTypeAnnotation(ty=TsNonPrimitiveType())) as $parameter,
+  JsRestParameter(type_annotation=TsTypeAnnotation(ty=TsParenthesizedType(ty=TsNonPrimitiveType()))) as $parameter
+} where {
+  register_diagnostic(span=$parameter, message="This parameter uses the broad `object` type. Accept a named owner type and parse external input at its boundary before calling this function.", severity="warn")
+}

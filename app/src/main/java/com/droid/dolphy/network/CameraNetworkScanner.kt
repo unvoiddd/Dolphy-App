@@ -2,6 +2,7 @@ package com.droid.dolphy.network
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import com.droid.dolphy.R
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -101,7 +102,7 @@ object CameraNetworkScanner {
             }
         }
 
-        onProgress(ScanProgress(0.02f, "Подготовка сети…", 0))
+        onProgress(ScanProgress(0.02f, context.getString(R.string.cam_scan_preparing), 0))
         val subnet = localSubnetPrefix()
         val self = localIp()
         val multicastLock = try {
@@ -132,7 +133,7 @@ object CameraNetworkScanner {
                 onProgress(ScanProgress(0.2f, "ONVIF: ${found.size}", found.size))
             }
 
-            onProgress(ScanProgress(0.28f, "Поиск RTSP / NVR портов…", found.size))
+            onProgress(ScanProgress(0.28f, context.getString(R.string.cam_scan_ports), found.size))
 
             if (subnet != null && coroutineContext.isActive) {
                 val hosts = (1..254).map { "$subnet.$it" }
@@ -177,7 +178,7 @@ object CameraNetworkScanner {
                         onProgress(
                             ScanProgress(
                                 frac.coerceIn(0f, 0.92f),
-                                "Проверено $done / ${hosts.size}…",
+                                context.getString(R.string.cam_scan_checked, done, hosts.size),
                                 found.size,
                             )
                         )
@@ -185,7 +186,7 @@ object CameraNetworkScanner {
                 }
             }
 
-            onProgress(ScanProgress(0.95f, "Уточнение MAC…", found.size))
+            onProgress(ScanProgress(0.95f, context.getString(R.string.cam_scan_mac), found.size))
             delay(300)
             found.values.toList().forEach { cam ->
                 val mac = cam.mac ?: getMacFromArp(cam.ip)
@@ -203,7 +204,7 @@ object CameraNetworkScanner {
                 .sortedBy { it.ip }
             found.clear()
             cleaned.forEach { found[it.ip] = it }
-            onProgress(ScanProgress(1f, "Готово", found.size))
+            onProgress(ScanProgress(1f, context.getString(R.string.cam_scan_done), found.size))
         } finally {
             try {
                 if (multicastLock?.isHeld == true) multicastLock.release()

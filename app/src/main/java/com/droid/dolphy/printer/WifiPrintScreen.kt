@@ -2,6 +2,7 @@ package com.droid.dolphy.printer
 
 import com.droid.dolphy.DolphyIconButton
 
+import android.content.Context
 import android.content.Intent
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -42,6 +43,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
@@ -306,6 +308,7 @@ private fun PrinterDetailsCard(
     capabilities: PrinterCapabilities?,
     loading: Boolean,
 ) {
+    val context = LocalContext.current
     AppCard {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionTitle(Icons.Default.Router, stringResource(R.string.wifi_print_printer_info))
@@ -324,7 +327,7 @@ private fun PrinterDetailsCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AssistChip(
                         onClick = {},
-                        label = { Text(printerStateLabel(capabilities.stateCode)) },
+                        label = { Text(printerStateLabel(context, capabilities.stateCode)) },
                         leadingIcon = { Icon(Icons.Default.CheckCircle, null, Modifier.size(16.dp)) },
                     )
                     AssistChip(
@@ -389,6 +392,7 @@ private fun PrintSettingsCard(
     onOrientation: (Int) -> Unit,
     onQuality: (Int) -> Unit,
 ) {
+    val context = LocalContext.current
     AppCard {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             SectionTitle(Icons.Default.Settings, stringResource(R.string.wifi_print_settings))
@@ -417,7 +421,7 @@ private fun PrintSettingsCard(
                     label = stringResource(R.string.wifi_print_sides),
                     values = capabilities.sides,
                     selected = options.sides,
-                    title = ::sidesLabel,
+                    title = { value -> sidesLabel(context, value) },
                     onSelect = onSides,
                 )
             }
@@ -426,7 +430,7 @@ private fun PrintSettingsCard(
                     label = stringResource(R.string.wifi_print_color),
                     values = capabilities.colorModes,
                     selected = options.colorMode,
-                    title = ::colorLabel,
+                    title = { value -> colorLabel(context, value) },
                     onSelect = onColor,
                 )
             }
@@ -435,7 +439,7 @@ private fun PrintSettingsCard(
                     label = stringResource(R.string.wifi_print_orientation),
                     values = capabilities.orientations,
                     selected = options.orientationCode,
-                    title = ::orientationLabel,
+                    title = { value -> orientationLabel(context, value) },
                     onSelect = onOrientation,
                 )
             }
@@ -444,7 +448,7 @@ private fun PrintSettingsCard(
                     label = stringResource(R.string.wifi_print_quality),
                     values = capabilities.qualities,
                     selected = options.qualityCode,
-                    title = ::qualityLabel,
+                    title = { value -> qualityLabel(context, value) },
                     onSelect = onQuality,
                 )
             }
@@ -465,7 +469,7 @@ private fun MediaMenu(media: List<String>, selected: String?, onSelect: (String)
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth(),
             )
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -614,11 +618,11 @@ private fun NoticeCard(icon: ImageVector, message: String, color: Color) {
     }
 }
 
-private fun printerStateLabel(code: Int?): String = when (code) {
-    3 -> "Ready"
-    4 -> "Printing"
-    5 -> "Attention"
-    else -> "Connected"
+private fun printerStateLabel(context: Context, code: Int?): String = when (code) {
+    3 -> context.getString(R.string.print_state_ready)
+    4 -> context.getString(R.string.print_state_printing)
+    5 -> context.getString(R.string.print_state_attention)
+    else -> context.getString(R.string.print_state_connected)
 }
 
 private fun formatLabel(value: String): String = when (value.lowercase()) {
@@ -635,32 +639,32 @@ private fun mediaLabel(value: String): String = value
     .replace('_', ' ')
     .replaceFirstChar { it.uppercase() }
 
-private fun sidesLabel(value: String): String = when (value) {
-    "one-sided" -> "1 side"
-    "two-sided-long-edge" -> "2 sides · long"
-    "two-sided-short-edge" -> "2 sides · short"
+private fun sidesLabel(context: Context, value: String): String = when (value) {
+    "one-sided" -> context.getString(R.string.print_sides_one)
+    "two-sided-long-edge" -> context.getString(R.string.print_sides_long)
+    "two-sided-short-edge" -> context.getString(R.string.print_sides_short)
     else -> value
 }
 
-private fun colorLabel(value: String): String = when (value) {
-    "color" -> "Color"
-    "monochrome" -> "B/W"
-    "auto" -> "Auto"
+private fun colorLabel(context: Context, value: String): String = when (value) {
+    "color" -> context.getString(R.string.print_color_color)
+    "monochrome" -> context.getString(R.string.print_color_bw)
+    "auto" -> context.getString(R.string.print_color_auto)
     else -> value
 }
 
-private fun orientationLabel(value: Int): String = when (value) {
-    3 -> "Portrait"
-    4 -> "Landscape"
-    5 -> "Reverse landscape"
-    6 -> "Reverse portrait"
-    else -> "Auto"
+private fun orientationLabel(context: Context, value: Int): String = when (value) {
+    3 -> context.getString(R.string.print_orientation_portrait)
+    4 -> context.getString(R.string.print_orientation_landscape)
+    5 -> context.getString(R.string.print_orientation_reverse_landscape)
+    6 -> context.getString(R.string.print_orientation_reverse_portrait)
+    else -> context.getString(R.string.print_orientation_auto)
 }
 
-private fun qualityLabel(value: Int): String = when (value) {
-    3 -> "Draft"
-    4 -> "Normal"
-    5 -> "High"
+private fun qualityLabel(context: Context, value: Int): String = when (value) {
+    3 -> context.getString(R.string.print_quality_draft)
+    4 -> context.getString(R.string.print_quality_normal)
+    5 -> context.getString(R.string.print_quality_high)
     else -> value.toString()
 }
 

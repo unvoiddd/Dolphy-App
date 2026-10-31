@@ -1,0 +1,189 @@
+import json
+
+__id__ = "ble_advert_lab"
+__name__ = "BLE Advert Lab"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Compose custom BLE advertising packets and broadcast them"
+__icon__ = "rounded:radar"
+__permissions__ = ["ble_spam", "bluetooth"]
+
+SAMPLE_PAYLOAD = "444F4C504859"
+
+
+class BleAdvertLab(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.manufacturer_id = "65535"
+        self.payload = SAMPLE_PAYLOAD
+        self.include_name = False
+        self.connectable = False
+        self.running = False
+        self.status = "Idle"
+        self.sent_packets = 0
+        self.last_error = ""
+
+    def on_plugin_load(self):
+        self.add_module(
+            "BLE Advert Lab",
+            "Build manufacturer data and broadcast a custom BLE advertisement",
+            "bluetooth",
+            "main",
+            "BLUETOOTH",
+            40,
+        )
+
+    def on_plugin_unload(self):
+        self.stop()
+
+    def capabilities(self):
+        try:
+            return json.loads(str(self.api.getDevice().btCapabilitiesJson()))
+        except Exception:
+            return {}
+
+    def set_manufacturer(self, value):
+        self.manufacturer_id = str(value).strip()
+        self.refresh()
+
+    def set_payload(self, value):
+        self.payload = str(value).strip()
+        self.refresh()
+
+    def set_include_name(self, value):
+        self.include_name = bool(value)
+        self.refresh()
+
+    def set_connectable(self, value):
+        self.connectable = bool(value)
+        self.refresh()
+
+    def parsed_manufacturer(self):
+        try:
+            return max(0, min(65535, int(str(self.manufacturer_id).strip(), 0)))
+        except Exception:
+            return -1
+
+    def normalized_payload(self):
+        clean = str(self.payload).replace(" ", "").replace(":", "").replace("-", "").upper()
+        if not clean or len(clean) % 2 != 0 or any(char not in "0123456789ABCDEF" for char in clean):
+            return ""
+        if len(clean) > 54:
+            return ""
+        return clean
+
+    def toggle(self):
+        if self.running:
+            self.stop()
+            return
+        manufacturer = self.parsed_manufacturer()
+        payload = self.normalized_payload()
+        if manufacturer < 0:
+            self.status = "Manufacturer id must be 0-65535"
+            self.refresh()
+            return
+        if not payload:
+            self.status = "Payload must be even-length hexadecimal (max 27 bytes)"
+            self.refresh()
+            return
+        android = self.api.getAndroid()
+        try:
+            started = bool(
+                android.bleAdvertiseCustom(
+                    manufacturer,
+                    payload,
+                    None,
+                    None,
+                    None,
+                    self.include_name,
+                    False,
+                    self.connectable,
+                )
+            )
+        except Exception as error:
+            started = False
+            self.last_error = str(error)
+        self.running = started
+        if started:
+            self.sent_packets += 1
+            self.status = "Advertising 0x" + format(manufacturer, "04X") + " · " + str(len(payload) // 2) + " bytes"
+        else:
+            self.status = "Advertiser unavailable or rejected the packet"
+        self.refresh()
+
+    def stop(self):
+        if not self.running:
+            self.status = "Idle"
+            return
+        try:
+            self.api.getAndroid().bleAdvertiseStop()
+        except Exception:
+            pass
+        self.running = False
+        self.status = "Advertising stopped"
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        capabilities = self.capabilities()
+        payload_bytes = len(self.normalized_payload()) // 2
+        return ui.scaffold(
+            title="BLE Advert Lab",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("radar", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("Custom advertising", "titleLarge"),
+                                            ui.text("Manufacturer data broadcast", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Bluetooth on" if capabilities.get("enabled") else "Bluetooth off", bool(capabilities.get("enabled"))),
+                                    ui.chip("Advertiser" if capabilities.get("leAdvertiser") else "No advertiser", bool(capabilities.get("leAdvertiser"))),
+                                    ui.chip("Broadcasting" if self.running else "Idle", self.running),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                            ui.text(self.last_error, "bodySmall") if self.last_error else ui.empty(),
+                        ]
+                    ),
+                    ui.card(
+                        [
+                            ui.text("Packet", "titleLarge"),
+                            ui.text_field(self.manufacturer_id, self.set_manufacturer, "Manufacturer id (decimal or 0xHEX)"),
+                            ui.text_field(self.payload, self.set_payload, "Manufacturer data (hex)", single_line=False),
+                            ui.text(str(payload_bytes) + " bytes · max 27 bytes", "bodySmall"),
+                            ui.switch(self.include_name, self.set_include_name, "Include device name", "Adds the Bluetooth name to the advertisement"),
+                            ui.switch(self.connectable, self.set_connectable, "Connectable", "Allows a central device to connect"),
+                            ui.button("Stop advertising" if self.running else "Start advertising", self.toggle, fill_max_width=True),
+                        ]
+                    ),
+                    ui.card(
+                        [
+                            ui.text("Packet preview", "titleMedium"),
+                            ui.log_panel(
+                                "flags: LE general discoverable\n"
+                                + "manufacturer id: 0x"
+                                + format(self.parsed_manufacturer(), "04X")
+                                + "\nmanufacturer data: "
+                                + (self.normalized_payload() or "invalid"),
+                                160,
+                            ),
+                        ]
+                    ),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

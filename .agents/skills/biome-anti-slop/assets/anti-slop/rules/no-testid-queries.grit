@@ -1,0 +1,19 @@
+language js(typescript)
+
+// scope: tests
+
+`$_.$method($...)` as $call where {
+  $method <: or {
+    `getByTestId`,
+    `queryByTestId`,
+    `findByTestId`,
+    `getAllByTestId`,
+    `queryAllByTestId`,
+    `findAllByTestId`
+  },
+  register_diagnostic(
+    span=$call,
+    message="Do not query by test id. See the Tests section of AGENTS.md: find the element by its accessible role and name, which is what a user perceives and what the test should protect. A test id is invisible to users, so a test built on one keeps passing after the control loses its role or name.",
+    severity="error"
+  )
+}

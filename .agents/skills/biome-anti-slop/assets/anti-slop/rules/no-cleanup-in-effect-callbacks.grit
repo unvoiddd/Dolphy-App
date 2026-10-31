@@ -1,0 +1,32 @@
+language js(typescript)
+
+// scope: global
+
+// `onCleanup` in the second callback of a Solid 2 effect. That callback runs
+// from the effect queue with no owner, so `onCleanup` only warns and the
+// cleanup never runs: a listener, timer or stream outlives every rerun and the
+// component itself (#1866). The callback returns its cleanup instead.
+//
+// The first callback has an owner, so `onCleanup` there is correct. So is one
+// inside a `createRoot` or `runWithOwner` that the callback starts, because
+// that call supplies the owner. A type argument changes the call node, so the
+// typed spellings are listed too.
+`onCleanup($_)` as $cleanup where {
+  $cleanup <: within or {
+    `createEffect($_, $apply)`,
+    `createEffect($_, $apply, $_)`,
+    `createEffect<$_>($_, $apply)`,
+    `createEffect<$_>($_, $apply, $_)`,
+    `createRenderEffect($_, $apply)`,
+    `createRenderEffect($_, $apply, $_)`,
+    `createRenderEffect<$_>($_, $apply)`,
+    `createRenderEffect<$_>($_, $apply, $_)`
+  },
+  $cleanup <: within $apply,
+  $cleanup <: not within or { `createRoot($...)`, `runWithOwner($...)` } as $owner where { $owner <: within $apply },
+  register_diagnostic(
+    span=$cleanup,
+    message="An effect's second callback has no owner, so `onCleanup` here never runs. Return the cleanup function from the callback instead.",
+    severity="error"
+  )
+}

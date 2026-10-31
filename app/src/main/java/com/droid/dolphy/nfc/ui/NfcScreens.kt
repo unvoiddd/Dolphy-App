@@ -1,3 +1,7 @@
+// Deprecated platform APIs are still the only option on minSdk 26; their
+// replacements require API 33+ branches that this feature cannot take yet.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.nfc.ui
 
 import com.droid.dolphy.DolphyIconButton
@@ -299,7 +303,7 @@ fun NfcWaitScreen(navController: NavController, viewModel: NfcViewModel) {
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = if(nfcReady) "Приложите метку к телефону" else "NFC недоступен",
+                            text = stringResource(if (nfcReady) R.string.nfc_apply_tag else R.string.nfc_unavailable),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold,
@@ -307,9 +311,9 @@ fun NfcWaitScreen(navController: NavController, viewModel: NfcViewModel) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = if(nfcReady) {
-                                if (rootMode) "Ожидание NFC… (root)" else "Ожидание NFC..."
+                                if (rootMode) stringResource(R.string.nfc_waiting_root) else stringResource(R.string.nfc_waiting)
                             } else {
-                                "Включите NFC в настройках телефона"
+                                stringResource(R.string.nfc_enable_instruction)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -399,18 +403,18 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                 ) {
                     item {
                         SectionCard(title = stringResource(R.string.nfc_section_main)) {
-                            KeyValue("UID (hex)", scan!!.uidHex)
-                            KeyValue("Технологии", scan!!.techListCsv)
-                            KeyValue("Writable", scan!!.writable?.let { if(it) "Да" else "Нет" } ?: "—")
-                            KeyValue("Размер памяти", scan!!.maxSizeBytes?.let { "$it bytes" } ?: "—")
+                            KeyValue(stringResource(R.string.nfc_uid), scan!!.uidHex)
+                            KeyValue(stringResource(R.string.nfc_technologies), scan!!.techListCsv)
+                            KeyValue(stringResource(R.string.nfc_writable), scan!!.writable?.let { if (it) stringResource(R.string.nfc_yes) else stringResource(R.string.nfc_no) } ?: "—")
+                            KeyValue(stringResource(R.string.nfc_memory_size), scan!!.maxSizeBytes?.let { "$it bytes" } ?: "—")
                         }
                     }
 
                     if(!scan!!.ndefRecordType.isNullOrBlank()) {
                         item {
                             SectionCard(title = stringResource(R.string.nfc_section_ndef)) {
-                                KeyValue("Тип записи", scan!!.ndefRecordType ?: "—")
-                                KeyValue("Содержимое", scan!!.ndefContent ?: "—")
+                                KeyValue(stringResource(R.string.nfc_record_type), scan!!.ndefRecordType ?: "—")
+                                KeyValue(stringResource(R.string.nfc_content), scan!!.ndefContent ?: "—")
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier
@@ -421,13 +425,13 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                                     horizontalArrangement = Arrangement.Center,
                                 ) {
                                     Text(
-                                        text = if(showHex) "Скрыть HEX" else "Показать HEX",
+                                        text = stringResource(if (showHex) R.string.nfc_hide_hex else R.string.nfc_show_hex),
                                         color = accent,
                                         fontWeight = FontWeight.SemiBold,
                                     )
                                 }
                                 if(showHex) {
-                                    KeyValue("HEX", scan!!.ndefHex ?: "—")
+                                    KeyValue(stringResource(R.string.nfc_hex), scan!!.ndefHex ?: "—")
                                 }
                             }
                         }
@@ -435,19 +439,19 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
 
                     item {
                         SectionCard(title = stringResource(R.string.nfc_section_analysis)) {
-                            KeyValue("NTAG", scan!!.ntagType ?: "—")
-                            KeyValue("Read-only", scan!!.isReadOnly?.let { if(it) "Да" else "Нет" } ?: "—")
+                            KeyValue(stringResource(R.string.nfc_ntag), scan!!.ntagType ?: "—")
+                            KeyValue(stringResource(R.string.nfc_readonly), scan!!.isReadOnly?.let { if (it) stringResource(R.string.nfc_yes) else stringResource(R.string.nfc_no) } ?: "—")
                             KeyValue(
                                 "Password protection",
                                 when {
                                     scan!!.passwordProtectionSupported != true -> "—"
-                                    scan!!.passwordProtectionEnabled == true -> "Включено"
-                                    scan!!.passwordProtectionEnabled == false -> "Выключено"
-                                    else -> "Неизвестно"
+                                    scan!!.passwordProtectionEnabled == true -> stringResource(R.string.nfc_enabled)
+                                    scan!!.passwordProtectionEnabled == false -> stringResource(R.string.nfc_disabled)
+                                    else -> stringResource(R.string.nfc_unknown)
                                 },
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            KeyValue("Вердикт", scan!!.analysisVerdict)
+                            KeyValue(stringResource(R.string.nfc_verdict), scan!!.analysisVerdict)
                         }
                     }
 
@@ -460,7 +464,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                                     .filter { it.isNotEmpty() }
                                     .toList()
                                 if(lines.isEmpty()) {
-                                    KeyValue("Тип", "EMV карта")
+                                    KeyValue(stringResource(R.string.nfc_type), stringResource(R.string.nfc_emv_type_card))
                                 } else {
                                     lines.forEach { line ->
                                         val idx = line.indexOf(':')
@@ -505,14 +509,14 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        emulationName = "Копия ${scan!!.type.ifBlank { "метки" }}"
+                                        emulationName = context.getString(R.string.nfc_copy_tag_name, scan!!.type.ifBlank { context.getString(R.string.nfc_tag_label_unknown) })
                                         showCopyDialog = true
                                     },
                                 accentColor = accent,
                                 cornerRadius = 12.dp,
                             ) {
                                 Text(
-                                    text = "Копировать метку для эмуляции",
+                                    text = stringResource(R.string.nfc_copy_for_emulation),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = accent,
                                     fontWeight = FontWeight.SemiBold,
@@ -521,7 +525,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
                             }
                         } else {
                             Text(
-                                text = "Эту метку эмулировать не получится",
+                                text = stringResource(R.string.nfc_cannot_emulate),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -551,7 +555,7 @@ fun NfcResultScreen(navController: NavController, viewModel: NfcViewModel, scanI
             confirmButton = {
                 com.droid.dolphy.AccentButton(
                     onClick = {
-                        val name = emulationName.trim().ifBlank { "Копия метки" }
+                        val name = emulationName.trim().ifBlank { context.getString(R.string.nfc_copy_tag_default) }
                         val url = buildEmulationUrl(scan)
                         val tags = NfcTagEmulationStore.loadTags(context)
                         val copy = EmulatedNfcTag(
@@ -604,7 +608,7 @@ private fun NfcTopBar(
         actions = {
             if(onHistory != null) {
                 DolphyIconButton(onClick = onHistory) {
-                    Icon(Icons.Outlined.History, contentDescription = "История")
+                    Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.cd_history))
                 }
             }
         },

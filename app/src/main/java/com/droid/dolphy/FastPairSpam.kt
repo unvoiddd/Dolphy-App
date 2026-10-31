@@ -490,7 +490,7 @@ class FastPairSpam : Spammer {
         FastPairDevice("0xF00E97", "F00E97_bruce"),
     )
 
-    lateinit var devicesAdvertiseData: Array<AdvertiseData>
+    var devicesAdvertiseData: Array<AdvertiseData>
     private var loop = 0
     private val executor = Executors.newSingleThreadExecutor()!!
 
@@ -537,8 +537,8 @@ class FastPairSpam : Spammer {
         _isSpamming = false
     }
 
-    override fun setBlinkRunnable(blinkRunnable: Runnable?) {
-        this.blinkRunnable = blinkRunnable
+    override fun setBlinkRunnable(runnable: Runnable?) {
+        this.blinkRunnable = runnable
     }
 
     override fun getBlinkRunnable(): Runnable? {

@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [NfcScanEntity::class],
     version = 1,
-    exportSchema = true,
+    exportSchema = false,
 )
 abstract class NfcDatabase : RoomDatabase() {
     abstract fun scans(): NfcScanDao
@@ -24,7 +24,7 @@ abstract class NfcDatabase : RoomDatabase() {
                     NfcDatabase::class.java,
                     "nfc_scans.db",
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
             }

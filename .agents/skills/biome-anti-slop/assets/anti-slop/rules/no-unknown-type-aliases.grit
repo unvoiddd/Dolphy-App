@@ -1,0 +1,11 @@
+language js(typescript)
+
+// scope: global
+
+`type $name = unknown` as $alias where {
+  register_diagnostic(
+    span=$alias,
+    message="This type alias hides `unknown`. Keep `unknown` explicit at the parsing boundary or use the parsed owner type.",
+    severity="error"
+  )
+}

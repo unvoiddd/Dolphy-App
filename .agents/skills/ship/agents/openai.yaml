@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ship"
+  short_description: "Review, open, babysit and merge the current branch"
+  default_prompt: "Use $ship to take the current branch through review, the PR, NorbiAI and CI, and merge it to main."

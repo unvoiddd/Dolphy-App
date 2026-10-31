@@ -1,0 +1,29 @@
+language js(typescript)
+
+// scope: tests
+
+// An awaited promise, in statement position inside a test body, whose only job
+// is to resolve on a timer: the test stops and waits out the clock. A fake or
+// fixture that models latency, a deadline raced against real work, and anything
+// under `vi.useFakeTimers()` are input rather than waiting, so they are
+// deliberately not matched.
+`$sleep;` where {
+  $sleep <: `await $promise`,
+  $sleep <: within or { `it($...)`, `test($...)` },
+  $promise <: or {
+    `new Promise($callback)`,
+    `new Promise<$_>($callback)`
+  },
+  $callback <: or {
+    `($resolve) => setTimeout($resolve, $delay)`,
+    `$resolve => setTimeout($resolve, $delay)`,
+    `($resolve) => $_.setTimeout($resolve, $delay)`,
+    `$resolve => $_.setTimeout($resolve, $delay)`
+  },
+  $delay <: r"[1-9][0-9_]*",
+  register_diagnostic(
+    span=$sleep,
+    message="Do not sleep in a test. See the Tests section of AGENTS.md: wait on an observable condition - vi.waitFor, an emitted event, a resolved request - never on the clock. A delay long enough to pass on your machine is short enough to flake on a loaded runner.",
+    severity="error"
+  )
+}

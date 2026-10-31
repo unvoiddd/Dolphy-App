@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release upgrade safety"
+  short_description: "Audit a pending OpenBot release for upgrade and data-loss hazards"
+  default_prompt: "Use $release-upgrade-safety to audit the changes since the last released tag before this version is bumped or tagged."

@@ -1,3 +1,7 @@
+// Legacy BLE APIs (connectGatt, getIntValue, deprecated callbacks) are kept for
+// minSdk 26 compatibility; their replacements require API 33+ branches.
+@file:Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+
 package com.droid.dolphy.nrf
 
 import android.bluetooth.BluetoothAdapter
@@ -296,7 +300,7 @@ class NrfScannerViewModel : ViewModel() {
             rssi = rssi,
             txPower = scanRecord?.txPowerLevel,
             manufacturerId = manufacturerId,
-            manufacturerData = if (manufacturerId != null) manufacturerData?.get(manufacturerId)?.clone() else null,
+            manufacturerData = if (manufacturerId != null) manufacturerData.get(manufacturerId)?.clone() else null,
             serviceUuids = serviceUuids,
             deviceClass = device.bluetoothClass?.deviceClass,
             isVulnerable = isVulnerable,

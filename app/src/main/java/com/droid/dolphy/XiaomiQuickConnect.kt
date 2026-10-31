@@ -126,8 +126,8 @@ class XiaomiQuickConnect : Spammer {
         _isSpamming = false
     }
 
-    override fun setBlinkRunnable(blinkRunnable: Runnable?) {
-        this.blinkRunnable = blinkRunnable
+    override fun setBlinkRunnable(runnable: Runnable?) {
+        this.blinkRunnable = runnable
     }
 
     override fun getBlinkRunnable(): Runnable? {

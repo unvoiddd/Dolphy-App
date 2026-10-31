@@ -1,3 +1,7 @@
+// Deprecated platform APIs are still the only option on minSdk 26; their
+// replacements require API 33+ branches that this feature cannot take yet.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.nfc.ui
 
 import com.droid.dolphy.DolphyIconButton
@@ -451,7 +455,7 @@ private fun EmulationTopBar(
             DolphyIconButton(onClick = onToggleEditMode) {
                 Icon(
                     imageVector = Icons.Filled.Edit,
-                    contentDescription = if (editMode) "Выйти из режима редактирования" else "Редактировать"
+                    contentDescription = stringResource(if (editMode) R.string.nfc_exit_edit_mode else R.string.cd_edit)
                 )
             }
             if (editMode) {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Smoke and Ship"
+  short_description: "Smoke test the branch, then ship it when all items pass"
+  default_prompt: "Use $smoke-and-ship to smoke test the current branch and, when all items pass, ship it to main."

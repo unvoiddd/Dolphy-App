@@ -927,7 +927,7 @@ class JsUiBuilder {
 
     private fun optionalFloat(p: Map<String, Any?>, k: String): Float? {
         val v = p[k] ?: return null
-        if (v == Context.getUndefinedValue() || v == null) return null
+        if (v == Context.getUndefinedValue()) return null
         return toFloat(v)
     }
 

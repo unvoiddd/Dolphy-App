@@ -1,0 +1,191 @@
+import json
+import time
+
+__id__ = "nfc_toolkit"
+__name__ = "NFC Toolkit"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "NFC adapter status, live tag capture and technology inspection"
+__icon__ = "rounded:nfc"
+__permissions__ = ["nfc"]
+
+
+class NfcToolkit(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.tags = []
+        self.selected = None
+        self.status = "Waiting for a tag"
+        self.captures = 0
+
+    def on_plugin_load(self):
+        self.add_module(
+            "NFC Toolkit",
+            "Adapter status, live tag capture and technologies",
+            "nfc",
+            "main",
+            "OTHER",
+            60,
+        )
+        capabilities = self.capabilities()
+        if not capabilities.get("available"):
+            self.status = "This device has no NFC adapter"
+        elif not capabilities.get("enabled"):
+            self.status = "NFC is disabled"
+        else:
+            self.status = "Ready for a tag"
+
+    def capabilities(self):
+        try:
+            return json.loads(str(self.api.getDevice().nfcCapabilitiesJson()))
+        except Exception:
+            return {}
+
+    def open_settings(self):
+        try:
+            self.api.getDevice().nfcOpenSettings()
+            self.status = "Opened NFC settings"
+        except Exception:
+            self.status = "Could not open NFC settings"
+        self.refresh()
+
+    def uid_hex(self, tag):
+        try:
+            uid = tag.getId()
+        except Exception:
+            return ""
+        if uid is None:
+            return ""
+        try:
+            return "".join("{:02X}".format((int(value) + 256) % 256) for value in bytes(uid))
+        except Exception:
+            try:
+                return "".join("{:02X}".format((int(value) + 256) % 256) for value in uid)
+            except Exception:
+                return ""
+
+    def tech_list(self, tag):
+        try:
+            return [str(value) for value in tag.getTechList()]
+        except Exception:
+            return []
+
+    def on_nfc_tag(self, tag):
+        record = {
+            "uid": self.uid_hex(tag),
+            "tech": self.tech_list(tag),
+            "time": time.strftime("%H:%M:%S"),
+        }
+        self.tags.insert(0, record)
+        self.tags = self.tags[:50]
+        self.selected = record
+        self.captures += 1
+        self.status = "Tag captured · " + (record["uid"] or "unknown UID")
+        self.navigate("tag")
+
+    def tag_callback(self, record):
+        def callback(value=None):
+            self.selected = record
+            self.navigate("tag")
+
+        return callback
+
+    def clear(self):
+        self.tags = []
+        self.selected = None
+        self.status = "History cleared"
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        capabilities = self.capabilities()
+        rows = []
+        for record in self.tags:
+            rows.append(
+                ui.function_row(
+                    record.get("uid") or "Unknown UID",
+                    record.get("time", "") + " · " + ", ".join(record.get("tech", [])[:3]),
+                    "nfc",
+                    on_click=self.tag_callback(record),
+                )
+            )
+        if not rows:
+            rows = [
+                ui.card(
+                    [
+                        ui.icon("nfc", 42),
+                        ui.text("No tags captured yet", "titleMedium"),
+                        ui.text("Hold a tag against the NFC antenna. Dolphy delivers it to enabled plugins.", "bodyMedium"),
+                    ]
+                )
+            ]
+        return ui.scaffold(
+            title="NFC Toolkit",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("nfc", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("NFC adapter", "titleLarge"),
+                                            ui.text("Reader mode and host card emulation", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Available" if capabilities.get("available") else "No adapter", bool(capabilities.get("available"))),
+                                    ui.chip("Enabled" if capabilities.get("enabled") else "Disabled", bool(capabilities.get("enabled"))),
+                                    ui.chip("Reader mode" if capabilities.get("readerMode") else "No reader mode", bool(capabilities.get("readerMode"))),
+                                    ui.chip("HCE" if capabilities.get("hce") else "No HCE", bool(capabilities.get("hce"))),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.row(
+                                [
+                                    ui.button("Open NFC settings", self.open_settings, fill_max_width=True),
+                                    ui.button("Clear history", self.clear, style="tonal", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.text(str(self.captures) + " captures · " + str(len(self.tags)) + " in history", "titleMedium"),
+                    ui.segmented_list(rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def screen_tag(self, ui, api, state):
+        record = self.selected or {}
+        tech_nodes = [ui.settings_row("Technology", str(value), "nfc") for value in record.get("tech", [])]
+        if not tech_nodes:
+            tech_nodes = [ui.text("No technologies reported", "bodyMedium")]
+        return ui.scaffold(
+            title="Tag",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.icon("nfc", 48),
+                            ui.text(record.get("uid") or "Unknown UID", "headlineSmall"),
+                            ui.text("Captured at " + str(record.get("time", "unknown")), "bodySmall"),
+                        ]
+                    ),
+                    ui.text("Technologies", "titleMedium"),
+                    ui.segmented_list(tech_nodes),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

@@ -1,0 +1,18 @@
+language js(typescript)
+
+// scope: global
+
+// Owns `unknown` and `object` in a const annotation, and nothing else. `any` is
+// already an error under `noExplicitAny`, and a `Record<…, unknown>` annotation
+// is already an error under `no-unsafe-dictionary-type` wherever it appears, so
+// listing either here only reports the same line twice.
+or {
+  `const $name: unknown = $value`,
+  `const $name: object = $value`
+} as $binding where {
+  register_diagnostic(
+    span=$binding,
+    message="This explicit broad type can discard known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.",
+    severity="error"
+  )
+}

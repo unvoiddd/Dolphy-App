@@ -61,7 +61,7 @@ class FastPairSpam : Spammer {
 
     )
 
-    lateinit var devicesAdvertiseData: Array<AdvertiseData>
+    var devicesAdvertiseData: Array<AdvertiseData>
     private var loop = 0
     private val executor = Executors.newSingleThreadExecutor()
 

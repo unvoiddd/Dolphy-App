@@ -1,0 +1,4 @@
+interface:
+  display_name: "Smoke"
+  short_description: "Run local dev instances and smoke test a change or PR"
+  default_prompt: "Use $smoke to start the local dev stack and test the features in the current changes."

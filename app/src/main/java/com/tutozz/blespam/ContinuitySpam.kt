@@ -12,7 +12,7 @@ class ContinuitySpam(private val type: ContinuityType, var crashMode: Boolean = 
 
     private var _isSpamming = false
 
-    lateinit var devices: Array<ContinuityDevice>
+    var devices: Array<ContinuityDevice>
 
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
 

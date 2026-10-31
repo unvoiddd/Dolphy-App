@@ -1,0 +1,21 @@
+language js(typescript)
+
+// scope: global
+
+// A good default, not an absolute. The backend is on dependency injection, so a
+// fake that implements the real interface is almost always available and is a
+// better test. The exception is a module that reaches the outside world at
+// import time and offers no seam to inject: `electron`, `electron-updater`, and
+// the `node:` built-ins. Those specifiers are allowed. Everything else is a
+// warning rather than an error, because whether a seam exists is a judgement
+// about the code under test that a pattern cannot make.
+`$framework.$method($args)` as $call where {
+  $framework <: or { `vi`, `jest` },
+  $method <: or { `doMock`, `mock`, `unstable_mockModule` },
+  not $args <: contains r"\"(?:node:[a-z/_-]+|electron|electron-updater)\"",
+  register_diagnostic(
+    span=$call,
+    message="Prefer dependency injection over module mocking. See the Tests section of AGENTS.md: pass a real interface, a service layer, or a faithful fake instead. Mocking is allowed for a module with no injectable seam - electron, electron-updater, and the node: built-ins are already exempt from this rule.",
+    severity="warn"
+  )
+}

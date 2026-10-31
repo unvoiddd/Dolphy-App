@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.droid.dolphy.AccentButton
+import com.droid.dolphy.plugin.PluginSignatureStatus
 import com.droid.dolphy.DolphyToast
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
@@ -56,6 +58,27 @@ import com.droid.dolphy.plugin.model.PluginPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+@Composable
+private fun PluginSignatureRow(status: PluginSignatureStatus) {
+    val colorScheme = MaterialTheme.colorScheme
+    val (text, color) = when (status) {
+        is PluginSignatureStatus.Trusted ->
+            stringResource(R.string.plugin_signature_verified, status.signer, status.fingerprint) to colorScheme.primary
+        is PluginSignatureStatus.UnknownKey ->
+            stringResource(R.string.plugin_signature_unknown_key, status.fingerprint) to colorScheme.error
+        is PluginSignatureStatus.Invalid ->
+            stringResource(R.string.plugin_signature_invalid) to colorScheme.error
+        PluginSignatureStatus.Unsigned ->
+            stringResource(R.string.plugin_signature_missing) to colorScheme.onSurfaceVariant
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = color,
+        modifier = Modifier.padding(top = 6.dp),
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +96,7 @@ fun PluginPreviewScreen(uriString: String?, onBack: () -> Unit) {
     var installing by remember(uriString) { mutableStateOf(false) }
     var installed by remember(uriString) { mutableStateOf(false) }
     var installFailure by remember(uriString) { mutableStateOf<String?>(null) }
+    var consentChecked by remember(uriString) { mutableStateOf(false) }
     val installSuccess = stringResource(R.string.plugin_preview_install_success)
     val installError = stringResource(R.string.plugin_preview_install_error)
     val preview = previewResult?.getOrNull()
@@ -130,13 +154,33 @@ fun PluginPreviewScreen(uriString: String?, onBack: () -> Unit) {
                         }
                     }
                     item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Checkbox(
+                                checked = consentChecked,
+                                onCheckedChange = { consentChecked = it },
+                                enabled = !installing,
+                            )
+                            Text(
+                                text = stringResource(R.string.plugin_preview_consent),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    item {
                         AccentButton(
                             onClick = {
-                                if (uri == null || installing) return@AccentButton
+                                if (uri == null || installing || !consentChecked) return@AccentButton
                                 installing = true
                                 installFailure = null
                                 scope.launch {
-                                    val result = withContext(Dispatchers.IO) { PluginManager.installFromUri(uri) }
+                                    val result = withContext(Dispatchers.IO) {
+                                        PluginManager.installFromUri(uri, allowUntrusted = consentChecked)
+                                    }
                                     installing = false
                                     result.onSuccess {
                                         installed = true
@@ -147,7 +191,7 @@ fun PluginPreviewScreen(uriString: String?, onBack: () -> Unit) {
                                     }
                                 }
                             },
-                            enabled = !installing,
+                            enabled = !installing && consentChecked,
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                         ) {
                             if (installing) {
@@ -207,6 +251,7 @@ fun PluginPreviewScreen(uriString: String?, onBack: () -> Unit) {
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            PluginSignatureRow(preview.signature)
                         }
                     }
                 }

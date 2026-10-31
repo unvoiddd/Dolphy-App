@@ -1,0 +1,214 @@
+import json
+import time
+
+__id__ = "ir_signal_lab"
+__name__ = "IR Signal Lab"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Infrared emitter diagnostics, carrier explorer and raw pattern transmitter"
+__icon__ = "rounded:settings_remote"
+__permissions__ = ["infrared"]
+
+
+def nec_pattern(command_hex):
+    bits = bin(int(command_hex, 16))[2:].zfill(32)
+    pattern = [9000, 4500]
+    for bit in bits:
+        pattern.append(560)
+        pattern.append(1700 if bit == "1" else 560)
+    pattern.append(560)
+    return pattern
+
+
+PRESETS = [
+    ["nec_power", "NEC power 0x20DF10EF"],
+    ["nec_mute", "NEC mute 0x20DF906F"],
+    ["nec_volume", "NEC volume up 0x20DF40BF"],
+    ["burst", "38 kHz burst test"],
+]
+
+PATTERNS = {
+    "nec_power": (38000, nec_pattern("20DF10EF")),
+    "nec_mute": (38000, nec_pattern("20DF906F")),
+    "nec_volume": (38000, nec_pattern("20DF40BF")),
+    "burst": (38000, [9000, 4500, 560, 1690, 560, 560, 560, 1690]),
+}
+
+
+class IrSignalLab(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.frequency = 38000
+        self.pattern_text = " ".join(str(value) for value in PATTERNS["nec_power"][1])
+        self.selected_preset = "nec_power"
+        self.status = "Ready"
+        self.transmissions = 0
+        self.log = ""
+
+    def on_plugin_load(self):
+        self.add_module(
+            "IR Signal Lab",
+            "Emitter status, carrier frequencies and raw pattern transmission",
+            "ir",
+            "main",
+            "INFRARED",
+            20,
+        )
+        self.status = "Emitter ready" if self.emitter_available() else "No IR emitter detected"
+
+    def on_plugin_unload(self):
+        self.status = "Stopped"
+
+    def emitter_available(self):
+        try:
+            return bool(self.api.getAndroid().irHasEmitter())
+        except Exception:
+            return False
+
+    def ir_status(self):
+        try:
+            return json.loads(str(self.api.getDevice().irStatusJson()))
+        except Exception:
+            return {}
+
+    def carriers(self):
+        try:
+            return [int(value) for value in json.loads(str(self.api.getAndroid().irCarrierFrequenciesJson()))]
+        except Exception:
+            return []
+
+    def set_frequency(self, value):
+        try:
+            parsed = int(str(value).strip())
+        except Exception:
+            return
+        if 20000 <= parsed <= 60000:
+            self.frequency = parsed
+        self.refresh()
+
+    def set_pattern(self, value):
+        self.pattern_text = str(value)
+        self.selected_preset = ""
+        self.refresh()
+
+    def apply_preset(self, key):
+        preset = PATTERNS.get(str(key))
+        if preset is None:
+            return
+        self.selected_preset = str(key)
+        self.frequency = int(preset[0])
+        self.pattern_text = " ".join(str(value) for value in preset[1])
+        self.status = "Loaded " + str(key)
+        self.refresh()
+
+    def parsed_pattern(self):
+        values = []
+        for token in str(self.pattern_text).replace(",", " ").replace(";", " ").split():
+            try:
+                number = int(float(token))
+            except Exception:
+                continue
+            if number > 0:
+                values.append(number)
+        return values
+
+    def transmit(self):
+        values = self.parsed_pattern()
+        if len(values) < 2:
+            self.status = "Pattern needs at least two positive durations"
+            self.refresh()
+            return
+        if len(values) % 2 != 0:
+            values = values[:-1]
+        try:
+            sent = bool(self.api.getAndroid().irTransmit(int(self.frequency), values))
+        except Exception as error:
+            self.status = "Transmit failed: " + str(error)
+            self.refresh()
+            return
+        self.transmissions += 1
+        self.status = (
+            "Sent " + str(len(values)) + " pulses at " + str(self.frequency) + " Hz"
+            if sent
+            else "Emitter rejected the pattern"
+        )
+        self.log = ("> " + self.status + "\n" + self.log)[:4000]
+        self.refresh()
+
+    def repeat(self):
+        for index in range(3):
+            self.transmit()
+            if index < 2:
+                time.sleep(0.12)
+        self.status = "Repeated the pattern three times"
+
+    def clear_log(self):
+        self.log = ""
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        status = self.ir_status()
+        carriers = self.carriers()
+        carrier_nodes = [ui.chip(str(value) + " Hz", value == self.frequency) for value in carriers]
+        if not carrier_nodes:
+            carrier_nodes = [ui.chip("Carrier list unavailable", False)]
+        return ui.scaffold(
+            title="IR Signal Lab",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("ir", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("Infrared emitter", "titleLarge"),
+                                            ui.text("ConsumerIrManager backend", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Emitter available" if self.emitter_available() else "No emitter", self.emitter_available()),
+                                    ui.chip("Storm running" if status.get("stormRunning") else "Storm idle", bool(status.get("stormRunning"))),
+                                    ui.chip("Jammer running" if status.get("jammerRunning") else "Jammer idle", bool(status.get("jammerRunning"))),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.text("Carrier frequencies", "titleMedium"),
+                    ui.lazy_row(carrier_nodes, spacing=6),
+                    ui.card(
+                        [
+                            ui.text("Pattern builder", "titleLarge"),
+                            ui.dropdown(PRESETS, self.selected_preset, self.apply_preset, "Preset"),
+                            ui.text_field(str(self.frequency), self.set_frequency, "Carrier Hz (20000-60000)"),
+                            ui.text_field(self.pattern_text, self.set_pattern, "Pulse durations in microseconds", single_line=False),
+                            ui.button("Transmit pattern", self.transmit, fill_max_width=True),
+                            ui.button("Repeat three times", self.repeat, style="tonal", fill_max_width=True),
+                            ui.text(str(len(self.parsed_pattern())) + " durations · " + str(self.transmissions) + " transmissions", "bodySmall"),
+                        ]
+                    ),
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.text("Transmission log", "titleMedium"),
+                                    ui.icon_button("delete", self.clear_log),
+                                ]
+                            ),
+                            ui.log_panel(self.log or "No transmissions yet", 180),
+                        ]
+                    ),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

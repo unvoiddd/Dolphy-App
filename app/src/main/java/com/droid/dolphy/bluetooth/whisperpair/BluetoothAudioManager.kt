@@ -1,3 +1,7 @@
+// Deprecated platform APIs are still the only option on minSdk 26; their
+// replacements require API 33+ branches that this feature cannot take yet.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.bluetooth.whisperpair
 
 import android.annotation.SuppressLint
@@ -83,7 +87,7 @@ class BluetoothAudioManager(private val context: Context) {
     private var scoWaitTimeout: Runnable? = null
     private var commDeviceListener: AudioManager.OnCommunicationDeviceChangedListener? = null
 
-    private val lock = Object()
+    private val lock = Any()
 
     @SuppressLint("MissingPermission")
     fun initialize(onReady: (Boolean) -> Unit) {
@@ -166,7 +170,7 @@ class BluetoothAudioManager(private val context: Context) {
             }
 
             if (device.bondState != BluetoothDevice.BOND_BONDED) {
-                onStateChange(AudioState.Error("Устройство не сопряжено"))
+                onStateChange(AudioState.Error("Device is not paired"))
                 return
             }
 

@@ -17,6 +17,7 @@ import com.droid.dolphy.plugin.model.PluginManifest
 import com.droid.dolphy.plugin.model.PluginMediaRequest
 import com.droid.dolphy.plugin.model.PluginPermissionRequest
 import com.droid.dolphy.plugin.model.PluginSnackbarSpec
+import com.droid.dolphy.R
 import com.droid.dolphy.plugin.model.UiNode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,7 @@ class PythonPluginSession(
                     stateVersion += 1
                     requestUiRefresh?.invoke()
                 },
+                permissions = manifest.permissions,
             )
             bridge = localBridge
             try {
@@ -121,11 +123,11 @@ class PythonPluginSession(
         val action = Runnable {
             synchronized(this) {
                 try {
-                    val valueJson = when (value) {
+                    val valueJson = when (val arg = value) {
                         null -> null
-                        is String -> JSONObject.quote(value)
-                        is Number, is Boolean -> value.toString()
-                        else -> JSONObject.wrap(value).toString()
+                        is String -> JSONObject.quote(arg)
+                        is Number, is Boolean -> arg.toString()
+                        else -> JSONObject.wrap(arg)?.toString() ?: "null"
                     }
                     pythonSession?.callAttr("invoke", id, valueJson)
                     stateVersion += 1
@@ -188,7 +190,7 @@ class PythonPluginSession(
 
     private fun errorNode(message: String): UiNode = UiNode.Column(
         children = listOf(
-            UiNode.Text("Ошибка плагина", "headlineSmall"),
+            UiNode.Text(appContext.getString(R.string.plugin_error_title), "headlineSmall"),
             UiNode.Spacer(8f),
             UiNode.Text(message, "bodyMedium"),
         ),

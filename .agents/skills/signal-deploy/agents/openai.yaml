@@ -1,0 +1,4 @@
+interface:
+  display_name: "Signal deploy"
+  short_description: "Check and deploy Signal (remote-api) from a release tag"
+  default_prompt: "Use $signal-deploy to check and deploy Signal from the latest release tag."

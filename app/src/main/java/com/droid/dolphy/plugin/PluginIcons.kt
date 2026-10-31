@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Nfc
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,7 +29,7 @@ object PluginIcons {
         return when (name.trim().lowercase().replace("-", "_").replace(" ", "_")) {
             "extension", "plugin" -> Icons.Default.Extension
             "bluetooth", "bt" -> Icons.Default.Bluetooth
-            "bluetooth_searching", "ble" -> Icons.Default.BluetoothSearching
+            "bluetooth_searching", "ble" -> Icons.AutoMirrored.Filled.BluetoothSearching
             "bluetooth_audio" -> Icons.Default.BluetoothAudio
             "bluetooth_disabled" -> Icons.Default.BluetoothDisabled
             "wifi", "wi_fi" -> Icons.Default.Wifi
@@ -42,7 +43,7 @@ object PluginIcons {
             "qr", "qr_code" -> Icons.Default.QrCodeScanner
             "cast" -> Icons.Default.Cast
             "keyboard", "hid" -> Icons.Default.Keyboard
-            "chat" -> Icons.Default.Chat
+            "chat" -> Icons.AutoMirrored.Filled.Chat
             "settings" -> Icons.Default.Settings
             "play" -> Icons.Default.PlayArrow
             "stop" -> Icons.Default.Stop
@@ -57,13 +58,13 @@ object PluginIcons {
             "close" -> Icons.Default.Close
             "home" -> Icons.Default.Home
             "folder" -> Icons.Default.Folder
-            "file" -> Icons.Default.InsertDriveFile
+            "file" -> Icons.AutoMirrored.Filled.InsertDriveFile
             "code", "terminal", "shell" -> Icons.Default.Terminal
             "security", "root", "shizuku" -> Icons.Default.Security
             "power" -> Icons.Default.PowerSettingsNew
             "link" -> Icons.Default.Link
             "language", "web" -> Icons.Default.Language
-            "list" -> Icons.Default.List
+            "list" -> Icons.AutoMirrored.Filled.List
             "tune" -> Icons.Default.Tune
             "speed" -> Icons.Default.Speed
             "sensors" -> Icons.Default.Sensors

@@ -1,0 +1,255 @@
+import json
+
+__id__ = "file_browser"
+__name__ = "Plugin File Browser"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Browse the plugin sandbox, preview text files, share and delete entries"
+__icon__ = "rounded:folder"
+__permissions__ = ["files"]
+
+
+class PluginFileBrowser(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.path = ""
+        self.entries = []
+        self.selected = None
+        self.preview = ""
+        self.new_folder = "notes"
+        self.pending_delete = None
+        self.status = "Sandbox root"
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Plugin File Browser",
+            "Sandbox files with preview, share and delete",
+            "folder",
+            "main",
+            "OTHER",
+            100,
+        )
+        self.reload()
+
+    def reload(self):
+        try:
+            entries = json.loads(str(self.api.getAndroid().filesList(self.path)))
+        except Exception:
+            entries = []
+        self.entries = entries if isinstance(entries, list) else []
+        self.status = self.path or "Sandbox root"
+        self.refresh()
+
+    def root_path(self):
+        try:
+            return str(self.api.getAndroid().pluginFilesDir().getAbsolutePath())
+        except Exception:
+            return ""
+
+    def parent_path(self):
+        if not self.path:
+            return ""
+        parts = self.path.rstrip("/").rsplit("/", 1)
+        return parts[0] if len(parts) > 1 else ""
+
+    def go_up(self):
+        self.path = self.parent_path()
+        self.selected = None
+        self.reload()
+
+    def open_callback(self, entry):
+        def callback(value=None):
+            self.open(entry)
+
+        return callback
+
+    def open(self, entry):
+        target = str(entry.get("path", ""))
+        if entry.get("isDir"):
+            self.path = target
+            self.selected = None
+            self.reload()
+            return
+        self.selected = entry
+        try:
+            text = self.api.getAndroid().filesRead(target)
+        except Exception:
+            text = None
+        self.preview = text if text is not None else "Binary file or unreadable content"
+        self.navigate("file")
+
+    def set_new_folder(self, value):
+        self.new_folder = str(value)
+        self.refresh()
+
+    def create_folder(self):
+        name = str(self.new_folder).strip()
+        if not name:
+            self.status = "Enter a folder name"
+            self.refresh()
+            return
+        target = (self.path + "/" + name) if self.path else name
+        try:
+            created = bool(self.api.getAndroid().filesMkdir(target))
+        except Exception:
+            created = False
+        self.status = "Created " + target if created else "Could not create " + target
+        self.reload()
+
+    def ask_delete(self, entry):
+        self.pending_delete = entry
+        self.refresh()
+
+    def cancel_delete(self):
+        self.pending_delete = None
+        self.refresh()
+
+    def delete_pending(self):
+        entry = self.pending_delete
+        self.pending_delete = None
+        if not entry:
+            return
+        target = str(entry.get("path", ""))
+        try:
+            deleted = bool(self.api.getAndroid().filesDelete(target))
+        except Exception:
+            deleted = False
+        self.status = "Deleted " + target if deleted else "Could not delete " + target
+        self.selected = None
+        self.preview = ""
+        self.reload()
+
+    def share(self):
+        target = str((self.selected or {}).get("path", ""))
+        if not target:
+            return
+        try:
+            self.api.getAndroid().filesShare(target, None, "Share plugin file")
+        except Exception:
+            self.status = "Share failed"
+        self.refresh()
+
+    def format_size(self, size):
+        value = int(size or 0)
+        if value >= 1024 * 1024:
+            return str(round(value / (1024.0 * 1024.0), 1)) + " MB"
+        if value >= 1024:
+            return str(round(value / 1024.0, 1)) + " KB"
+        return str(value) + " B"
+
+    def screen_main(self, ui, api, state):
+        rows = []
+        for entry in self.entries:
+            title = str(entry.get("name", "entry"))
+            subtitle = "folder" if entry.get("isDir") else self.format_size(entry.get("size", 0))
+            rows.append(
+                ui.function_row(
+                    title,
+                    subtitle,
+                    "folder" if entry.get("isDir") else "file",
+                    on_click=self.open_callback(entry),
+                )
+            )
+        if not rows:
+            rows = [
+                ui.card(
+                    [
+                        ui.icon("folder", 42),
+                        ui.text("This folder is empty", "titleMedium"),
+                        ui.text("Plugins can create files inside their private sandbox only.", "bodyMedium"),
+                    ]
+                )
+            ]
+        confirm = self.pending_delete
+        return ui.scaffold(
+            title="Plugin Files",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("folder", 36),
+                                    ui.column(
+                                        [
+                                            ui.text(self.path or "Sandbox root", "titleLarge"),
+                                            ui.text(self.root_path(), "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.text(str(len(self.entries)) + " entries", "bodySmall"),
+                            ui.row(
+                                [
+                                    ui.button("Up", self.go_up, style="tonal", enabled=bool(self.path), fill_max_width=True),
+                                    ui.button("Refresh", self.reload, style="tonal", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.text_field(self.new_folder, self.set_new_folder, "New folder name"),
+                    ui.button("Create folder", self.create_folder, fill_max_width=True),
+                    ui.segmented_list(rows),
+                    ui.alert_dialog(
+                        bool(confirm),
+                        "Delete entry?",
+                        "Permanently delete " + str((confirm or {}).get("name", "")) + " from the plugin sandbox?",
+                        "Delete",
+                        "Cancel",
+                        self.delete_pending,
+                        self.cancel_delete,
+                    ),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def screen_file(self, ui, api, state):
+        entry = self.selected or {}
+        return ui.scaffold(
+            title=str(entry.get("name", "File")),
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("file", 40),
+                                    ui.column(
+                                        [
+                                            ui.text(str(entry.get("name", "File")), "titleLarge"),
+                                            ui.text(str(entry.get("path", "")) + " · " + self.format_size(entry.get("size", 0)), "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.log_panel(self.preview[:6000], 320),
+                        ]
+                    ),
+                    ui.row(
+                        [
+                            ui.button("Share", self.share, fill_max_width=True),
+                            ui.button("Delete", self.delete_callback, style="tonal", fill_max_width=True),
+                        ],
+                        spacing=8,
+                    ),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def delete_callback(self):
+        def callback(value=None):
+            self.ask_delete(self.selected)
+
+        return callback

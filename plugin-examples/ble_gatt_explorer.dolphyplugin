@@ -1,0 +1,370 @@
+import json
+
+__id__ = "ble_gatt_explorer"
+__name__ = "BLE GATT Explorer"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Connect to BLE peripherals, browse services and exchange characteristics"
+__icon__ = "rounded:hub"
+__permissions__ = ["bluetooth"]
+
+
+class BleGattExplorer(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.devices = {}
+        self.scanning = False
+        self.selected = None
+        self.connected = None
+        self.services = []
+        self.events = []
+        self.status = "Idle"
+        self.read_value = None
+
+    def on_plugin_load(self):
+        self.add_module(
+            "BLE GATT Explorer",
+            "Connect, browse services and read characteristics",
+            "bluetooth",
+            "main",
+            "BLUETOOTH",
+            30,
+        )
+
+    def on_plugin_unload(self):
+        self.stop_scan()
+        self.disconnect(False)
+
+    def capabilities(self):
+        try:
+            return json.loads(str(self.api.getDevice().btCapabilitiesJson()))
+        except Exception:
+            return {}
+
+    def log(self, text):
+        self.events.insert(0, str(text))
+        self.events = self.events[:40]
+
+    def toggle_scan(self):
+        if self.scanning:
+            self.stop_scan()
+        else:
+            self.devices = {}
+            self.scanning = bool(self.api.bleStartScan("gatt_explorer", self.on_scan_batch, 350, 128))
+            self.status = "Scanning for BLE peripherals" if self.scanning else "BLE scanner unavailable"
+        self.refresh()
+
+    def stop_scan(self):
+        if self.scanning:
+            self.api.bleStopScan("gatt_explorer")
+            self.scanning = False
+
+    def on_scan_batch(self, payload):
+        try:
+            batch = json.loads(str(payload))
+        except Exception:
+            return
+        if isinstance(batch, dict):
+            batch = [batch]
+        for device in batch:
+            if not isinstance(device, dict):
+                continue
+            address = str(device.get("address", "") or device.get("id", ""))
+            if not address:
+                continue
+            self.devices[address] = device
+        self.status = str(len(self.devices)) + " peripherals discovered"
+        self.refresh()
+
+    def device_callback(self, device):
+        def callback(value=None):
+            self.open_device(device)
+
+        return callback
+
+    def open_device(self, device):
+        self.selected = device
+        self.read_value = None
+        self.connect()
+        self.navigate("device")
+
+    def connect(self):
+        address = str((self.selected or {}).get("address", ""))
+        if not address:
+            return
+        self.stop_scan()
+        try:
+            ok = bool(self.api.getAndroid().gattConnect(address, self.on_gatt_event))
+        except Exception as error:
+            ok = False
+            self.log("connect error: " + str(error))
+        if ok:
+            self.connected = address
+            self.status = "Connecting to " + address
+            self.log("connect requested for " + address)
+        else:
+            self.connected = None
+            self.status = "Could not connect"
+        self.refresh()
+
+    def on_gatt_event(self, payload):
+        try:
+            event = json.loads(str(payload))
+        except Exception:
+            return
+        name = str(event.get("event", ""))
+        if name == "connection":
+            state = int(event.get("state", 0))
+            if state == 2:
+                self.connected = str(event.get("address", self.connected or ""))
+                self.status = "Connected"
+                self.discover()
+            elif state == 0:
+                self.connected = None
+                self.services = []
+                self.status = "Disconnected"
+        elif name == "services":
+            services = event.get("services", [])
+            self.services = services if isinstance(services, list) else []
+            self.status = str(len(self.services)) + " services discovered"
+        elif name == "read":
+            self.read_value = {
+                "uuid": str(event.get("uuid", "")),
+                "hex": str(event.get("hex", "")),
+                "status": int(event.get("status", 0)),
+            }
+            self.status = "Read " + str(event.get("uuid", ""))
+        elif name == "notify":
+            self.read_value = {
+                "uuid": str(event.get("uuid", "")),
+                "hex": str(event.get("hex", "")),
+                "status": 0,
+            }
+            self.status = "Notification received"
+        if name:
+            self.log(name + " · " + str(event.get("status", "")))
+        self.refresh()
+
+    def discover(self):
+        if not self.connected:
+            return
+        self.api.getAndroid().gattDiscoverServices(self.connected)
+        self.services = self.services_from_bridge()
+        self.status = "Discovering services…" if not self.services else str(len(self.services)) + " services"
+        self.refresh()
+
+    def services_from_bridge(self):
+        if not self.connected:
+            return []
+        try:
+            services = json.loads(str(self.api.getAndroid().gattServicesJson(self.connected)))
+        except Exception:
+            return []
+        return services if isinstance(services, list) else []
+
+    def read_characteristic(self, service_uuid, characteristic_uuid):
+        if not self.connected:
+            return
+        try:
+            started = bool(self.api.getAndroid().gattRead(self.connected, service_uuid, characteristic_uuid))
+        except Exception as error:
+            started = False
+            self.log("read error: " + str(error))
+        self.status = "Read requested" if started else "Read request rejected"
+        self.refresh()
+
+    def char_callback(self, service_uuid, characteristic_uuid):
+        def callback(value=None):
+            self.enable_notifications(service_uuid, characteristic_uuid)
+
+        return callback
+
+    def enable_notifications(self, service_uuid, characteristic_uuid):
+        if not self.connected:
+            return
+        try:
+            ok = bool(
+                self.api.getAndroid().gattEnableNotifications(self.connected, service_uuid, characteristic_uuid, True)
+            )
+        except Exception as error:
+            ok = False
+            self.log("notify error: " + str(error))
+        self.status = "Notifications enabled" if ok else "Notifications unavailable"
+        self.refresh()
+
+    def disconnect(self, refresh=True):
+        address = self.connected
+        if address:
+            try:
+                self.api.getAndroid().gattDisconnect(address)
+            except Exception:
+                pass
+            self.log("disconnected from " + address)
+        self.connected = None
+        self.services = []
+        self.status = "Disconnected"
+        if refresh:
+            self.refresh()
+
+    def screen_main(self, ui, api, state):
+        capabilities = self.capabilities()
+        rows = []
+        ordered = sorted(
+            self.devices.values(),
+            key=lambda item: int(item.get("rssi", -999)),
+            reverse=True,
+        )
+        for device in ordered:
+            title = device.get("name") or device.get("address") or "BLE peripheral"
+            subtitle = str(device.get("address", device.get("id", ""))) + " · RSSI " + str(device.get("rssi", "?"))
+            rows.append(ui.function_row(title, subtitle, "bluetooth", on_click=self.device_callback(device)))
+        if not rows:
+            rows.append(
+                ui.card(
+                    [
+                        ui.icon("bluetooth_searching", 42),
+                        ui.text("No peripherals yet", "titleMedium"),
+                        ui.text("Start scanning and keep Bluetooth and Nearby devices permissions granted.", "bodyMedium"),
+                    ]
+                )
+            )
+        return ui.scaffold(
+            title="BLE GATT Explorer",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("hub", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("GATT workspace", "titleLarge"),
+                                            ui.text("Connect, discover services and read characteristics", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Bluetooth on" if capabilities.get("enabled") else "Bluetooth off", bool(capabilities.get("enabled"))),
+                                    ui.chip("LE scanner" if capabilities.get("leScanner") else "No LE scanner", bool(capabilities.get("leScanner"))),
+                                    ui.chip("Connected" if self.connected else "Not connected", bool(self.connected)),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.button(
+                                "Stop scan" if self.scanning else "Start scan",
+                                self.toggle_scan,
+                                fill_max_width=True,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.text(str(len(self.devices)) + " discovered peripherals", "titleMedium"),
+                    ui.segmented_list(rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def screen_device(self, ui, api, state):
+        device = self.selected or {}
+        name = device.get("name") or "BLE peripheral"
+        address = str(device.get("address", ""))
+        connected = bool(self.connected)
+        services = self.services if connected else self.services_from_bridge()
+        blocks = []
+        if services:
+            for service in services:
+                if not isinstance(service, dict):
+                    continue
+                service_uuid = str(service.get("uuid", ""))
+                children = [ui.text("Service " + short_uuid(service_uuid), "titleMedium")]
+                characteristics = service.get("characteristics", [])
+                if isinstance(characteristics, list) and characteristics:
+                    for characteristic in characteristics:
+                        if not isinstance(characteristic, dict):
+                            continue
+                        char_uuid = str(characteristic.get("uuid", ""))
+                        props = str(characteristic.get("propsStr", "") or "READ")
+                        children.append(
+                            ui.settings_row(
+                                short_uuid(char_uuid),
+                                props,
+                                "data_object",
+                                on_click=self.char_callback(service_uuid, char_uuid),
+                            )
+                        )
+                else:
+                    children.append(ui.text("No characteristics were exposed", "bodySmall"))
+                blocks.append(ui.card(children))
+        else:
+            blocks.append(
+                ui.card(
+                    [
+                        ui.text("No services yet", "titleMedium"),
+                        ui.text(
+                            "Connect to the peripheral and run service discovery to list every characteristic.",
+                            "bodyMedium",
+                        ),
+                    ]
+                )
+            )
+        read_nodes = []
+        if self.read_value:
+            read_nodes = [
+                ui.card(
+                    [
+                        ui.text("Last value", "titleMedium"),
+                        ui.text(short_uuid(str(self.read_value.get("uuid", ""))), "bodySmall"),
+                        ui.log_panel(str(self.read_value.get("hex", "")), 120),
+                    ]
+                )
+            ]
+        return ui.scaffold(
+            title=name,
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.icon("bluetooth", 48),
+                            ui.text(name, "headlineSmall"),
+                            ui.text(address, "bodyMedium"),
+                            ui.text("Connected" if connected else "Disconnected", "bodySmall"),
+                            ui.row(
+                                [
+                                    ui.button("Discover services", self.discover, enabled=connected, fill_max_width=False),
+                                    ui.button("Disconnect", self.disconnect, style="tonal", enabled=connected, fill_max_width=False),
+                                ],
+                                spacing=8,
+                            ),
+                        ]
+                    ),
+                ]
+                + read_nodes
+                + blocks
+                + [
+                    ui.card(
+                        [
+                            ui.text("Event log", "titleMedium"),
+                            ui.log_panel("\n".join(self.events) if self.events else "No GATT events yet", 200),
+                        ]
+                    )
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+
+def short_uuid(value):
+    text = str(value)
+    if len(text) >= 8 and text[4] == "-" and text.lower().startswith("0000"):
+        return text[4:8].upper()
+    return text

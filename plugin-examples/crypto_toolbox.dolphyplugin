@@ -1,0 +1,197 @@
+import json
+
+__id__ = "crypto_toolbox"
+__name__ = "Crypto Toolbox"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Hashes, Base64, hexadecimal conversion and random identifiers"
+__icon__ = "rounded:security"
+__permissions__ = []
+
+
+class CryptoToolbox(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.input_text = "Dolphy"
+        self.result = ""
+        self.operation = "Ready"
+        self.history = []
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Crypto Toolbox",
+            "Hashes, encodings and random identifiers",
+            "security",
+            "main",
+            "OTHER",
+            90,
+        )
+
+    def set_input(self, value):
+        self.input_text = str(value)
+        self.refresh()
+
+    def record(self, operation, value):
+        self.operation = operation
+        self.result = "" if value is None else str(value)
+        if value is None:
+            self.operation = operation + " failed"
+        self.history.insert(0, self.operation + ": " + (self.result[:64] if self.result else "—"))
+        self.history = self.history[:20]
+        self.refresh()
+
+    def digest(self, algorithm):
+        try:
+            value = self.api.getAndroid().cryptoHash(algorithm, self.input_text)
+        except Exception:
+            value = None
+        self.record(algorithm.upper(), value)
+
+    def base64_encode(self):
+        try:
+            value = self.api.getAndroid().cryptoBase64Encode(self.input_text)
+        except Exception:
+            value = None
+        self.record("Base64 encode", value)
+
+    def base64_decode(self):
+        try:
+            value = self.api.getAndroid().cryptoBase64Decode(self.input_text)
+        except Exception:
+            value = None
+        self.record("Base64 decode", value)
+
+    def hex_encode(self):
+        try:
+            value = self.api.getAndroid().cryptoHexEncode(self.input_text)
+        except Exception:
+            value = None
+        self.record("Hex encode", value)
+
+    def hex_decode(self):
+        try:
+            value = self.api.getAndroid().cryptoHexDecode(self.input_text)
+        except Exception:
+            value = None
+        self.record("Hex decode", value)
+
+    def random_hex(self):
+        try:
+            value = self.api.getAndroid().cryptoRandomHex(16)
+        except Exception:
+            value = None
+        self.record("Random 16 bytes", value)
+
+    def uuid(self):
+        try:
+            value = self.api.getAndroid().cryptoUuid()
+        except Exception:
+            value = None
+        self.record("UUID v4", value)
+
+    def copy_result(self):
+        if not self.result:
+            return
+        try:
+            self.api.getAndroid().clipboardSet(self.result)
+            self.operation = "Copied to clipboard"
+        except Exception:
+            self.operation = "Clipboard unavailable"
+        self.refresh()
+
+    def use_result(self):
+        if self.result:
+            self.input_text = self.result
+            self.refresh()
+
+    def clear(self):
+        self.result = ""
+        self.history = []
+        self.operation = "Ready"
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        history_rows = [ui.text(line, "bodySmall") for line in self.history]
+        if not history_rows:
+            history_rows = [ui.text("No operations yet", "bodyMedium")]
+        return ui.scaffold(
+            title="Crypto Toolbox",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("security", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("Crypto and encoding", "titleLarge"),
+                                            ui.text("Everything runs locally on the device", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.text_field(self.input_text, self.set_input, "Input text", single_line=False),
+                            ui.text(self.operation, "bodySmall"),
+                            ui.log_panel(self.result or "Result appears here", 160),
+                            ui.row(
+                                [
+                                    ui.button("Copy", self.copy_result, style="tonal", fill_max_width=True),
+                                    ui.button("Use result", self.use_result, style="tonal", fill_max_width=True),
+                                    ui.button("Clear", self.clear, style="text", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                        ]
+                    ),
+                    ui.text("Hashes", "titleMedium"),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("SHA-256", "hash the input", "security", on_click=self.hash_callback("sha256")),
+                            ui.settings_row("SHA-512", "hash the input", "security", on_click=self.hash_callback("sha512")),
+                            ui.settings_row("SHA-1", "hash the input", "security", on_click=self.hash_callback("sha1")),
+                            ui.settings_row("MD5", "hash the input", "security", on_click=self.hash_callback("md5")),
+                        ]
+                    ),
+                    ui.text("Encodings", "titleMedium"),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("Base64 encode", "UTF-8 text to Base64", "code", on_click=self.action_callback(self.base64_encode)),
+                            ui.settings_row("Base64 decode", "Base64 back to text", "code", on_click=self.action_callback(self.base64_decode)),
+                            ui.settings_row("Hex encode", "UTF-8 text to hex", "code", on_click=self.action_callback(self.hex_encode)),
+                            ui.settings_row("Hex decode", "Hex back to text", "code", on_click=self.action_callback(self.hex_decode)),
+                        ]
+                    ),
+                    ui.text("Random", "titleMedium"),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("Random 16 bytes", "cryptographically secure", "memory", on_click=self.action_callback(self.random_hex)),
+                            ui.settings_row("UUID v4", "new identifier", "info", on_click=self.action_callback(self.uuid)),
+                        ]
+                    ),
+                    ui.card(
+                        [
+                            ui.text("History", "titleMedium"),
+                            ui.segmented_list(history_rows),
+                        ]
+                    ),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def hash_callback(self, algorithm):
+        def callback(value=None):
+            self.digest(algorithm)
+
+        return callback
+
+    def action_callback(self, action):
+        def callback(value=None):
+            action()
+
+        return callback

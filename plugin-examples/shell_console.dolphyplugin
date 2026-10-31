@@ -1,0 +1,120 @@
+import json
+
+__id__ = "shell_console"
+__name__ = "Shell Console"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Run unprivileged shell commands inside the Dolphy app sandbox"
+__icon__ = "rounded:terminal"
+__permissions__ = ["shell"]
+
+PRESETS = [
+    ["model", "Product model", "getprop ro.product.model"],
+    ["release", "Android release", "getprop ro.build.version.release"],
+    ["abi", "Primary ABI", "getprop ro.product.cpu.abi"],
+    ["packages", "Installed packages", "pm list packages 2>/dev/null | head -n 40"],
+    ["battery", "Battery dump", "dumpsys battery 2>/dev/null | head -n 20"],
+    ["env", "Environment", "printenv | head -n 30"],
+]
+
+
+class ShellConsole(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.command = "getprop ro.product.model"
+        self.output = ""
+        self.status = "Idle"
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Shell Console",
+            "Unprivileged shell commands",
+            "shell",
+            "main",
+            "OTHER",
+            130,
+        )
+
+    def set_command(self, value):
+        self.command = str(value)
+        self.refresh()
+
+    def run(self):
+        command = str(self.command).strip()
+        if not command:
+            self.status = "Enter a command"
+            self.refresh()
+            return
+        try:
+            result = self.shell(command)
+        except Exception as error:
+            result = {"ok": False, "err": str(error), "out": ""}
+        if not isinstance(result, dict):
+            result = {"ok": False, "err": str(result), "out": ""}
+        out = str(result.get("out", ""))
+        err = str(result.get("err", ""))
+        self.output = ("$ " + command + "\n" + out + ("\n" + err if err else "")).strip()
+        self.status = "Exit code " + str(result.get("code", -1))
+        self.refresh()
+
+    def preset_callback(self, command):
+        def callback(value=None):
+            self.command = command
+            self.run()
+
+        return callback
+
+    def clear(self):
+        self.output = ""
+        self.status = "Cleared"
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        rows = [
+            ui.settings_row(label, command, "terminal", on_click=self.preset_callback(command))
+            for _, label, command in PRESETS
+        ]
+        return ui.scaffold(
+            title="Shell Console",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("shell", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("Shell", "titleLarge"),
+                                            ui.text("Runs as the Dolphy app user, without root", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                            ui.text_field(self.command, self.set_command, "Command", single_line=False),
+                            ui.row(
+                                [
+                                    ui.button("Run", self.run, fill_max_width=True),
+                                    ui.button("Clear", self.clear, style="tonal", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                        ]
+                    ),
+                    ui.card(
+                        [
+                            ui.text("Output", "titleMedium"),
+                            ui.log_panel(self.output or "No output yet", 320),
+                        ]
+                    ),
+                    ui.text("Presets", "titleMedium"),
+                    ui.segmented_list(rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

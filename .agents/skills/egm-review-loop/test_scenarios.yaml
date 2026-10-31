@@ -1,0 +1,53 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+skill: "egm-review-loop"
+description: "Behavioral evaluation scenario suite for egm-review-loop skill."
+
+scenarios:
+  - scenario_id: "orchestrate_parallel_critiques"
+    description: "Verifies review persona orchestration and findings compilation."
+    eval_type: "deterministic"
+    system_prompt:
+      skill_file: "skills/egm-review-loop/SKILL.md"
+    turns:
+      - user_input: "Orchestrate multi-perspective Goldfish review on docs/design.md."
+        assertions:
+          - type: "required_pattern"
+            pattern: "(Review|Goldfish|findings|persona|comprehension|critic)"
+            message: "Review loop orchestrator must acknowledge review personas and structured findings compilation."
+
+  - scenario_id: "convergence_not_zero_findings"
+    description: "Verifies the loop stops on consecutive clean rounds, not on zero findings, and does not re-open settled findings."
+    eval_type: "deterministic"
+    system_prompt:
+      skill_file: "skills/egm-review-loop/SKILL.md"
+    turns:
+      - user_input: "Round 3 of the review loop on docs/design.md returned two Nits and one Major that was contested in round 1. Round 2 was clean. What happens next?"
+        assertions:
+          - type: "required_pattern"
+            pattern: "(?i)(converged|two consecutive clean|settled)"
+            message: "The loop must treat a re-raised settled finding and Nits as non-blocking and report convergence."
+
+  - scenario_id: "missing_reviewer_status_not_clean"
+    description: "Verifies a reviewer with no status in the synthesizer summary counts as not run, so a zero-findings round is not clean."
+    eval_type: "deterministic"
+    system_prompt:
+      skill_file: "skills/egm-review-loop/SKILL.md"
+    turns:
+      - user_input: "The synthesizer summary for round 2 on docs/design.md says: 0 findings; egm-design completed, egm-structural completed. egm-style was also requested. Is round 2 clean?"
+        assertions:
+          - type: "required_pattern"
+            pattern: "(?i)not run"
+            message: "A requested reviewer with no status must count as not run, so the round is not clean."

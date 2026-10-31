@@ -1,3 +1,7 @@
+// The plugin bridge exposes legacy BLE/WiFi platform APIs to plugin authors; several
+// of them are deprecated on API 33+ but remain the only option on minSdk 26.
+@file:Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+
 package com.droid.dolphy.plugin.bridge
 
 import android.annotation.SuppressLint
@@ -55,6 +59,8 @@ import java.io.File
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.UUID
+import com.droid.dolphy.plugin.PluginPermission
+import com.droid.dolphy.plugin.PluginPermissions
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -75,10 +81,14 @@ import android.os.ParcelUuid
 class PluginAndroidApis(
     private val context: Context,
     private val pluginId: String,
+    private val permissions: Set<PluginPermission> = emptySet(),
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val io = Executors.newCachedThreadPool()
     private val appCtx = context.applicationContext
+
+    private val filesGranted: Boolean
+        get() = PluginPermissions.has(permissions, PluginPermission.FILES)
 
     private val filesDir by lazy {
         File(appCtx.filesDir, "dolphy_plugins_data/$pluginId").apply { mkdirs() }
@@ -590,7 +600,7 @@ class PluginAndroidApis(
     fun cryptoUuid(): String = UUID.randomUUID().toString()
 
     
-    fun pluginFilesDir(): File = filesDir
+    fun pluginFilesDir(): File = if (filesGranted) filesDir else File("/dev/null/dolphy-denied")
 
     
     fun importUriToSandbox(
@@ -832,6 +842,7 @@ class PluginAndroidApis(
 
 
     private fun resolvePath(path: String, dirOnly: Boolean = false): File? {
+        if (!filesGranted) return null
         val clean = path.trim().removePrefix("/").replace("..", "")
         val f = if (clean.isEmpty()) filesDir else File(filesDir, clean)
         val canon = try {
@@ -1345,7 +1356,7 @@ class PluginAndroidApis(
             for (p in providers) {
                 try {
                     val loc = lm.getLastKnownLocation(p) ?: continue
-                    if (best == null || loc.time > best!!.time) best = loc
+                    if (best == null || loc.time > best.time) best = loc
                 } catch (_: Exception) {
                 }
             }
@@ -1828,8 +1839,8 @@ class PluginAndroidApis(
             val svc = gatt.getService(UUID.fromString(serviceUuid)) ?: return false
             val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
             val desc = ch.getDescriptor(UUID.fromString(descUuid)) ?: return false
-            @Suppress("DEPRECATION") desc.value = bytes
-            @Suppress("DEPRECATION") gatt.writeDescriptor(desc)
+            desc.value = bytes
+            gatt.writeDescriptor(desc)
         } catch (e: Exception) { Log.w(TAG, "gattWriteDescriptor", e); false }
     }
 
@@ -1851,9 +1862,9 @@ class PluginAndroidApis(
         return try {
             val svc = gatt.getService(UUID.fromString(serviceUuid)) ?: return false
             val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
-            @Suppress("DEPRECATION") ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-            @Suppress("DEPRECATION") ch.value = bytes
-            @Suppress("DEPRECATION") gatt.writeCharacteristic(ch)
+            ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            ch.value = bytes
+            gatt.writeCharacteristic(ch)
         } catch (e: Exception) { Log.w(TAG, "gattWriteNoResponse", e); false }
     }
 
@@ -1971,8 +1982,8 @@ class PluginAndroidApis(
         return try {
             val svc = server.getService(UUID.fromString(serviceUuid)) ?: return false
             val ch = svc.getCharacteristic(UUID.fromString(charUuid)) ?: return false
-            @Suppress("DEPRECATION") ch.value = bytes
-            @Suppress("DEPRECATION") server.notifyCharacteristicChanged(device, ch, false)
+            ch.value = bytes
+            server.notifyCharacteristicChanged(device, ch, false)
             true
         } catch (e: Exception) { Log.w(TAG, "bleServerNotify", e); false }
     }

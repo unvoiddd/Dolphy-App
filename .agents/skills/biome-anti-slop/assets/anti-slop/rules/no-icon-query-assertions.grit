@@ -1,0 +1,16 @@
+language js(typescript)
+
+// scope: tests
+
+or {
+  `$_.querySelector("svg")`,
+  `$_.querySelector("img")`,
+  `$_.querySelectorAll("svg")`,
+  `$_.querySelectorAll("img")`
+} as $node where {
+  register_diagnostic(
+    span=$node,
+    message="Do not assert that an icon is present. See the Tests section of AGENTS.md: assert the accessible name of the control that contains the icon, which is what a user perceives.",
+    severity="error"
+  )
+}

@@ -1,0 +1,19 @@
+language js(typescript)
+
+// scope: tests
+
+// Focus placement is behaviour, not styling. A dialog that never moves focus
+// inside itself, a roving tabindex that loses its place, a skip link that goes
+// nowhere: each is a defect a keyboard user hits and nobody else notices, and
+// each regresses silently. So `toHaveFocus()` is the right assertion and is
+// deliberately allowed. Only reading `document.activeElement` is rejected,
+// because it asserts against the document rather than against the element the
+// test already holds, and it fails with "expected null" instead of naming the
+// control that was supposed to have focus.
+`document.activeElement` as $node where {
+  register_diagnostic(
+    span=$node,
+    message="Do not read document.activeElement in a test. See the Tests section of AGENTS.md: assert expect(element).toHaveFocus() on the element you queried by role and name. Focus placement is behaviour worth testing; this form just names which control was supposed to have it.",
+    severity="error"
+  )
+}

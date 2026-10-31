@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "versionName, e.g. 1.0.0 (default: 1.0.0)"
+        required: false
+        type: string
+      version_code:
+        description: "versionCode (default: derived from versionName)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build signed release APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ""
+
+      - name: Install platform 37
+        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            NAME="${GITHUB_REF_NAME#v}"
+          else
+            NAME="${INPUT_VERSION_NAME:-1.0.0}"
+          fi
+          if [[ -n "${INPUT_VERSION_CODE:-}" ]]; then
+            CODE="${INPUT_VERSION_CODE}"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$NAME"
+            PATCH="${PATCH%%-*}"
+            CODE=$((10#$MAJOR * 10000 + 10#$MINOR * 100 + 10#${PATCH:-0}))
+            # Keep derived codes above the legacy 2.7.0 test build (20700) so
+            # the 1.0.0 release can update existing installs in place.
+            CODE=$((CODE + 20000))
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Building Dolphy $NAME ($CODE)"
+
+      - name: Decode release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.DOLPHY_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
+            echo "::error::DOLPHY_KEYSTORE_BASE64 secret is not set"
+            exit 1
+          fi
+          KEYSTORE_PATH="$RUNNER_TEMP/dolphy-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
+          echo "DOLPHY_KEYSTORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        env:
+          DOLPHY_KEYSTORE_PASSWORD: ${{ secrets.DOLPHY_KEYSTORE_PASSWORD }}
+          DOLPHY_KEY_ALIAS: ${{ secrets.DOLPHY_KEY_ALIAS }}
+          DOLPHY_KEY_PASSWORD: ${{ secrets.DOLPHY_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew :app:assembleRelease \
+            -Pdolphy.versionName="${{ steps.version.outputs.name }}" \
+            -Pdolphy.versionCode="${{ steps.version.outputs.code }}" \
+            --stacktrace
+
+      - name: Verify APK signature
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' | head -n 1)"
+          test -n "$APK"
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "$APK"
+          cp "$APK" "Dolphy-${{ steps.version.outputs.name }}.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: dolphy-${{ steps.version.outputs.name }}
+          path: Dolphy-${{ steps.version.outputs.name }}.apk
+          retention-days: 30
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK="Dolphy-${{ steps.version.outputs.name }}.apk"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$APK" \
+              --title "Dolphy ${{ steps.version.outputs.name }}" \
+              --generate-notes
+          fi

@@ -346,7 +346,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                             }
                                         }
                                 ) {
-                                    M3SegmentedListSectionHeader(title = section)
+                                    M3SegmentedListSectionHeader(title = sectionTitle(section))
                                 }
                             }
 
@@ -594,7 +594,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                             }
                                         }
                                 ) {
-                                    M3SegmentedListSectionHeader(title = section)
+                                    M3SegmentedListSectionHeader(title = sectionTitle(section))
                                 }
                             }
 
@@ -709,7 +709,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                         }
                                     }
                             ) {
-                                M3SegmentedListSectionHeader(title = section)
+                                M3SegmentedListSectionHeader(title = sectionTitle(section))
                             }
                         }
                         items(
@@ -817,7 +817,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                         }
                                     }
                             ) {
-                                M3SegmentedListSectionHeader(title = section)
+                                M3SegmentedListSectionHeader(title = sectionTitle(section))
                             }
                         }
                         items(
@@ -1037,7 +1037,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                         )
                     }
                     Text(
-                        text = info.description.ifEmpty { "Описание отсутствует" },
+                        text = info.description.ifEmpty { stringResource(R.string.other_no_description) },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

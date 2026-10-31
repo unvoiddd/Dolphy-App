@@ -1,10 +1,8 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 package com.droid.dolphy
 
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ContainedLoadingIndicator
-import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.CircularProgressIndicator
 
 import android.content.Context
 import android.content.res.Resources
@@ -50,7 +48,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.List as ListIcon
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.filled.List as ListIcon
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -581,7 +580,7 @@ object IrRepository {
                         rawData = trimmed.substringAfter(':').trim()
                         pattern = rawData.split(Regex("\\s+"))
                             .mapNotNull { it.toIntOrNull() }.toIntArray()
-                        if (pattern?.isEmpty() == true) pattern = null
+                        if (pattern.isEmpty()) pattern = null
                     }
                     trimmed.startsWith("type:") -> {
 
@@ -1013,7 +1012,7 @@ private fun categoryIcon(catId: String): ImageVector {
         "_converted_" -> Icons.Default.Home
         "acs" -> Icons.Default.AcUnit
         "air_purifiers" -> Icons.Default.Air
-        "audio_and_video_receivers" -> Icons.Default.VolumeUp
+        "audio_and_video_receivers" -> Icons.AutoMirrored.Filled.VolumeUp
         "bidet" -> Icons.Default.Water
         "blu-ray", "dvd_players", "cd_players", "vcr", "laserdisc", "minidisc" -> Icons.Default.DiscFull
         "cameras" -> Icons.Default.CameraAlt
@@ -1231,7 +1230,7 @@ fun IRFlipperHome(navController: NavController) {
         Triple(Icons.Default.FolderOpen, userRemotesTitle, "other/user_ir_remotes"),
     )
     val catRows = buildList {
-        add(Triple(Icons.Default.Tv, "Телевизоры", "other/ir_tv_home"))
+        add(Triple(Icons.Default.Tv, res.getString(R.string.ir_tv_quick_link), "other/ir_tv_home"))
         categories!!.forEach { catId ->
             add(
                 Triple(
@@ -1820,15 +1819,15 @@ private fun actionIcon(action: UniversalSignalAction): ImageVector? {
     val key = action.signalName.lowercase()
     return when {
         key == "power" || key == "off" || key == "on" -> Icons.Default.Power
-        key == "vol_up" -> Icons.Default.VolumeUp
-        key == "vol_dn" -> Icons.Default.VolumeDown
+        key == "vol_up" -> Icons.AutoMirrored.Filled.VolumeUp
+        key == "vol_dn" -> Icons.AutoMirrored.Filled.VolumeDown
         key == "ch_next" -> Icons.Default.KeyboardArrowUp
         key == "ch_prev" -> Icons.Default.KeyboardArrowDown
         key == "next" -> Icons.Default.SkipNext
         key == "prev" -> Icons.Default.SkipPrevious
         key == "play" -> Icons.Default.PlayArrow
         key == "pause" -> Icons.Default.Pause
-        key == "mute" -> Icons.Default.VolumeMute
+        key == "mute" -> Icons.AutoMirrored.Filled.VolumeMute
         else -> null
     }
 }
@@ -3026,7 +3025,7 @@ private fun DpadSection(groups: IrRemoteGroups, onPress: (IrButton) -> Unit) {
         }
         groups.dpadLeft?.let {
             RemoteDpadButton(
-                icon = Icons.Default.KeyboardArrowLeft,
+                icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 button = it,
                 onPress = onPress,
                 modifier = Modifier
@@ -3036,7 +3035,7 @@ private fun DpadSection(groups: IrRemoteGroups, onPress: (IrButton) -> Unit) {
         }
         groups.dpadRight?.let {
             RemoteDpadButton(
-                icon = Icons.Default.KeyboardArrowRight,
+                icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 button = it,
                 onPress = onPress,
                 modifier = Modifier
@@ -3377,7 +3376,7 @@ private fun iconForRemoteButton(button: IrButton): ImageVector? {
         containsAny(lower, listOf("home")) -> Icons.Default.Home
         containsAny(lower, listOf("back", "return")) -> Icons.AutoMirrored.Filled.ArrowBack
         containsAny(lower, listOf("info")) -> Icons.Default.Info
-        containsAny(lower, listOf("list", "guide")) -> Icons.Default.ListIcon
+        containsAny(lower, listOf("list", "guide")) -> Icons.AutoMirrored.Filled.ListIcon
         containsAny(lower, listOf("ok", "enter", "select", "confirm", "center", "centre")) -> Icons.Default.Check
         containsAny(lower, listOf("play")) -> Icons.Default.PlayArrow
         containsAny(lower, listOf("pause")) -> Icons.Default.Pause
@@ -3386,14 +3385,14 @@ private fun iconForRemoteButton(button: IrButton): ImageVector? {
         containsAny(lower, listOf("ff", "forward")) -> Icons.Default.FastForward
         containsAny(lower, listOf("next")) -> Icons.Default.SkipNext
         containsAny(lower, listOf("prev", "previous")) -> Icons.Default.SkipPrevious
-        containsAny(lower, listOf("mute")) -> Icons.Default.VolumeMute
+        containsAny(lower, listOf("mute")) -> Icons.AutoMirrored.Filled.VolumeMute
         containsAny(lower, listOf("settings", "setup", "option", "options")) -> Icons.Default.Settings
         else -> null
     }
 }
 
 private fun vibrateRemoteButton(context: Context) {
-    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
+    val vibrator = context.getSystemService(Vibrator::class.java) ?: return
     if (!vibrator.hasVibrator()) return
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         vibrator.vibrate(VibrationEffect.createOneShot(24, VibrationEffect.DEFAULT_AMPLITUDE))
@@ -3631,27 +3630,23 @@ fun IrExpressivePowerButton(
     size: Dp = 220.dp,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val frozenPolygons = remember {
-        listOf(MaterialShapes.Cookie9Sided, MaterialShapes.Cookie9Sided)
-    }
 
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(colorScheme.surfaceContainerHigh),
+        )
         if (active) {
-            ContainedLoadingIndicator(
-                modifier = Modifier.fillMaxSize(),
-                containerColor = colorScheme.surfaceContainerHigh,
-                indicatorColor = colorScheme.primaryFixed,
-            )
-        } else {
-            ContainedLoadingIndicator(
-                progress = { 0f },
-                modifier = Modifier.fillMaxSize(),
-                containerColor = colorScheme.surfaceContainerHigh,
-                indicatorColor = colorScheme.primaryFixed,
-                polygons = frozenPolygons,
+            CircularProgressIndicator(
+                modifier = Modifier.fillMaxSize().padding(size * 0.08f),
+                color = colorScheme.primaryFixed,
+                trackColor = colorScheme.surfaceContainerHigh,
+                strokeWidth = 8.dp,
             )
         }
 
@@ -3966,7 +3961,7 @@ fun IRJammerScreen(navController: NavController? = null) {
                                             withContext(Dispatchers.Main) {
                                                 sentCommands = index + 1
                                                 statusMessage = context.getString(R.string.ir_jammer_sending_signals) +
-                                                    " · цикл $cycle"
+                                                    " · " + context.getString(R.string.ir_jammer_cycle, cycle)
                                             }
                                             delay(8)
                                         }

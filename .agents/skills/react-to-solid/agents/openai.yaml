@@ -1,0 +1,4 @@
+interface:
+  display_name: "React to Solid"
+  short_description: "Port React and shadcn-style components to idiomatic SolidJS"
+  default_prompt: "Use $react-to-solid to convert this React component to idiomatic SolidJS with the repository's Kobalte and Zaidan patterns."

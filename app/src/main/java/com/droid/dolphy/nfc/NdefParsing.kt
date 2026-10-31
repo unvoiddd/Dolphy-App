@@ -1,7 +1,9 @@
 package com.droid.dolphy.nfc
 
+import android.content.Context
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
+import com.droid.dolphy.R
 import java.nio.charset.Charset
 
 data class NdefSummary(
@@ -10,18 +12,18 @@ data class NdefSummary(
     val rawHex: String,
 )
 
-fun summarizeNdef(message: NdefMessage): NdefSummary {
+fun summarizeNdef(message: NdefMessage, context: Context): NdefSummary {
     val rawHex = message.toByteArray().toHexString(sep = " ")
     val records = message.records?.toList().orEmpty()
     if (records.isEmpty()) {
-        return NdefSummary(recordType = "Empty", content = "Пустое NDEF-сообщение", rawHex = rawHex)
+        return NdefSummary(recordType = "Empty", content = context.getString(R.string.nfc_empty_ndef_message), rawHex = rawHex)
     }
 
     val parts = mutableListOf<Pair<String, String>>()
     val types = linkedSetOf<String>()
 
     for (record in records) {
-        val (type, content) = decodeRecord(record)
+        val (type, content) = decodeRecord(record, context)
         types += type
         parts += type to content
     }
@@ -35,7 +37,7 @@ fun summarizeNdef(message: NdefMessage): NdefSummary {
     return NdefSummary(recordType = recordType, content = content, rawHex = rawHex)
 }
 
-private fun decodeRecord(record: NdefRecord): Pair<String, String> {
+private fun decodeRecord(record: NdefRecord, context: Context): Pair<String, String> {
     return try {
         when {
             record.tnf == NdefRecord.TNF_WELL_KNOWN && record.type.contentEquals(NdefRecord.RTD_URI) -> {
@@ -61,7 +63,11 @@ private fun decodeRecord(record: NdefRecord): Pair<String, String> {
             }
         }
     } catch (e: Exception) {
-        "Unknown" to ("Ошибка декодирования: ${e.message ?: e.javaClass.simpleName}\npayload=${record.payload.toHexString(sep = " ")}")
+        "Unknown" to context.getString(
+            R.string.nfc_ndef_decode_error,
+            e.message ?: e.javaClass.simpleName,
+            record.payload.toHexString(sep = " "),
+        )
     }
 }
 

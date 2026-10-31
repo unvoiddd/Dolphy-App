@@ -209,8 +209,8 @@ class VivoSpam(private val type: VivoDevice.Type) : Spammer {
         isSpamming = false
     }
 
-    override fun setBlinkRunnable(blinkRunnable: Runnable?) {
-        this.blinkRunnable = blinkRunnable
+    override fun setBlinkRunnable(runnable: Runnable?) {
+        this.blinkRunnable = runnable
     }
 
     override fun getBlinkRunnable(): Runnable? = blinkRunnable

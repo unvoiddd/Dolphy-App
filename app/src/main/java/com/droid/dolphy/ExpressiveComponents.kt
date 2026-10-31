@@ -129,7 +129,7 @@ fun DolphyLinearProgressIndicator(
         if (progress == null) {
             LinearProgressIndicator(modifier = modifier, color = color, trackColor = trackColor, strokeCap = strokeCap)
         } else {
-            LinearProgressIndicator(progress = progress, modifier = modifier, color = color, trackColor = trackColor, strokeCap = strokeCap)
+            LinearProgressIndicator(progress = { progress }, modifier = modifier, color = color, trackColor = trackColor, strokeCap = strokeCap)
         }
     }
 }
@@ -214,8 +214,7 @@ private fun ExpressiveSlider(
 
             val step = 6f
             var x = 0f
-            while (x <= w) {
-            val y = h + (sin((x / w) * 2f * PI.toFloat() + phase.value).toFloat() * ampPx)
+            while (x <= w) {                val y = h + sin((x / w) * 2f * PI.toFloat() + phase.value) * ampPx
                 if (x == 0f) pathInactive.moveTo(x, y) else pathInactive.lineTo(x, y)
                 if (x <= activeW) {
                     if (x == 0f) pathActive.moveTo(x, y) else pathActive.lineTo(x, y)
@@ -279,7 +278,7 @@ fun ExpressiveLinearProgressIndicator(
 
         var x = 0f
         while (x <= w) {
-            val y = h + (sin((x / w) * 2f * PI.toFloat() + phase.value).toFloat() * amp)
+            val y = h + sin((x / w) * 2f * PI.toFloat() + phase.value) * amp
             if (x == 0f) pathInactive.moveTo(x, y) else pathInactive.lineTo(x, y)
             if (x <= activeW) {
                 if (x == 0f) pathActive.moveTo(x, y) else pathActive.lineTo(x, y)

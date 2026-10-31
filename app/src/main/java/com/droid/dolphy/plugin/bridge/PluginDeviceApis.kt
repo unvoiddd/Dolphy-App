@@ -1,3 +1,7 @@
+// Deprecated WiFi/NFC platform APIs are intentional: they are the only supported
+// way to expose these details to plugins on minSdk 26.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.plugin.bridge
 
 import android.annotation.SuppressLint
@@ -20,6 +24,8 @@ import android.util.Log
 import com.droid.dolphy.RootUtils
 import com.droid.dolphy.ShizukuHelper
 import com.droid.dolphy.plugin.PluginManager
+import com.droid.dolphy.plugin.PluginPermission
+import com.droid.dolphy.plugin.PluginPermissions
 import org.json.JSONArray
 import org.json.JSONObject
 import rikka.shizuku.Shizuku
@@ -47,12 +53,35 @@ import android.os.ParcelUuid
 
 
 
-class PluginDeviceApis(private val context: Context, private val pluginId: String) {
+class PluginDeviceApis(
+    private val context: Context,
+    private val pluginId: String,
+    private val permissions: Set<PluginPermission> = emptySet(),
+) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val io = Executors.newCachedThreadPool()
     private val bleCallbacks = ConcurrentHashMap<String, ScanCallback>()
     private val bleBatchers = ConcurrentHashMap<String, BleBatcher>()
     @Volatile private var lastWifiScanAt = 0L
+
+    /**
+     * Returns true and delivers a structured error when the plugin did not
+     * declare [permission]. Bridges never throw into plugin runtimes.
+     */
+    private fun denied(permission: PluginPermission, callback: (String) -> Unit): Boolean {
+        if (PluginPermissions.has(this.permissions, permission)) return false
+        mainHandler.post {
+            callback(
+                JSONObject()
+                    .put("ok", false)
+                    .put("code", -1)
+                    .put("error", "permission_denied")
+                    .put("permission", permission.token)
+                    .toString(),
+            )
+        }
+        return true
+    }
 
     private val wifiManager: WifiManager?
         get() = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
@@ -533,6 +562,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         headersJson: String?,
         callback: (String) -> Unit,
     ) {
+        if (denied(PluginPermission.NETWORK, callback)) return
         io.execute {
             val result = try {
                 val conn = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -575,6 +605,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         maxBytes: Long = 50_000_000L,
         callback: (String) -> Unit,
     ) {
+        if (denied(PluginPermission.NETWORK, callback)) return
         val base = java.io.File(context.filesDir, "dolphy_plugins_data/$pluginId").apply { mkdirs() }.canonicalFile
         val destination = runCatching { destFile.canonicalFile }.getOrNull()
         if (destination == null || (destination.path != base.path && !destination.path.startsWith(base.path + java.io.File.separator))) {
@@ -601,6 +632,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         maxBytes: Long,
         callback: (String) -> Unit,
     ) {
+        if (denied(PluginPermission.NETWORK, callback)) return
         io.execute {
             val result = try {
                 destFile.parentFile?.mkdirs()
@@ -667,6 +699,10 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
     }
 
     fun tcpReachable(host: String, port: Int, timeoutMs: Int, callback: (Boolean) -> Unit) {
+        if (!PluginPermissions.has(permissions, PluginPermission.NETWORK)) {
+            mainHandler.post { callback(false) }
+            return
+        }
         io.execute {
             val ok = try {
                 Socket().use { s ->
@@ -681,6 +717,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
     }
 
     fun pingHost(host: String, timeoutMs: Int, callback: (String) -> Unit) {
+        if (denied(PluginPermission.NETWORK, callback)) return
         io.execute {
             val result = try {
                 val start = System.currentTimeMillis()
@@ -695,6 +732,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
     }
 
     fun portScan(host: String, ports: IntArray, timeoutMs: Int, callback: (String) -> Unit) {
+        if (denied(PluginPermission.NETWORK, callback)) return
         io.execute {
             val open = JSONArray()
             val closed = JSONArray()
@@ -733,6 +771,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
     }
 
     fun rootExec(command: String, callback: (String) -> Unit) {
+        if (denied(PluginPermission.ROOT, callback)) return
         io.execute {
             val json = try {
                 val (code, out) = RootUtils.executeRootCommand(command)
@@ -1050,6 +1089,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
     }
 
     fun shizukuExec(command: String, callback: (String) -> Unit) {
+        if (denied(PluginPermission.SHIZUKU, callback)) return
         io.execute {
             val result = try {
                 ShizukuHelper.runShellCommandWithOutput(command)
@@ -1067,6 +1107,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
 
 
     fun shellExecSmart(command: String, callback: (String) -> Unit) {
+        if (denied(PluginPermission.SHELL, callback)) return
         when {
             shizukuHasPermission() -> shizukuExec(command, callback)
             rootAvailable() -> rootExec(command, callback)
@@ -1651,7 +1692,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         val svcUuids = JSONArray()
         record?.serviceUuids?.forEach { svcUuids.put(it.uuid.toString()) }
         return JSONObject()
-            .put("name", d?.name ?: record?.deviceName ?: "")
+            .put("name", d.name ?: record?.deviceName ?: "")
             .put("address", address)
             .put("rssi", result.rssi)
             .put("connectable", if (Build.VERSION.SDK_INT >= 26) result.isConnectable else true)

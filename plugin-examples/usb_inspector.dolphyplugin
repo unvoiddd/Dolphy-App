@@ -1,0 +1,169 @@
+import json
+
+__id__ = "usb_inspector"
+__name__ = "USB Inspector"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "List connected USB devices with vendor, product and interface details"
+__icon__ = "rounded:usb"
+__permissions__ = ["usb"]
+
+DEVICE_CLASSES = {
+    0: "Per interface",
+    1: "Audio",
+    2: "Communications",
+    3: "HID",
+    5: "Physical",
+    6: "Image",
+    7: "Printer",
+    8: "Mass storage",
+    9: "Hub",
+    10: "CDC data",
+    11: "Smart card",
+    13: "Content security",
+    14: "Video",
+    15: "Personal healthcare",
+    16: "Audio/video",
+    17: "Billboard",
+    220: "Diagnostic",
+    224: "Wireless controller",
+    225: "Miscellaneous",
+    239: "Application specific",
+    254: "Vendor specific",
+}
+
+
+class UsbInspector(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.devices = []
+        self.selected = None
+        self.status = "Reading USB devices"
+        self.host_supported = False
+
+    def on_plugin_load(self):
+        self.add_module(
+            "USB Inspector",
+            "Connected USB devices and interface classes",
+            "usb",
+            "main",
+            "OTHER",
+            140,
+        )
+        self.reload()
+
+    def reload(self):
+        try:
+            devices = json.loads(str(self.api.getAndroid().usbDevicesJson()))
+        except Exception:
+            devices = []
+        self.devices = devices if isinstance(devices, list) else []
+        try:
+            self.host_supported = bool(self.api.getAndroid().hasFeature("android.hardware.usb.host"))
+        except Exception:
+            self.host_supported = False
+        self.status = str(len(self.devices)) + " USB devices attached"
+        self.refresh()
+
+    def class_name(self, value):
+        return DEVICE_CLASSES.get(int(value or 0), "Unknown")
+
+    def device_callback(self, device):
+        def callback(value=None):
+            self.selected = device
+            self.navigate("device")
+
+        return callback
+
+    def screen_main(self, ui, api, state):
+        rows = []
+        for device in self.devices:
+            vendor = int(device.get("vendorId", 0))
+            product = int(device.get("productId", 0))
+            rows.append(
+                ui.function_row(
+                    "USB " + format(vendor, "04X") + ":" + format(product, "04X"),
+                    device.get("deviceName", "") + " · " + self.class_name(device.get("class", 0)),
+                    "computer",
+                    on_click=self.device_callback(device),
+                )
+            )
+        if not rows:
+            rows = [
+                ui.card(
+                    [
+                        ui.icon("usb", 42),
+                        ui.text("No USB devices", "titleMedium"),
+                        ui.text("Connect a USB device through an OTG adapter and refresh.", "bodyMedium"),
+                    ]
+                )
+            ]
+        return ui.scaffold(
+            title="USB Inspector",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("usb", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("USB host", "titleLarge"),
+                                            ui.text("Descriptors and interface classes", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Host supported" if self.host_supported else "No USB host", self.host_supported),
+                                    ui.chip(str(len(self.devices)) + " devices", len(self.devices) > 0),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.button("Refresh", self.reload, fill_max_width=True),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.segmented_list(rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def screen_device(self, ui, api, state):
+        device = self.selected or {}
+        vendor = int(device.get("vendorId", 0))
+        product = int(device.get("productId", 0))
+        return ui.scaffold(
+            title="USB device",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.icon("usb", 48),
+                            ui.text(format(vendor, "04X") + ":" + format(product, "04X"), "headlineSmall"),
+                            ui.text(str(device.get("deviceName", "")), "bodySmall"),
+                        ]
+                    ),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("Vendor id", "0x" + format(vendor, "04X") + " (" + str(vendor) + ")", "info"),
+                            ui.settings_row("Product id", "0x" + format(product, "04X") + " (" + str(product) + ")", "info"),
+                            ui.settings_row("Class", self.class_name(device.get("class", 0)), "memory"),
+                            ui.settings_row("Subclass", str(device.get("subclass", 0)), "memory"),
+                            ui.settings_row("Protocol", str(device.get("protocol", 0)), "code"),
+                            ui.settings_row("Interfaces", str(device.get("interfaceCount", 0)), "list"),
+                        ]
+                    ),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

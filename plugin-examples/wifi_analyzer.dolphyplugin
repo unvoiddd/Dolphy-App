@@ -1,0 +1,156 @@
+import json
+
+__id__ = "wifi_analyzer"
+__name__ = "Wi-Fi Analyzer"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Connection details, DHCP lease and per-channel congestion analysis"
+__icon__ = "rounded:wifi"
+__permissions__ = ["wifi"]
+
+
+class WifiAnalyzer(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.status = "Reading the current connection"
+        self.channels = []
+        self.scanning = False
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Wi-Fi Analyzer",
+            "Connection, DHCP lease and channel congestion",
+            "wifi",
+            "main",
+            "OTHER",
+            40,
+        )
+        self.reload()
+
+    def on_plugin_unload(self):
+        self.scanning = False
+
+    def reload(self):
+        try:
+            self.channels = json.loads(str(self.api.getAndroid().wifiChannelsJson()))
+        except Exception:
+            self.channels = []
+        if not isinstance(self.channels, list):
+            self.channels = []
+
+    def detailed(self):
+        try:
+            return json.loads(str(self.api.getAndroid().wifiDetailedInfoJson()))
+        except Exception:
+            return {}
+
+    def dhcp(self):
+        try:
+            return json.loads(str(self.api.getAndroid().wifiDhcpInfoJson()))
+        except Exception:
+            return {}
+
+    def scan(self):
+        device = self.api.getDevice()
+        if not device.wifiIsEnabled():
+            self.status = "Wi-Fi is disabled"
+            device.wifiOpenSettings()
+            self.refresh()
+            return
+        started = bool(device.wifiStartScan(True))
+        self.status = "Scan requested, refreshing channel map…" if started else "Android returned the latest cached scan"
+        self.reload()
+        self.refresh()
+
+    def signal_percent(self, rssi):
+        return max(0, min(100, int(round((int(rssi or -100) + 100) * 100.0 / 55.0))))
+
+    def screen_main(self, ui, api, state):
+        device = api.getDevice()
+        info = self.detailed()
+        dhcp = self.dhcp()
+        rssi = int(info.get("rssi", 0))
+        ssid = info.get("ssid") or "Not connected"
+        channels = sorted(
+            [item for item in self.channels if isinstance(item, dict)],
+            key=lambda item: int(item.get("networkCount", 0)),
+            reverse=True,
+        )
+        channel_rows = []
+        for channel in channels[:24]:
+            count = int(channel.get("networkCount", 0))
+            strongest = int(channel.get("strongestRssi", -100))
+            subtitle = (
+                str(channel.get("band", ""))
+                + " · "
+                + str(channel.get("frequency", 0))
+                + " MHz · strongest "
+                + str(strongest)
+                + " dBm"
+            )
+            channel_rows.append(
+                ui.function_row(
+                    "Channel " + str(channel.get("channel", "?")) + " · " + str(count) + " APs",
+                    subtitle,
+                    "wifi",
+                )
+            )
+        if not channel_rows:
+            channel_rows = [ui.text("Run a scan to build the channel map", "bodyMedium")]
+        return ui.scaffold(
+            title="Wi-Fi Analyzer",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("wifi", 36),
+                                    ui.column(
+                                        [
+                                            ui.text(ssid, "titleLarge"),
+                                            ui.text(str(info.get("bssid", "No BSSID")), "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.linear_progress(self.signal_percent(rssi) / 100.0),
+                            ui.text(str(rssi) + " dBm · " + str(info.get("linkSpeed", 0)) + " Mbps", "titleMedium"),
+                            ui.row(
+                                [
+                                    ui.chip("Channel " + str(info.get("channel", 0)), True),
+                                    ui.chip(str(info.get("frequency", 0)) + " MHz", True),
+                                    ui.chip("5 GHz" if device.wifiIs5GHzBandSupported() else "2.4 GHz only", device.wifiIs5GHzBandSupported()),
+                                    ui.chip("P2P" if device.wifiIsP2pSupported() else "No P2P", device.wifiIsP2pSupported()),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.button("Scan networks", self.scan, fill_max_width=True),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.text("Connection and DHCP", "titleMedium"),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("IPv4 address", str(info.get("ip", dhcp.get("ip", "unavailable"))), "lan"),
+                            ui.settings_row("Gateway", str(info.get("gateway", dhcp.get("gateway", "unavailable"))), "router"),
+                            ui.settings_row("Netmask", str(info.get("netmask", dhcp.get("netmask", "unavailable"))), "tune"),
+                            ui.settings_row("DNS 1", str(info.get("dns1", dhcp.get("dns1", "unavailable"))), "language"),
+                            ui.settings_row("DNS 2", str(info.get("dns2", dhcp.get("dns2", "unavailable"))), "language"),
+                            ui.settings_row("DHCP server", str(info.get("serverAddress", dhcp.get("serverAddress", "unavailable"))), "router"),
+                            ui.settings_row("Lease", str(info.get("leaseDuration", dhcp.get("leaseDuration", 0))) + " s", "schedule"),
+                            ui.settings_row("Interface MAC", str(info.get("macAddress", "hidden")), "memory"),
+                            ui.settings_row("Downstream", str(info.get("downKbps", 0)) + " kbps", "speed"),
+                            ui.settings_row("Upstream", str(info.get("upKbps", 0)) + " kbps", "speed"),
+                        ]
+                    ),
+                    ui.text("Channel congestion", "titleMedium"),
+                    ui.segmented_list(channel_rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

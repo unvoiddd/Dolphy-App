@@ -1,3 +1,7 @@
+// NsdManager.resolveService/host are deprecated on API 34+, but their replacements
+// require API 34 while this app targets minSdk 26.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.printer
 
 import android.content.Context

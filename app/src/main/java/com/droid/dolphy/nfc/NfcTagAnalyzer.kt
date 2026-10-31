@@ -1,18 +1,24 @@
+// Deprecated platform APIs are still the only option on minSdk 26; their
+// replacements require API 33+ branches that this feature cannot take yet.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.nfc
 
+import android.content.Context
 import android.content.Intent
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.nfc.tech.Ndef
 import android.nfc.tech.NfcA
+import com.droid.dolphy.R
 import com.droid.dolphy.nfc.db.NfcScanEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
 object NfcTagAnalyzer {
-    suspend fun analyzeIntent(intent: Intent): NfcScanEntity? = withContext(Dispatchers.IO) {
+    suspend fun analyzeIntent(intent: Intent, context: Context): NfcScanEntity? = withContext(Dispatchers.IO) {
         val action = intent.action ?: return@withContext null
         if (
             action != NfcAdapter.ACTION_TAG_DISCOVERED &&
@@ -41,7 +47,7 @@ object NfcTagAnalyzer {
                 maxSizeBytes = runCatching { ndef.maxSize }.getOrNull()
                 val msg = runCatching { ndef.ndefMessage ?: ndef.cachedNdefMessage }.getOrNull()
                 if(msg != null) {
-                    val summary = summarizeNdef(msg)
+                    val summary = summarizeNdef(msg, context)
                     ndefRecordType = summary.recordType
                     ndefContent = summary.content
                     ndefHex = summary.rawHex
@@ -55,7 +61,7 @@ object NfcTagAnalyzer {
 
         val ntag = detectNtag21x(tag)
         val isReadOnly = writable?.not()
-        val emv = detectEmv(tag)
+        val emv = detectEmv(tag, context)
 
         val (type, emvDetected, emvInfo) = if(emv != null) {
             Triple("EMV Contactless", true, emv)
@@ -64,7 +70,7 @@ object NfcTagAnalyzer {
         } else if(techSimple.contains("IsoDep")) {
             Triple("NFC Type 4 Tag", false, null)
         } else {
-            Triple("Метка", false, null)
+            Triple("NFC", false, null)
         }
 
         val (passwordSupported, passwordEnabled) = if(ntag != null) {
@@ -78,25 +84,25 @@ object NfcTagAnalyzer {
             if(ntag != null) {
                 append("NTAG: ${ntag.name}")
             } else {
-                append("Тип метки: неизвестно")
+                append(context.getString(R.string.nfc_analysis_type_unknown))
             }
 
-            if(isReadOnly == true) append(" • Read-only")
+            if(isReadOnly == true) append(" вЂў Read-only")
             if(passwordSupported == true) {
                 when(passwordEnabled) {
-                    true -> append(" • Password: включено")
-                    false -> append(" • Password: выключено")
-                    null -> append(" • Password: неизвестно")
+                    true -> append(" " + context.getString(R.string.nfc_analysis_password_on))
+                    false -> append(" " + context.getString(R.string.nfc_analysis_password_off))
+                    null -> append(" " + context.getString(R.string.nfc_analysis_password_unknown))
                 }
             }
-            if(emvDetected) append(" • EMV")
+            if(emvDetected) append(" вЂў EMV")
         }
 
         NfcScanEntity(
             scannedAtMillis = System.currentTimeMillis(),
-            uidHex = uidHex.ifBlank { "—" },
+            uidHex = uidHex.ifBlank { "вЂ”" },
             type = type,
-            techListCsv = techListCsv.ifBlank { "—" },
+            techListCsv = techListCsv.ifBlank { "вЂ”" },
             writable = writable,
             maxSizeBytes = maxSizeBytes,
             ndefRecordType = ndefRecordType,
@@ -162,7 +168,7 @@ object NfcTagAnalyzer {
         }
     }
 
-    private fun detectEmv(tag: Tag): String? {
+    private fun detectEmv(tag: Tag, context: Context): String? {
         val isoDep = IsoDep.get(tag) ?: return null
         return try {
             isoDep.connect()
@@ -187,16 +193,21 @@ object NfcTagAnalyzer {
                 val paymentSystem = detectPaymentSystem(aids, appLabels)
 
                 return buildString {
-                    appendLine("Тип: EMV Contactless")
-                    appendLine("Стандарт: ISO 14443-4")
-                    appendLine("Поддержка APDU: Да")
-                    appendLine("Платежная система: ${paymentSystem ?: "Не определена"}")
-                    appendLine("Приложений на карте: ${aids.size}")
-                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "—"}")
+                    appendLine(context.getString(R.string.nfc_analysis_emv_type))
+                    appendLine(context.getString(R.string.nfc_analysis_emv_standard))
+                    appendLine(context.getString(R.string.nfc_analysis_emv_apdu))
+                    appendLine(
+                        context.getString(
+                            R.string.nfc_analysis_emv_system,
+                            paymentSystem ?: context.getString(R.string.nfc_analysis_emv_undefined),
+                        )
+                    )
+                    appendLine(context.getString(R.string.nfc_analysis_emv_apps, aids.size))
+                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "вЂ”"}")
                     append("PPSE: 2PAY.SYS.DDF01")
                     if(appLabels.isNotEmpty()) {
                         appendLine()
-                        append("Метка приложения: ${appLabels.joinToString(", ")}")
+                        append(context.getString(R.string.nfc_analysis_emv_app_label, appLabels.joinToString(", ")))
                     }
                 }
             }
@@ -215,7 +226,7 @@ object NfcTagAnalyzer {
         if(aidUpper.any { it.startsWith("A000000025") }) return "American Express"
         if(aidUpper.any { it.startsWith("A000000065") }) return "JCB"
         if(aidUpper.any { it.startsWith("A000000333") }) return "UnionPay"
-        if(aidUpper.any { it.startsWith("A000000658") }) return "Мир"
+        if(aidUpper.any { it.startsWith("A000000658") }) return "РњРёСЂ"
         if(aidUpper.any { it.startsWith("A000000524") }) return "RuPay"
         if(aidUpper.any { it.startsWith("A000000152") }) return "Discover"
 
@@ -226,7 +237,7 @@ object NfcTagAnalyzer {
             "AMEX" in labelText || "AMERICAN EXPRESS" in labelText -> "American Express"
             "JCB" in labelText -> "JCB"
             "UNIONPAY" in labelText -> "UnionPay"
-            "MIR" in labelText || "МИР" in labelText -> "Мир"
+            "MIR" in labelText || "РњРР " in labelText -> "РњРёСЂ"
             "RUPAY" in labelText -> "RuPay"
             "DISCOVER" in labelText -> "Discover"
             else -> null

@@ -1,0 +1,11 @@
+language js(typescript)
+
+// scope: tests
+
+`$_.toHaveClass($args)` as $call where {
+  register_diagnostic(
+    span=$call,
+    message="Do not assert CSS classes in tests. See the Tests section of AGENTS.md: assert the behaviour the class produces, or move the visual detail to a Storybook story.",
+    severity="error"
+  )
+}

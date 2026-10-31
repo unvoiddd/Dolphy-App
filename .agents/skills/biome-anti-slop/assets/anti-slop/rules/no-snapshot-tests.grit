@@ -1,0 +1,18 @@
+language js(typescript)
+
+// scope: tests
+
+`$_.$method($...)` as $call where {
+  $method <: or {
+    `toMatchSnapshot`,
+    `toMatchInlineSnapshot`,
+    `toMatchFileSnapshot`,
+    `toThrowErrorMatchingSnapshot`,
+    `toThrowErrorMatchingInlineSnapshot`
+  },
+  register_diagnostic(
+    span=$call,
+    message="Do not write snapshot tests. See the Tests section of AGENTS.md: a snapshot asserts the whole shape of something without naming what it protects, so it fails on every unrelated edit and gets regenerated instead of read. Assert the specific behaviour or value the change must preserve.",
+    severity="error"
+  )
+}

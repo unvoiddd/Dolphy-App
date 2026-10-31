@@ -5,6 +5,7 @@ import android.content.*
 import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.droid.dolphy.R
 import com.droid.dolphy.nfc.NfcAudioSpoofState
 import com.droid.dolphy.qr.server.KtorServerManager
 import com.droid.dolphy.qr.server.QrSpooferService
@@ -22,6 +23,9 @@ import java.io.FileOutputStream
 
 class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(application) {
     private var startJob: Job? = null
+
+    private fun str(id: Int, vararg args: Any): String =
+        getApplication<Application>().getString(id, *args)
 
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
@@ -87,8 +91,8 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
                     ?: "imported.html"
                 val text = context.contentResolver.openInputStream(uri)?.use {
                     it.bufferedReader(Charsets.UTF_8).readText()
-                } ?: throw IllegalStateException("Не удалось прочитать файл")
-                if (text.isBlank()) throw IllegalStateException("Пустой HTML")
+                } ?: throw IllegalStateException(str(R.string.file_read_failed))
+                if (text.isBlank()) throw IllegalStateException(str(R.string.qr_err_empty_html))
 
                 val dir = File(context.filesDir, "qr_spoofer")
                 if (!dir.exists()) dir.mkdirs()
@@ -104,11 +108,11 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
                     _customHtmlName.value = name
                     _pageType.value = KtorServerManager.PAGE_CUSTOM_HTML
                     applyCustomHtmlToServer(QrSpooferService.serverManager)
-                    _logs.value = (listOf("Импортирован HTML: $name (${text.length} символов)") + _logs.value).take(80)
+                    _logs.value = (listOf(str(R.string.qr_log_html_imported, name, text.length)) + _logs.value).take(80)
                 }
             } catch (e: Exception) {
                 launch(Dispatchers.Main) {
-                    _logs.value = (listOf("Ошибка импорта HTML: ${e.message}") + _logs.value).take(80)
+                    _logs.value = (listOf(str(R.string.qr_log_html_import_failed, e.message ?: e.javaClass.simpleName)) + _logs.value).take(80)
                 }
             }
         }
@@ -138,11 +142,11 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
 
                 launch(Dispatchers.Main) {
                     loadCustomAudioList()
-                    _logs.value = (listOf("Добавлено аудио: $fileName") + _logs.value).take(50)
+                    _logs.value = (listOf(str(R.string.qr_log_audio_added, fileName)) + _logs.value).take(50)
                 }
             } catch (e: Exception) {
                 launch(Dispatchers.Main) {
-                    _logs.value = (listOf("Ошибка добавления аудио: ${e.message}") + _logs.value).take(50)
+                    _logs.value = (listOf(str(R.string.qr_log_audio_failed, e.message ?: e.javaClass.simpleName)) + _logs.value).take(50)
                 }
             }
         }
@@ -171,7 +175,7 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
         if (type == KtorServerManager.PAGE_CUSTOM_HTML) {
             val f = customHtmlFile()
             if (!f.exists()) {
-                _logs.value = (listOf("Сначала импортируйте HTML-файл") + _logs.value).take(80)
+                _logs.value = (listOf(str(R.string.qr_log_import_first)) + _logs.value).take(80)
                 return
             }
         }
@@ -186,16 +190,16 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
 
     fun startServer() {
         if (_isStarted.value && QrSpooferService.serverManager != null) {
-            _logs.value = (listOf("Локальный сервер уже работает") + _logs.value).take(80)
+            _logs.value = (listOf(str(R.string.qr_log_already_running)) + _logs.value).take(80)
             return
         }
 
         val localIp = getLocalIpAddress()
         if (localIp == null) {
             _logs.value = listOf(
-                "Локальная сеть не найдена",
-                "Подключитесь к Wi-Fi, Ethernet или точке доступа и повторите запуск",
-                "Интернет и внешние серверы не используются",
+                str(R.string.qr_log_no_network),
+                str(R.string.qr_log_connect_network),
+                str(R.string.qr_log_no_internet),
             )
             return
         }
@@ -203,9 +207,9 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
         _isStarted.value = true
         _serverIp.value = null
         _logs.value = listOf(
-            "Запуск локального сервера…",
-            "Режим: только локальная сеть",
-            "Внешние серверы и туннели отключены",
+            str(R.string.qr_log_starting),
+            str(R.string.qr_log_local_only),
+            str(R.string.qr_log_tunnels_off),
         )
 
         startJob?.cancel()
@@ -220,13 +224,13 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
                     observeServer(sm)
                 }
 
-                val startedPort = sm.start(8080)
+                val startedPort = sm.start(8080, localIp)
                 if (startedPort == -1) {
                     launch(Dispatchers.Main) {
                         _logs.value = (
                             listOf(
-                                "ОШИБКА: локальный сервер не стартовал",
-                                "Порты 8080–8110 заняты или health не ответил",
+                                str(R.string.qr_log_server_failed),
+                                str(R.string.qr_log_ports_busy),
                             ) + _logs.value
                             ).take(80)
                         _isStarted.value = false
@@ -240,8 +244,8 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
                     _serverIp.value = "$localIp:$startedPort"
                     _logs.value = (
                         listOf(
-                            "Локальный сервер готов: $localUrl",
-                            "QR доступен только устройствам в этой локальной сети",
+                            str(R.string.qr_log_server_ready, localUrl),
+                            str(R.string.qr_log_lan_only_qr),
                         ) + _logs.value
                         ).take(80)
                 }
@@ -263,7 +267,7 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
                 throw e
             } catch (e: Exception) {
                 launch(Dispatchers.Main) {
-                    _logs.value = (listOf("ОШИБКА: ${e.message}") + _logs.value).take(80)
+                    _logs.value = (listOf(str(R.string.qr_log_error, e.message ?: e.javaClass.simpleName)) + _logs.value).take(80)
                     _isStarted.value = false
                 }
             }
@@ -287,7 +291,7 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
             getApplication<Application>().stopService(intent)
         } catch (_: Exception) {
         }
-        _logs.value = (listOf("Сервер остановлен") + _logs.value).take(80)
+        _logs.value = (listOf(str(R.string.qr_log_stopped)) + _logs.value).take(80)
     }
 
     fun sendCommand(command: String) {

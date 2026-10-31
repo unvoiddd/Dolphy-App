@@ -12,6 +12,8 @@ import com.droid.dolphy.plugin.PluginReflection
 import com.droid.dolphy.plugin.PluginBleModeRegistry
 import com.droid.dolphy.plugin.PluginRuntimeAccess
 import com.droid.dolphy.plugin.PluginDexRegistry
+import com.droid.dolphy.plugin.PluginPermission
+import com.droid.dolphy.plugin.PluginPermissions
 import com.droid.dolphy.plugin.PluginDownloadPolicy
 import com.droid.dolphy.IrRepository
 import com.droid.dolphy.UserIrRemoteStore
@@ -38,11 +40,25 @@ class PythonPluginBridge(
     private val dependencies: List<String>,
     private val onNavigate: (String) -> Unit,
     private val onRefresh: () -> Unit,
+    private val permissions: Set<PluginPermission> = emptySet(),
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val prefs = context.getSharedPreferences("plugin_prefs_$pluginId", Context.MODE_PRIVATE)
-    private val androidApis = PluginAndroidApis(context, pluginId)
-    private val deviceApis = PluginDeviceApis(context, pluginId)
+    private val androidApis = PluginAndroidApis(context, pluginId, permissions)
+    private val deviceApis = PluginDeviceApis(context, pluginId, permissions)
+
+    private fun deniedJson(permission: PluginPermission): String =
+        JSONObject()
+            .put("ok", false)
+            .put("code", -1)
+            .put("out", "")
+            .put("err", "permission_denied")
+            .put("permission", permission.token)
+            .toString()
+
+    private fun requirePermission(permission: PluginPermission) {
+        PluginPermissions.require(pluginId, permissions, permission)
+    }
 
     fun getContext(): Context = context
     fun getApplicationContext(): Context = context.applicationContext
@@ -55,6 +71,7 @@ class PythonPluginBridge(
     fun getDependencyClassLoader(): ClassLoader = PluginDexRegistry.dependencyParent(context.classLoader, dependencies)
 
     fun loadDexBase64(moduleName: String, encoded: String, sha256: String): ClassLoader {
+        requirePermission(PluginPermission.DEX)
         return PluginDexRegistry.loadBase64(context, pluginId, moduleName, encoded, sha256, dependencies)
     }
 
@@ -63,6 +80,7 @@ class PythonPluginBridge(
     }
 
     fun loadDexFile(moduleName: String, path: String, sha256: String): ClassLoader {
+        requirePermission(PluginPermission.DEX)
         return PluginDexRegistry.loadFile(context, pluginId, moduleName, File(path), sha256, dependencies)
     }
 
@@ -70,9 +88,13 @@ class PythonPluginBridge(
         return loadDexFile(moduleName, path, "")
     }
 
-    fun getDexClassLoader(moduleName: String): ClassLoader? = PluginDexRegistry.loader(pluginId, moduleName)
+    fun getDexClassLoader(moduleName: String): ClassLoader? {
+        requirePermission(PluginPermission.DEX)
+        return PluginDexRegistry.loader(pluginId, moduleName)
+    }
 
     fun loadDexClass(moduleName: String, className: String): Class<*> {
+        requirePermission(PluginPermission.DEX)
         return PluginDexRegistry.loadClass(pluginId, moduleName, className)
     }
 
@@ -108,6 +130,7 @@ class PythonPluginBridge(
     fun listJavaExports(): String = PluginDexRegistry.listExportsJson()
 
     fun findJavaClass(className: String): Class<*>? {
+        requirePermission(PluginPermission.DEX)
         return PluginReflection.findClass(getDependencyClassLoader(), className)
     }
 
@@ -171,6 +194,7 @@ class PythonPluginBridge(
     }
 
     fun registerScreenHook(routePattern: String, screenId: String, mode: String = "overlay", priority: Int = 0): Boolean {
+        if (PluginPermissions.has(permissions, PluginPermission.HOOKS).not()) return false
         val normalizedMode = mode.lowercase().takeIf { it in setOf("replace", "overlay", "top", "bottom", "fab") }
             ?: return false
         PluginRegistry.addScreenContribution(
@@ -180,6 +204,7 @@ class PythonPluginBridge(
     }
 
     fun registerSurfaceHook(surface: String, screenId: String, mode: String = "overlay", priority: Int = 0): Boolean {
+        if (PluginPermissions.has(permissions, PluginPermission.HOOKS).not()) return false
         val normalized = surface.trim().lowercase().replace(Regex("[^a-z0-9_.-]"), "_")
         if (normalized.isEmpty()) return false
         return registerScreenHook("surface/$normalized", screenId, mode, priority)
@@ -193,6 +218,7 @@ class PythonPluginBridge(
     }
 
     fun registerActionHook(actionPattern: String, priority: Int = 0): Boolean {
+        if (PluginPermissions.has(permissions, PluginPermission.HOOKS).not()) return false
         val normalized = actionPattern.trim().lowercase()
         if (normalized.isBlank()) return false
         PluginRegistry.addActionHook(PluginActionHookContribution(pluginId, normalized, priority))
@@ -206,6 +232,7 @@ class PythonPluginBridge(
         icon: String = "bluetooth_searching",
         order: Int = 0,
     ): Boolean {
+        if (PluginPermissions.has(permissions, PluginPermission.BLE_SPAM).not()) return false
         val normalized = modeId.trim().lowercase().replace(Regex("[^a-z0-9_.-]"), "_").take(64)
         return PluginBleModeRegistry.register(
             PluginBleModeContribution(pluginId, normalized, title.trim(), description.trim(), icon.trim(), order),
@@ -215,6 +242,7 @@ class PythonPluginBridge(
     fun assetPath(path: String): String? = resolvePluginAsset(path)?.absolutePath
 
     fun downloadAssets(itemsJson: String, callback: PyObject): Boolean {
+        if (PluginPermissions.has(permissions, PluginPermission.DOWNLOAD).not()) return false
         val items = runCatching { JSONArray(itemsJson) }.getOrNull() ?: return false
         if (items.length() !in 1..64) return false
         val totalBytes = (0 until items.length()).sumOf { index ->
@@ -353,6 +381,7 @@ class PythonPluginBridge(
     }
 
     fun shellExec(command: String): String {
+        if (!PluginPermissions.has(permissions, PluginPermission.SHELL)) return deniedJson(PluginPermission.SHELL)
         return try {
             val process = ProcessBuilder("sh", "-c", command).redirectErrorStream(false).start()
             val out = BufferedReader(InputStreamReader(process.inputStream)).use { it.readText() }
@@ -365,6 +394,7 @@ class PythonPluginBridge(
     }
 
     fun rootExec(command: String): String {
+        if (!PluginPermissions.has(permissions, PluginPermission.ROOT)) return deniedJson(PluginPermission.ROOT)
         return try {
             val result = RootUtils.executeRootCommand(command)
             JSONObject().put("ok", result.first == 0).put("code", result.first).put("out", result.second).put("err", "").put("via", "root").toString()
@@ -373,9 +403,13 @@ class PythonPluginBridge(
         }
     }
 
-    fun shizukuExec(command: String): String = ShizukuHelper.runShellCommandWithOutput(command)
+    fun shizukuExec(command: String): String {
+        if (!PluginPermissions.has(permissions, PluginPermission.SHIZUKU)) return deniedJson(PluginPermission.SHIZUKU)
+        return ShizukuHelper.runShellCommandWithOutput(command)
+    }
 
     fun smartExec(command: String): String {
+        if (!PluginPermissions.has(permissions, PluginPermission.SHELL)) return deniedJson(PluginPermission.SHELL)
         val shizuku = runCatching { JSONObject(shizukuExec(command)) }.getOrNull()
         if (shizuku?.optInt("code", -1) == 0) return shizuku.put("via", "shizuku").toString()
         val root = JSONObject(rootExec(command))
@@ -384,6 +418,7 @@ class PythonPluginBridge(
     }
 
     fun bleStartScan(scanId: String, callback: PyObject, batchMs: Long = 350L, maxDevices: Int = 128): Boolean {
+        if (!PluginPermissions.has(permissions, PluginPermission.BLUETOOTH)) return false
         return deviceApis.bleStartScan(scanId, { payload -> runCatching { callback.call(payload) } }, batchMs, maxDevices)
     }
 

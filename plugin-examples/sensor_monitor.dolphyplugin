@@ -1,0 +1,174 @@
+import json
+
+__id__ = "sensor_monitor"
+__name__ = "Sensor Monitor"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Browse every sensor and stream live values from the selected one"
+__icon__ = "rounded:sensors"
+__permissions__ = []
+
+
+class SensorMonitor(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.sensors = []
+        self.selected = None
+        self.listener = None
+        self.running = False
+        self.samples = 0
+        self.values = []
+        self.accuracy = 0
+        self.status = "Select a sensor"
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Sensor Monitor",
+            "Live values from any sensor on the device",
+            "sensors",
+            "main",
+            "OTHER",
+            80,
+        )
+        self.load_sensors()
+
+    def on_plugin_unload(self):
+        self.stop()
+
+    def load_sensors(self):
+        try:
+            sensors = json.loads(str(self.api.getAndroid().sensorsListJson()))
+        except Exception:
+            sensors = []
+        self.sensors = sensors if isinstance(sensors, list) else []
+        if self.selected is None and self.sensors:
+            self.selected = self.sensors[0]
+        self.status = str(len(self.sensors)) + " sensors available"
+        self.refresh()
+
+    def select_callback(self, sensor):
+        def callback(value=None):
+            self.select(sensor)
+
+        return callback
+
+    def select(self, sensor):
+        self.stop(False)
+        self.selected = sensor
+        self.values = []
+        self.samples = 0
+        self.status = "Selected " + str(sensor.get("name", "sensor"))
+        self.refresh()
+
+    def start(self):
+        if self.running or not self.selected:
+            return
+        sensor_type = int(self.selected.get("type", -1))
+        try:
+            listener = self.api.getAndroid().sensorStart(sensor_type, self.on_value)
+        except Exception:
+            listener = None
+        self.listener = listener
+        self.running = listener is not None
+        self.status = "Streaming " + str(self.selected.get("name", "")) if self.running else "This sensor cannot be started"
+        self.refresh()
+
+    def stop(self, refresh=True):
+        if self.listener:
+            try:
+                self.api.getAndroid().sensorStop(str(self.listener))
+            except Exception:
+                pass
+        self.listener = None
+        self.running = False
+        self.status = "Stopped"
+        if refresh:
+            self.refresh()
+
+    def on_value(self, payload):
+        try:
+            event = json.loads(str(payload))
+        except Exception:
+            return
+        self.samples += 1
+        self.values = [round(float(value), 4) for value in event.get("values", [])]
+        self.accuracy = int(event.get("accuracy", 0))
+        if self.samples % 4 == 1:
+            self.status = str(self.samples) + " samples"
+            self.refresh()
+
+    def screen_main(self, ui, api, state):
+        sensor = self.selected or {}
+        value_rows = [
+            ui.settings_row("Value " + str(index + 1), str(value), "sensors")
+            for index, value in enumerate(self.values)
+        ]
+        if not value_rows:
+            value_rows = [ui.text("No samples yet", "bodyMedium")]
+        rows = []
+        for item in self.sensors[:60]:
+            title = str(item.get("name", "Sensor"))
+            subtitle = (
+                "type "
+                + str(item.get("type", "?"))
+                + " · "
+                + str(item.get("vendor", "unknown"))
+                + " · max "
+                + str(item.get("maxRange", "?"))
+            )
+            rows.append(ui.function_row(title, subtitle, "sensors", on_click=self.select_callback(item)))
+        if not rows:
+            rows = [ui.text("No sensors reported", "bodyMedium")]
+        return ui.scaffold(
+            title="Sensor Monitor",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("sensors", 36),
+                                    ui.column(
+                                        [
+                                            ui.text(str(sensor.get("name", "No sensor selected")), "titleLarge"),
+                                            ui.text("type " + str(sensor.get("type", "?")) + " · accuracy " + str(self.accuracy), "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Streaming" if self.running else "Idle", self.running),
+                                    ui.chip(str(self.samples) + " samples", self.samples > 0),
+                                    ui.chip("resolution " + str(sensor.get("resolution", "?")), False),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.row(
+                                [
+                                    ui.button("Stop" if self.running else "Start", self.toggle, fill_max_width=True),
+                                    ui.button("Reload list", self.load_sensors, style="tonal", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.text("Live values", "titleMedium"),
+                    ui.segmented_list(value_rows),
+                    ui.text("All sensors (" + str(len(self.sensors)) + ")", "titleMedium"),
+                    ui.segmented_list(rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def toggle(self):
+        if self.running:
+            self.stop()
+        else:
+            self.start()

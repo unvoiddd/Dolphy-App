@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.droid.dolphy
 
@@ -95,6 +95,7 @@ import com.droid.dolphy.bluetooth.audio.BtAudioStressScanScreen
 import com.droid.dolphy.network.CameraNetworkResultsScreen
 import com.droid.dolphy.network.CameraNetworkScanScreen
 import com.droid.dolphy.network.LanScannerScreen
+import com.droid.dolphy.hardware.DeviceGraphScreen
 import com.droid.dolphy.network.LanToolsScreen
 import com.droid.dolphy.network.MyCamScreen
 import com.droid.dolphy.network.NetworkDiagnosticHubScreen
@@ -254,10 +255,9 @@ fun DolphyTheme(
         LocalAnimatedBackgroundEnabled provides animatedBackgroundEnabled,
         LocalDensity provides scaledDensity,
     ) {
-        MaterialExpressiveTheme(
+        MaterialTheme(
             colorScheme = expressiveScheme,
             typography = typography,
-            motionScheme = MotionScheme.expressive(),
             content = content
         )
     }
@@ -540,7 +540,11 @@ class MainActivity : ComponentActivity() {
         PluginRuntimeAccess.attach(this)
         PluginManager.dispatchEvent("activity_create", this)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Bar colors are deprecated on API 35+, but edge-to-edge apps must still
+        // paint them on older releases.
+        @Suppress("DEPRECATION")
         window.statusBarColor = android.graphics.Color.BLACK
+        @Suppress("DEPRECATION")
         window.navigationBarColor = android.graphics.Color.BLACK
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
@@ -604,7 +608,9 @@ class MainActivity : ComponentActivity() {
                 val backgroundColor = MaterialTheme.colorScheme.background
 
                 SideEffect {
+                    @Suppress("DEPRECATION")
                     window.statusBarColor = backgroundColor.toArgb()
+                    @Suppress("DEPRECATION")
                     window.navigationBarColor = backgroundColor.toArgb()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         window.isNavigationBarContrastEnforced = false
@@ -1005,6 +1011,8 @@ fun MainScaffold(
 
             composable("network_diagnostic_hub") { NetworkDiagnosticHubScreen(screenNavController) }
             composable("other/network_diagnostic_hub") { NetworkDiagnosticHubScreen(screenNavController) }
+            composable("device_graph") { DeviceGraphScreen(screenNavController) }
+            composable("other/device_graph") { DeviceGraphScreen(screenNavController) }
             composable("lan_scanner") { LanToolsScreen(screenNavController) }
             composable("other/lan_scanner") { LanToolsScreen(screenNavController) }
             composable("lan_scanner_run") { LanScannerScreen(screenNavController) }
@@ -1508,36 +1516,35 @@ private fun DolphyUnifiedBottomBar(
             }
         }
 
-        if (fabEnabled) {
-            HorizontalFloatingToolbar(
-                expanded = true,
-                floatingActionButton = {
-                    FloatingToolbarDefaults.VibrantFloatingActionButton(
+        Surface(
+            modifier = Modifier.widthIn(max = 480.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (fabEnabled) {
+                    FilledIconButton(
                         onClick = onFabClick,
-                        containerColor = MaterialTheme.colorScheme.primaryFixed,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+                        modifier = Modifier.size(52.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryFixed,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+                        ),
                     ) {
                         Icon(
                             imageVector = fabIcon,
                             contentDescription = fabTitle,
                         )
                     }
-                },
-                modifier = Modifier.widthIn(max = 480.dp),
-                colors = FloatingToolbarDefaults.standardFloatingToolbarColors(
-                    toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-                content = { contentRow() }
-            )
-        } else {
-            HorizontalFloatingToolbar(
-                expanded = true,
-                modifier = Modifier.widthIn(max = 480.dp),
-                colors = FloatingToolbarDefaults.standardFloatingToolbarColors(
-                    toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-                content = { contentRow() }
-            )
+                }
+                contentRow()
+            }
         }
     }
 }
@@ -1770,7 +1777,7 @@ fun BluetoothContainerScreen(viewModel: SpamViewModel, navController: NavControl
     val context = LocalContext.current
     val savedTabIndex by viewModel.bleTabIndex.collectAsState()
     var tabIndex by remember { mutableIntStateOf(savedTabIndex) }
-    val tabs = listOf("All", "BLE", "Advert")
+    val tabs = listOf(stringResource(R.string.ble_tab_all), "BLE", stringResource(R.string.ble_tab_advert))
     val tabRoutes = listOf("all", "ble", "advert")
     val btEnableLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
     val bluetoothAdapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
@@ -2124,7 +2131,7 @@ private fun AdvertiseSpamScreen(viewModel: SpamViewModel) {
                                     }) {
                                         Icon(
                                             imageVector = Icons.Default.PlayArrow,
-                                            contentDescription = "Start",
+                                            contentDescription = stringResource(R.string.start),
                                             tint = accent
                                         )
                                     }
@@ -2135,7 +2142,7 @@ private fun AdvertiseSpamScreen(viewModel: SpamViewModel) {
                                     }) {
                                         Icon(
                                             imageVector = Icons.Default.Stop,
-                                            contentDescription = "Stop",
+                                            contentDescription = stringResource(R.string.stop),
                                             tint = accent
                                         )
                                     }
@@ -2490,7 +2497,7 @@ internal fun RandomExternalDolphinAnimation(modifier: Modifier = Modifier) {
         if (frameBitmap != null) {
             Image(
                 bitmap = frameBitmap,
-                contentDescription = "Random dolphin animation",
+                contentDescription = stringResource(R.string.random_dolphin_animation),
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(2f),
@@ -2570,7 +2577,7 @@ fun BleSpamScreen(viewModel: SpamViewModel, onSectionClick: (BleSection) -> Unit
                             )
                         }
                         Text(
-                            text = "$bleDelay мс",
+                            text = stringResource(R.string.settings_ble_delay_ms, bleDelay),
                             modifier = Modifier.padding(horizontal = 16.dp),
                             color = MaterialTheme.colorScheme.onBackground,
                             style = MaterialTheme.typography.titleLarge
@@ -2743,7 +2750,7 @@ fun BleSpamScreen(viewModel: SpamViewModel, onSectionClick: (BleSection) -> Unit
 
         item {
             AnimatedBleButton(
-                text = "Swift Pair на Windows",
+                text = stringResource(R.string.ble_swift_pair_windows),
                 isActive = spammingStates[Pair(SpamType.SWIFT_PAIR, null)] == true,
                 onClick = { ensureBluetoothEnabled { viewModel.toggleBleSpam(SpamType.SWIFT_PAIR, null) } },
                 blinkIntervalMs = bleDelay.toLong(),
@@ -2998,7 +3005,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)) {
-                    M3SegmentedListSectionHeader(title = "PASSPORT")
+                    M3SegmentedListSectionHeader(title = stringResource(R.string.passport_title).uppercase())
 
 
                     MaterialCard(
@@ -3041,18 +3048,21 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
+                            val languages = listOf(
+                                stringResource(R.string.language_auto) to AppLocale.AUTO,
+                                stringResource(R.string.language_arabic) to "ar",
+                                stringResource(R.string.language_russian) to "ru",
+                                stringResource(R.string.language_english) to "en",
+                            )
                             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                listOf(
-                                    stringResource(R.string.language_russian) to "ru",
-                                    "English" to "en",
-                                ).forEachIndexed { index, (label, language) ->
+                                languages.forEachIndexed { index, (label, language) ->
                                     SegmentedButton(
                                         selected = appLanguage == language,
                                         onClick = {
                                             spamViewModel.setAppLanguage(language)
                                             applyInAppLocale(context)
                                         },
-                                        shape = SegmentedButtonDefaults.itemShape(index, 2),
+                                        shape = SegmentedButtonDefaults.itemShape(index, languages.size),
                                         label = { Text(label) },
                                     )
                                 }
@@ -3666,7 +3676,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Dolphy ($appVersion)\nЗащищено GNU GPL",
+                    text = stringResource(R.string.about_license_text, appVersion),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth(),
@@ -3683,7 +3693,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Спасибо:",
+                        text = stringResource(R.string.about_thanks),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
@@ -4034,7 +4044,7 @@ fun BleSectionScreen(section: BleSection, onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = "Expand",
                                 tint = MaterialTheme.colorScheme.onBackground
                             )
@@ -4862,7 +4872,7 @@ fun DolphyScreen(viewModel: DolphyViewModel, navController: NavController? = nul
 
                 Image(
                     painter = painterResource(id = portrait),
-                    contentDescription = "Portrait",
+                    contentDescription = stringResource(R.string.avatar_portrait),
                     modifier = Modifier
                         .size(90.dp)
                         .clip(RoundedCornerShape(12.dp))
@@ -4921,7 +4931,7 @@ fun DolphyScreen(viewModel: DolphyViewModel, navController: NavController? = nul
                             ) {
                                 Icon(
                                     Icons.Filled.Info,
-                                    contentDescription = "Stats",
+                                    contentDescription = stringResource(R.string.passport_stats),
                                     tint = if (isLiquidGlassChrome()) Color.Black
                                     else accentColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(18.dp)
@@ -4946,7 +4956,7 @@ fun DolphyScreen(viewModel: DolphyViewModel, navController: NavController? = nul
                         )
                         Icon(
                             Icons.Filled.Edit,
-                            contentDescription = "Rename",
+                            contentDescription = stringResource(R.string.passport_rename_title),
                             tint = accentColor.copy(alpha = 0.5f),
                             modifier = Modifier.size(16.dp)
                         )
@@ -4964,7 +4974,7 @@ fun DolphyScreen(viewModel: DolphyViewModel, navController: NavController? = nul
 
                     val progress = (dolphyState.icounter % 100) / 100f
                     LinearProgressIndicator(
-                        progress = progress,
+                        progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
@@ -4980,13 +4990,7 @@ fun DolphyScreen(viewModel: DolphyViewModel, navController: NavController? = nul
 }
 fun vibrate(context: Context) {
     try {
-        val vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
-                ?: (context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        }
+        val vibrator = context.getSystemService(Vibrator::class.java)
         if (vibrator != null && vibrator.hasVibrator()) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 try {
@@ -5038,13 +5042,15 @@ fun ConnectedButtonGroup(
     accentColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    ButtonGroup(modifier = modifier.fillMaxWidth()) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         options.forEach { (label, value) ->
-            toggleableItem(
-                selectedValue == value,
-                label,
-                { if (it) onValueSelected(value) },
-                {
+            FilterChip(
+                selected = selectedValue == value,
+                onClick = { onValueSelected(value) },
+                label = {
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelLarge,
@@ -5052,8 +5058,7 @@ fun ConnectedButtonGroup(
                         maxLines = 1,
                     )
                 },
-                1f,
-                true,
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -5819,7 +5824,7 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     val animatedBackgroundEnabled: StateFlow<Boolean> = _animatedBackgroundEnabled
     private val _expressiveEnabled = MutableStateFlow(prefs.getBoolean("md3_expressive", false))
     val expressiveEnabled: StateFlow<Boolean> = _expressiveEnabled
-    private val _appLanguage = MutableStateFlow(prefs.getString("app_language", "ru") ?: "ru")
+    private val _appLanguage = MutableStateFlow(prefs.getString("app_language", AppLocale.AUTO) ?: AppLocale.AUTO)
     val appLanguage: StateFlow<String> = _appLanguage
     private val _cyclicDolphinAnimationEnabled = MutableStateFlow(prefs.getBoolean("cyclic_dolphin_animation_enabled", false))
     val cyclicDolphinAnimationEnabled: StateFlow<Boolean> = _cyclicDolphinAnimationEnabled
@@ -6041,7 +6046,10 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     }
 
     fun setAppLanguage(language: String) {
-        val normalized = if (language == "en") "en" else "ru"
+        val normalized = when (language) {
+            "en", "ar", "ru" -> language
+            else -> AppLocale.AUTO
+        }
         prefs.edit { putString("app_language", normalized) }
         _appLanguage.value = normalized
     }
@@ -6419,7 +6427,7 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
             return AdvertiseStartResult.Error(application.getString(R.string.error_enable_bluetooth_first))
         }
 
-        if (bluetoothAdapter?.isMultipleAdvertisementSupported != true) {
+        if (bluetoothAdapter.isMultipleAdvertisementSupported != true) {
             return AdvertiseStartResult.Error(application.getString(R.string.error_ble_advertising_unsupported))
         }
 

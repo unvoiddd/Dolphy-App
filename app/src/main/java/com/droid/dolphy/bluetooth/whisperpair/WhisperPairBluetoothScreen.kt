@@ -84,7 +84,7 @@ private enum class Screen { Scanner, Paired, Recordings, Tws }
 
 private data class TwsTarget(val name: String?, val address: String, val rssi: Int) {
     val displayName: String
-        get() = name ?: "Неизвестное устройство"
+        get() = name.orEmpty()
 }
 
 data class AudioConnectionState(
@@ -430,7 +430,7 @@ private fun ScannerTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                device.displayName,
+                                device.displayName.ifBlank { stringResource(R.string.device_unknown) },
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.weight(1f),
@@ -495,7 +495,7 @@ private fun PairedTab(
                 items(devices, key = { it.address }) { device ->
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                            Text(device.displayName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                            Text(device.displayName.ifBlank { stringResource(R.string.device_unknown) }, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                             Text(device.address, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             audioStates[device.address]?.message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
                             exploitResults[device.address]?.let { Text(it, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp) }
@@ -585,7 +585,7 @@ private fun TwsTab(
                 }
                 ContextCompat.registerReceiver(
                     context,
-                    receiver!!,
+                    receiver,
                     IntentFilter().apply {
                         addAction(BluetoothDevice.ACTION_FOUND)
                         addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
@@ -683,7 +683,7 @@ private fun TwsTab(
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp)) {
                         Text(
-                            device.displayName,
+                            device.displayName.ifBlank { stringResource(R.string.device_unknown) },
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,

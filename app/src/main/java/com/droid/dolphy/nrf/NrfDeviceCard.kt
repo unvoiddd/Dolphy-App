@@ -1,5 +1,6 @@
 package com.droid.dolphy.nrf
 
+import com.droid.dolphy.R
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -117,7 +119,7 @@ fun NrfDeviceCard(
                     modifier = Modifier.height(56.dp)
                 ) {
                     LinearProgressIndicator(
-                        progress = getSignalStrengthPercent(device.rssi),
+                        progress = { getSignalStrengthPercent(device.rssi) },
                         modifier = Modifier
                             .width(32.dp)
                             .height(4.dp),
@@ -135,7 +137,7 @@ fun NrfDeviceCard(
 
 
             if (expanded) {
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
@@ -151,7 +153,7 @@ fun NrfDeviceCard(
                 ) {
 
                     DetailRow(
-                        label = "MAC адрес",
+                        label = stringResource(R.string.nrf_scanner_mac_address),
                         value = device.address,
                         icon = Icons.Filled.ContentCopy,
                         valueColor = Color.White
@@ -159,14 +161,14 @@ fun NrfDeviceCard(
 
 
                     DetailRow(
-                        label = "Тип устройства",
+                        label = stringResource(R.string.nrf_scanner_device_type),
                         value = getDeviceTypeLabel(device.type),
                         valueColor = Color.White
                     )
 
 
                     DetailRow(
-                        label = "Сила сигнала",
+                        label = stringResource(R.string.nrf_scanner_signal_strength),
                         value = "${device.rssi} dBm (${getSignalStrength(device.rssi)})",
                         valueColor = Color.White
                     )
@@ -174,7 +176,7 @@ fun NrfDeviceCard(
 
                     if (device.manufacturerName != null) {
                         DetailRow(
-                            label = "Производитель",
+                            label = stringResource(R.string.nrf_scanner_manufacturer),
                             value = device.manufacturerName,
                             valueColor = Color.White
                         )
@@ -201,7 +203,7 @@ fun NrfDeviceCard(
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Уровень батареи",
+                                    text = stringResource(R.string.nrf_battery_level),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF4CAF50)
@@ -219,7 +221,7 @@ fun NrfDeviceCard(
                     if (device.hasHID || device.hasAudio || device.hasBattery) {
                         Column {
                             Text(
-                                text = "Возможности",
+                                text = stringResource(R.string.nrf_capabilities),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -236,7 +238,7 @@ fun NrfDeviceCard(
                                         color = Color(0xFF2196F3).copy(alpha = 0.2f)
                                     ) {
                                         Text(
-                                            text = "Клавиатура",
+                                            text = stringResource(R.string.cd_keyboard),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color(0xFF2196F3),
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -249,7 +251,7 @@ fun NrfDeviceCard(
                                         color = Color(0xFF9C27B0).copy(alpha = 0.2f)
                                     ) {
                                         Text(
-                                            text = "Аудио",
+                                            text = stringResource(R.string.nrf_audio),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color(0xFF9C27B0),
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -262,7 +264,7 @@ fun NrfDeviceCard(
                                         color = Color(0xFF4CAF50).copy(alpha = 0.2f)
                                     ) {
                                         Text(
-                                            text = "Батарея",
+                                            text = stringResource(R.string.nrf_battery),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color(0xFF4CAF50),
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -277,7 +279,7 @@ fun NrfDeviceCard(
                     if (device.gattServices.isNotEmpty()) {
                         Column {
                             Text(
-                                text = "GATT Сервисы (${device.gattServices.size})",
+                                text = stringResource(R.string.nrf_gatt_services, device.gattServices.size),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -306,7 +308,7 @@ fun NrfDeviceCard(
                                     )
                                     if (service.characteristics.isNotEmpty()) {
                                         Text(
-                                            text = "${service.characteristics.size} характеристик",
+                                            text = stringResource(R.string.nrf_characteristics_count, service.characteristics.size),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = colorScheme.primary,
                                             modifier = Modifier.padding(top = 2.dp)
@@ -316,7 +318,7 @@ fun NrfDeviceCard(
                             }
                             if (device.gattServices.size > 5) {
                                 Text(
-                                    text = "+${device.gattServices.size - 5} ещё сервисов",
+                                    text = stringResource(R.string.nrf_more_services, device.gattServices.size - 5),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = colorScheme.primary,
                                     modifier = Modifier.padding(start = 8.dp, top = 4.dp)
@@ -329,7 +331,7 @@ fun NrfDeviceCard(
                     if (device.serviceUuids.isNotEmpty() && device.gattServices.isEmpty()) {
                         Column {
                             Text(
-                                text = "Рекламируемые сервисы (${device.serviceUuids.size})",
+                                text = stringResource(R.string.nrf_advertised_services, device.serviceUuids.size),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -351,7 +353,7 @@ fun NrfDeviceCard(
                             }
                             if (device.serviceUuids.size > 3) {
                                 Text(
-                                    text = "+${device.serviceUuids.size - 3} ещё",
+                                    text = stringResource(R.string.nrf_more, device.serviceUuids.size - 3),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = colorScheme.primary,
                                     modifier = Modifier.padding(start = 8.dp, top = 4.dp)
@@ -381,13 +383,13 @@ fun NrfDeviceCard(
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Уязвимо",
+                                    text = stringResource(R.string.nrf_scanner_vulnerable),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFFFF9800)
                                 )
                                 Text(
-                                    text = device.vulnerabilityType?.name ?: "Неизвестно",
+                                    text = device.vulnerabilityType?.name ?: stringResource(R.string.brand_unknown),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color(0xFFFF9800)
                                 )

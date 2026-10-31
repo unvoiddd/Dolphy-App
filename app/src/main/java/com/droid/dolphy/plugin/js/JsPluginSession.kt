@@ -1,3 +1,7 @@
+// Deprecated platform APIs are still the only option on minSdk 26; their
+// replacements require API 33+ branches that this feature cannot take yet.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.plugin.js
 
 import android.content.Context
@@ -51,8 +55,8 @@ class JsPluginSession(
     private val sourceCode: String,
 ) : PluginSession {
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val device = PluginDeviceApis(appContext, manifest.id)
-    private val androidApis = PluginAndroidApis(appContext, manifest.id)
+    private val device = PluginDeviceApis(appContext, manifest.id, manifest.permissions)
+    private val androidApis = PluginAndroidApis(appContext, manifest.id, manifest.permissions)
     private val uiBuilder = JsUiBuilder()
     private val prefs = appContext.getSharedPreferences("plugin_prefs_${manifest.id}", Context.MODE_PRIVATE)
     private val state = ConcurrentHashMap<String, Any?>()

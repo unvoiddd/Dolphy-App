@@ -1,0 +1,15 @@
+language js(typescript)
+
+// scope: tests
+
+or {
+  `$_.toHaveStyle($_)`,
+  `getComputedStyle($_)`,
+  `getComputedStyle($_, $_)`
+} as $node where {
+  register_diagnostic(
+    span=$node,
+    message="Do not assert styles in tests. See the Tests section of AGENTS.md: styling, layout and animation timing belong in a Storybook story. Assert the behaviour the style expresses instead, such as a control being disabled or a region being hidden.",
+    severity="error"
+  )
+}

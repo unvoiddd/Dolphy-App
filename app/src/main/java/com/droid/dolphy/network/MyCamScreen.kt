@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
-
 package com.droid.dolphy.network
 
 import android.graphics.Bitmap
@@ -21,9 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,6 +80,7 @@ fun MyCamScreen(navController: NavController) {
         statusText = context.getString(R.string.my_cam_status_searching)
 
         val result = MyCamEngine.findCamera(
+            context = context,
             onStatus = { st ->
                 statusText = when (st) {
                     MyCamEngine.Status.Searching -> context.getString(R.string.my_cam_status_searching)
@@ -175,7 +172,10 @@ fun MyCamScreen(navController: NavController) {
 @Composable
 private fun ScanningCenter(status: String) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        LoadingIndicator(modifier = Modifier.size(280.dp))
+        CircularProgressIndicator(
+            modifier = Modifier.size(120.dp),
+            strokeWidth = 6.dp,
+        )
         Text(
             text = status,
             modifier = Modifier
@@ -189,10 +189,11 @@ private fun ScanningCenter(status: String) {
 
 @Composable
 private fun MjpegView(url: String, authHeader: String?, onInterrupted: (String) -> Unit) {
+    val context = LocalContext.current
     var frame by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(url, authHeader) {
         MyCamEngine.mjpegFrames(url, authHeader)
-            .catch { e -> onInterrupted("Поток прерван: ${e.message ?: "нет ответа"}") }
+            .catch { e -> onInterrupted(context.getString(R.string.my_cam_stream_interrupted, e.message ?: context.getString(R.string.my_cam_stream_no_reply))) }
             .collect { frame = it }
     }
     Box(
@@ -217,10 +218,11 @@ private fun MjpegView(url: String, authHeader: String?, onInterrupted: (String) 
 
 @Composable
 private fun SnapshotView(url: String, authHeader: String?, onInterrupted: (String) -> Unit) {
+    val context = LocalContext.current
     var frame by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(url, authHeader) {
         MyCamEngine.snapshotFrames(url, authHeader)
-            .catch { e -> onInterrupted("Поток снимков прерван: ${e.message ?: "нет ответа"}") }
+            .catch { e -> onInterrupted(context.getString(R.string.my_cam_snapshot_interrupted, e.message ?: context.getString(R.string.my_cam_stream_no_reply))) }
             .collect { frame = it }
     }
     Box(
@@ -254,7 +256,7 @@ private fun RtspView(url: String, onError: (String) -> Unit) {
             setMediaSource(source)
             addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    onError("Ошибка воспроизведения RTSP: ${error.errorCodeName}")
+                    onError(context.getString(R.string.my_cam_rtsp_error, error.errorCodeName))
                 }
             })
             playWhenReady = true

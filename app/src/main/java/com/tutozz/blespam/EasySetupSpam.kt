@@ -10,9 +10,9 @@ class EasySetupSpam(private val type: EasySetupDevice.type) : Spammer {
     private var _isSpamming = false
     private var blinkRunnable: Runnable? = null
 
-    lateinit var devices: Array<EasySetupDevice>
-    lateinit var devicesAdvertiseData: Array<AdvertiseData>
-    lateinit var scanResponse: AdvertiseData
+    var devices: Array<EasySetupDevice>
+    var devicesAdvertiseData: Array<AdvertiseData>
+    var scanResponse: AdvertiseData
 
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
 

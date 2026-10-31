@@ -8,6 +8,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
 import android.util.Base64
 import android.view.ViewGroup
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.animateColorAsState
@@ -683,10 +685,6 @@ fun PluginUiRenderer(
         }
 
         is UiNode.Empty -> {}
-        is UiNode.TopBar -> {
-
-            SectionTopBar(title = node.title, onBack = if (node.showBack) onBack else null, accentColor = accent)
-        }
     }
 }
 
@@ -715,7 +713,7 @@ private fun PluginDropdown(
             label = if (label.isNotBlank()) ({ Text(label) }) else null,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth(),
         )
         ExposedDropdownMenu(
@@ -956,6 +954,17 @@ private fun sanitizeAsset(path: String): String {
         .joinToString("/")
 }
 
+private fun android.net.Uri.isHttps(): Boolean = scheme?.lowercase() == "https"
+
+/** Loads plugin content, refusing anything that is not an HTTPS URL. */
+private fun WebView.loadPluginPage(node: UiNode.WebView) {
+    if (node.html.isNotBlank()) {
+        loadDataWithBaseURL(null, node.html, "text/html", "utf-8", null)
+    } else if (node.url.startsWith("https://", ignoreCase = true)) {
+        loadUrl(node.url)
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun PluginWebView(node: UiNode.WebView) {
@@ -968,21 +977,32 @@ private fun PluginWebView(node: UiNode.WebView) {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
+                // A plugin may render HTML with scripting, but its view must never become a
+                // bridge to local files, content providers, or plain-text origins.
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                webViewClient = WebViewClient()
-                if (node.html.isNotBlank()) {
-                    loadDataWithBaseURL(null, node.html, "text/html", "utf-8", null)
-                } else if (node.url.isNotBlank()) {
-                    loadUrl(node.url)
+                settings.allowFileAccess = false
+                settings.allowContentAccess = false
+                settings.javaScriptCanOpenWindowsAutomatically = false
+                settings.setSupportMultipleWindows(false)
+                settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                settings.mediaPlaybackRequiresUserGesture = true
+                settings.displayZoomControls = false
+                settings.builtInZoomControls = false
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView,
+                        request: WebResourceRequest,
+                    ): Boolean = !request.url.isHttps()
                 }
+                loadPluginPage(node)
             }
         },
         update = { web ->
-            if (node.html.isNotBlank()) {
-                web.loadDataWithBaseURL(null, node.html, "text/html", "utf-8", null)
-            } else if (node.url.isNotBlank() && web.url != node.url) {
-                web.loadUrl(node.url)
+            val next = if (node.html.isNotBlank()) "html:${node.html.hashCode()}" else node.url
+            if (web.tag != next) {
+                web.tag = next
+                web.loadPluginPage(node)
             }
         },
     )

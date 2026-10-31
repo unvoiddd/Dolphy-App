@@ -1,3 +1,7 @@
+// Deprecated platform APIs are still the only option on minSdk 26; their
+// replacements require API 33+ branches that this feature cannot take yet.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.nfc
 
 import android.app.Application
@@ -214,7 +218,7 @@ class NfcViewModel(private val app: Application) : AndroidViewModel(app) {
         if (RootNfcHelper.hasRoot()) {
             withContext(Dispatchers.IO) { RootNfcHelper.prepareForRead(app) }
         }
-        val analyzed = NfcTagAnalyzer.analyzeIntent(intent) ?: return
+        val analyzed = NfcTagAnalyzer.analyzeIntent(intent, getApplication()) ?: return
         vibrateNfcSuccess(app)
         val id = dao.insert(analyzed)
         trackNfcRead(app)

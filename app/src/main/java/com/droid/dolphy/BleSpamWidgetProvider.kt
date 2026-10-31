@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.util.Log
 import android.widget.RemoteViews
+import com.droid.dolphy.widget.WidgetSecurity
 
 class BleSpamWidgetProvider : AppWidgetProvider() {
 
@@ -16,9 +18,14 @@ class BleSpamWidgetProvider : AppWidgetProvider() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action
+        if (action in PROTECTED_ACTIONS && !WidgetSecurity.isValid(context, intent)) {
+            Log.w(TAG, "Rejected unauthorized widget broadcast: $action")
+            return
+        }
         super.onReceive(context, intent)
         BleSpamRuntime.init(context)
-        when (intent.action) {
+        when (action) {
             ACTION_TOGGLE_IOS -> BleSpamRuntime.toggleSection(BleSection.IOS)
             ACTION_TOGGLE_SAMSUNG -> BleSpamRuntime.toggleSection(BleSection.SAMSUNG)
             ACTION_TOGGLE_ANDROID -> BleSpamRuntime.toggleSection(BleSection.ANDROID)
@@ -30,12 +37,21 @@ class BleSpamWidgetProvider : AppWidgetProvider() {
 
     companion object {
         private const val PREFS = "DolphyPrefs"
+        private const val TAG = "BleSpamWidget"
 
         const val ACTION_TOGGLE_IOS = "com.droid.dolphy.action.TOGGLE_IOS"
         const val ACTION_TOGGLE_SAMSUNG = "com.droid.dolphy.action.TOGGLE_SAMSUNG"
         const val ACTION_TOGGLE_ANDROID = "com.droid.dolphy.action.TOGGLE_ANDROID"
         const val ACTION_TOGGLE_WINDOWS = "com.droid.dolphy.action.TOGGLE_WINDOWS"
         const val ACTION_STOP_ALL = "com.droid.dolphy.action.BLE_STOP_ALL"
+
+        private val PROTECTED_ACTIONS = setOf(
+            ACTION_TOGGLE_IOS,
+            ACTION_TOGGLE_SAMSUNG,
+            ACTION_TOGGLE_ANDROID,
+            ACTION_TOGGLE_WINDOWS,
+            ACTION_STOP_ALL,
+        )
 
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
@@ -92,7 +108,10 @@ class BleSpamWidgetProvider : AppWidgetProvider() {
         }
 
         private fun buildPendingIntent(context: Context, action: String, widgetId: Int, requestCode: Int): PendingIntent {
-            val intent = Intent(context, BleSpamWidgetProvider::class.java).apply { this.action = action }
+            val intent = Intent(context, BleSpamWidgetProvider::class.java).apply {
+                this.action = action
+                putExtra(WidgetSecurity.EXTRA_TOKEN, WidgetSecurity.token(context))
+            }
             return PendingIntent.getBroadcast(
                 context,
                 widgetId * 10 + requestCode,

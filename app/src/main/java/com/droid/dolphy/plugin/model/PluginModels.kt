@@ -1,6 +1,8 @@
 package com.droid.dolphy.plugin.model
 
 import androidx.compose.runtime.Composable
+import com.droid.dolphy.plugin.PluginPermission
+import com.droid.dolphy.plugin.PluginSignatureStatus
 
 data class PluginManifest(
     val id: String,
@@ -14,6 +16,7 @@ data class PluginManifest(
     val isDesignLibrary: Boolean = false,
     val icon: String = "extension",
     val dependencies: List<String> = emptyList(),
+    val permissions: Set<PluginPermission> = emptySet(),
 )
 
 data class PluginPreview(
@@ -23,6 +26,7 @@ data class PluginPreview(
     val runtime: String,
     val installed: Boolean,
     val capabilities: List<String> = emptyList(),
+    val signature: PluginSignatureStatus = PluginSignatureStatus.Unsigned,
 )
 
 

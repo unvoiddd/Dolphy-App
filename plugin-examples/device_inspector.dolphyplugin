@@ -1,0 +1,113 @@
+import json
+
+__id__ = "device_inspector"
+__name__ = "Device Inspector"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Build information, battery state, connectivity and hardware features"
+__icon__ = "rounded:phone_android"
+__permissions__ = []
+
+
+class DeviceInspector(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.status = "Snapshot loaded"
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Device Inspector",
+            "Build, battery, connectivity and hardware features",
+            "phone",
+            "main",
+            "OTHER",
+            70,
+        )
+
+    def read(self, method):
+        try:
+            return json.loads(str(method()))
+        except Exception:
+            return {}
+
+    def screen_main(self, ui, api, state):
+        android = api.getAndroid()
+        info = self.read(android.deviceInfoExtendedJson)
+        battery = self.read(android.batteryJson)
+        connectivity = self.read(android.connectivityDetailJson)
+        features = self.read(android.featuresJson)
+        feature_rows = []
+        for name in sorted(features.keys()):
+            supported = bool(features.get(name))
+            if supported:
+                feature_rows.append(ui.settings_row(name, "supported", "check"))
+        if not feature_rows:
+            feature_rows = [ui.text("No optional features reported", "bodyMedium")]
+        level = int(battery.get("level", -1))
+        charging = bool(battery.get("charging"))
+        return ui.scaffold(
+            title="Device Inspector",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("phone", 40),
+                                    ui.column(
+                                        [
+                                            ui.text(str(info.get("manufacturer", "")) + " " + str(info.get("model", "")), "titleLarge"),
+                                            ui.text("Android " + str(info.get("release", "?")) + " · SDK " + str(info.get("sdk", "?")), "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Battery " + (str(level) + "%" if level >= 0 else "unknown"), True),
+                                    ui.chip("Charging" if charging else "On battery", charging),
+                                    ui.chip("Internet" if connectivity.get("hasInternet") else "Offline", bool(connectivity.get("hasInternet"))),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.linear_progress((level / 100.0) if level >= 0 else None),
+                        ]
+                    ),
+                    ui.text("Build", "titleMedium"),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("Device", str(info.get("device", "unavailable")), "memory"),
+                            ui.settings_row("Product", str(info.get("product", "unavailable")), "info"),
+                            ui.settings_row("Board", str(info.get("board", "unavailable")), "memory"),
+                            ui.settings_row("Hardware", str(info.get("hardware", "unavailable")), "memory"),
+                            ui.settings_row("ABI", str(info.get("abi", "unavailable")), "code"),
+                            ui.settings_row("Security patch", str(info.get("securityPatch", "unavailable")), "security"),
+                            ui.settings_row("App version", str(info.get("versionName", "")) + " (" + str(info.get("versionCode", "")) + ")", "extension"),
+                            ui.settings_row("Bluetooth name", str(info.get("btName", "") or "unavailable"), "bluetooth"),
+                            ui.settings_row("Bluetooth address", str(info.get("btAddress", "") or "hidden"), "bluetooth"),
+                        ]
+                    ),
+                    ui.text("Connectivity", "titleMedium"),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("Validated", "yes" if connectivity.get("validated") else "no", "check"),
+                            ui.settings_row("Wi-Fi", "yes" if connectivity.get("wifi") else "no", "wifi"),
+                            ui.settings_row("Cellular", "yes" if connectivity.get("cellular") else "no", "network"),
+                            ui.settings_row("VPN", "yes" if connectivity.get("vpn") else "no", "security"),
+                            ui.settings_row("Ethernet", "yes" if connectivity.get("ethernet") else "no", "lan"),
+                            ui.settings_row("Bluetooth link", "yes" if connectivity.get("bluetooth") else "no", "bluetooth"),
+                            ui.settings_row("Downstream", str(connectivity.get("downKbps", 0)) + " kbps", "speed"),
+                            ui.settings_row("Upstream", str(connectivity.get("upKbps", 0)) + " kbps", "speed"),
+                        ]
+                    ),
+                    ui.text("Supported hardware", "titleMedium"),
+                    ui.segmented_list(feature_rows),
+                    ui.text(self.status, "bodySmall"),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

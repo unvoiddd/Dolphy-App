@@ -1,0 +1,11 @@
+language js(typescript)
+
+// scope: tests
+
+`$_.toHaveAttribute("title", $_)` as $call where {
+  register_diagnostic(
+    span=$call,
+    message="Do not assert tooltip copy in tests. See the Tests section of AGENTS.md: assert the state the tooltip explains, such as the control being disabled.",
+    severity="error"
+  )
+}

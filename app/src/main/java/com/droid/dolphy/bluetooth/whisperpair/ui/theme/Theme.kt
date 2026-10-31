@@ -44,7 +44,10 @@ fun WhisperPairTheme(content: @Composable () -> Unit) {
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
+            // Bar colors are deprecated on API 35+, but older releases still need them.
+            @Suppress("DEPRECATION")
             window.statusBarColor = DarkBackground.toArgb()
+            @Suppress("DEPRECATION")
             window.navigationBarColor = DarkBackground.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false

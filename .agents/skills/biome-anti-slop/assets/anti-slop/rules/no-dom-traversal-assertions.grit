@@ -1,0 +1,16 @@
+language js(typescript)
+
+// scope: tests
+
+or {
+  `$_.parentElement`,
+  `$_.firstElementChild`,
+  `$_.nextElementSibling`,
+  `$_.previousElementSibling`
+} as $node where {
+  register_diagnostic(
+    span=$node,
+    message="Do not walk the DOM tree in tests. See the Tests section of AGENTS.md: query the element by its role and accessible name instead of pinning where it sits relative to its parent or siblings.",
+    severity="error"
+  )
+}

@@ -1,0 +1,31 @@
+language js(typescript)
+
+// scope: tests
+
+// A CSS class is a styling detail, so an assertion reached through one asserts
+// markup rather than behaviour. Only the assertion is matched: jsdom has no
+// layout, so a drag-and-drop or measurement test still has to reach for a real
+// node to fire events on or to stub `getBoundingClientRect` over, and that
+// handle is setup rather than a claim about the DOM. A type argument changes
+// the shape of the call node, so both spellings have to be listed or
+// `querySelector<HTMLElement>(".x")` walks straight past the rule.
+//
+// Known gap, accepted: binding the query to a variable and asserting on the
+// variable on the next line escapes, because catching it needs dataflow and
+// GritQL has none. Measured against the sites this rule was written for, the
+// fence catches 8 of 11 with no false positive on the instrumentation
+// handles. The fence is what buys that, so the gap is not worth trading away;
+// AGENTS.md prose and review cover the rest.
+or {
+  `$_.$method($selector)`,
+  `$_.$method<$_>($selector)`
+} as $call where {
+  $method <: or { `querySelector`, `querySelectorAll`, `closest` },
+  $selector <: r"[\"'].*\.[A-Za-z_-].*",
+  $call <: within or { `expect($...)`, `within($...)` },
+  register_diagnostic(
+    span=$call,
+    message="Do not assert on an element found by CSS class. See the Tests section of AGENTS.md: a class is a styling detail, so this asserts markup structure rather than behaviour and breaks on any refactor. Query by accessible role and name instead.",
+    severity="error"
+  )
+}

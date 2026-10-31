@@ -21,4 +21,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Dolphy"
 include(":app")
+include(":core:model")
+include(":core:hal")
+include(":core:security")
+include(":rootd")
+include(":bridge:flipper")
  

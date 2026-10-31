@@ -1,0 +1,11 @@
+language js(typescript)
+
+// scope: tests
+
+`$_.toContainElement($args)` as $call where {
+  register_diagnostic(
+    span=$call,
+    message="Do not assert DOM containment in tests. See the Tests section of AGENTS.md: query the element by its role and accessible name instead of pinning where it sits in the tree.",
+    severity="error"
+  )
+}

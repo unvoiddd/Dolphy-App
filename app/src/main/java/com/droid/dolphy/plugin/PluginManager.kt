@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import com.droid.dolphy.R
 import com.droid.dolphy.plugin.js.JsPluginSession
 import com.droid.dolphy.plugin.model.LoadedPlugin
 import com.droid.dolphy.plugin.model.PluginManifest
@@ -18,6 +19,9 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.io.ByteArrayOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLDecoder
 import androidx.core.content.FileProvider
 
 
@@ -31,6 +35,8 @@ object PluginManager {
     const val SHIZUKU_REQUEST_CODE = 0xD01F
 
     private lateinit var appContext: Context
+
+    private fun str(id: Int, vararg args: Any): String = appContext.getString(id, *args)
     private val pluginsDir by lazy { appContext.getDir("dolphy_plugins", Context.MODE_PRIVATE) }
     private val sourcesDir by lazy { File(pluginsDir, "sources").apply { mkdirs() } }
     private val metaDir by lazy { File(pluginsDir, "meta").apply { mkdirs() } }
@@ -147,7 +153,7 @@ object PluginManager {
 
     fun sharePlugin(context: Context, pluginId: String): Result<Unit> {
         return runCatching {
-            val entry = loaded[pluginId] ?: error("Плагин не найден")
+            val entry = loaded[pluginId] ?: error(str(R.string.plugin_err_not_found))
             val shareDir = File(appContext.cacheDir, "shared_plugins").apply { mkdirs() }
             val file = File(shareDir, "${entry.manifest.id}.dolphyplugin")
             file.writeText(entry.sourceCode, Charsets.UTF_8)
@@ -171,7 +177,7 @@ object PluginManager {
             val accepted = fileName.endsWith(".dolphyplugin", true) ||
                 uri.path?.endsWith(".dolphyplugin", true) == true ||
                 mime.equals("application/x-dolphy-plugin", true)
-            if (!accepted) return Result.failure(IllegalArgumentException("Поддерживаются только файлы .dolphyplugin"))
+            if (!accepted) return Result.failure(IllegalArgumentException(str(R.string.plugin_err_unsupported)))
             val bytes = appContext.contentResolver.openInputStream(uri)?.use { input ->
                 val output = ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
@@ -181,14 +187,14 @@ object PluginManager {
                     if (read < 0) break
                     total += read
                     if (total > MAX_PLUGIN_SOURCE_BYTES) {
-                        return Result.failure(IllegalArgumentException("Файл плагина слишком большой"))
+                        return Result.failure(IllegalArgumentException(str(R.string.plugin_err_too_big)))
                     }
                     output.write(buffer, 0, read)
                 }
                 output.toByteArray()
-            } ?: return Result.failure(IllegalStateException("Не удалось прочитать файл"))
+            } ?: return Result.failure(IllegalStateException(str(R.string.file_read_failed)))
             val raw = bytes.toString(Charsets.UTF_8)
-            if (raw.isBlank()) return Result.failure(IllegalArgumentException("Пустой файл"))
+            if (raw.isBlank()) return Result.failure(IllegalArgumentException(str(R.string.plugin_err_empty)))
             val fallbackId = fileName.substringBeforeLast('.')
                 .replace(Regex("[^A-Za-z0-9_-]"), "_")
                 .lowercase()
@@ -202,6 +208,7 @@ object PluginManager {
                     runtime = "python",
                     installed = loaded.containsKey(manifest.id),
                     capabilities = inferCapabilities(raw),
+                    signature = PluginSignature.verify(raw, PluginTrustStore.keys),
                 ),
             )
         } catch (t: Throwable) {
@@ -209,36 +216,11 @@ object PluginManager {
         }
     }
 
-    private fun inferCapabilities(source: String): List<String> {
-        val supported = setOf(
-            "dex", "download", "network", "files", "ble_spam", "bluetooth", "wifi",
-            "infrared", "usb", "root", "shizuku", "shell", "hooks",
-        )
-        val declaredBody = Regex("(?ms)^\\s*__permissions__\\s*=\\s*\\[(.*?)]\\s*$")
-            .find(source)?.groupValues?.getOrNull(1).orEmpty()
-        val declared = Regex("[\"']([^\"']+)[\"']")
-            .findAll(declaredBody)
-            .map { it.groupValues[1].trim().lowercase().replace('-', '_') }
-            .filter { it in supported }
-            .toList()
-        val checks = linkedMapOf(
-            "dex" to listOf("load_dex_", "loadDex", "export_app_class", "find_java_class"),
-            "download" to listOf("download_assets", "httpDownload", "http_download"),
-            "network" to listOf("httpRequest", "http_request", "tcpReachable", "portScan", "pingHost"),
-            "files" to listOf("filesWrite", "filesRead", "asset_path", "apply_asset"),
-            "ble_spam" to listOf("register_ble_mode", "registerBleMode", "bleAdvertise", "advertis"),
-            "bluetooth" to listOf("bleStartScan", "bleConnect", "bluetooth", "gatt"),
-            "wifi" to listOf("wifi", "WifiManager", "networkSuggest"),
-            "infrared" to listOf("infrared", "irTransmit", "ir_remote"),
-            "usb" to listOf("UsbManager", "usb", "bad_hid", "bad_usb"),
-            "root" to listOf("rootExec", "root_exec"),
-            "shizuku" to listOf("shizukuExec", "shizuku_exec"),
-            "shell" to listOf("shellExec", "shell_exec", "smartExec"),
-            "hooks" to listOf("hook_screen", "hook_action", "hook_surface", "registerScreenHook"),
-        )
-        return (declared + checks.filterValues { tokens -> tokens.any { source.contains(it, ignoreCase = true) } }.keys)
-            .distinct()
-    }
+    private fun inferCapabilities(source: String): List<String> =
+        PluginPermissions.resolve(source).map { it.token }.sorted()
+
+    fun inferPermissions(source: String): Set<PluginPermission> =
+        PluginPermissions.resolve(source)
 
     
     fun dispatchNfcTag(tag: android.nfc.Tag) {
@@ -255,9 +237,9 @@ object PluginManager {
         return sessions[pluginId]?.renderScreen(screenId)
             ?: UiNode.Column(
                 listOf(
-                    UiNode.Text("Плагин не установлен", "headlineSmall"),
+                    UiNode.Text(appContext.getString(R.string.plugin_not_installed), "headlineSmall"),
                     UiNode.Spacer(8f),
-                    UiNode.Text("id=$pluginId — импортируйте .dolphyplugin через Управление плагинами", "bodyMedium"),
+                    UiNode.Text(appContext.getString(R.string.plugin_not_installed_body, pluginId), "bodyMedium"),
                 ),
                 padding = 16f,
                 spacing = 8f,
@@ -265,7 +247,120 @@ object PluginManager {
             )
     }
 
-    fun installFromUri(uri: Uri): Result<PluginManifest> {
+    /**
+     * Downloads a `.dolphyplugin` file from [rawUrl] into the app cache and returns a
+     * FileProvider URI that [previewFromUri] can read. Accepts links with or without a scheme.
+     */
+    fun importFromUrl(rawUrl: String): Result<Uri> {
+        return try {
+            if (rawUrl.trim().isEmpty()) {
+                return Result.failure(IllegalArgumentException(str(R.string.plugin_import_url_invalid)))
+            }
+            // Plugin payloads are executable: TLS is mandatory and a downgrade is never followed.
+            val url = PluginUrlPolicy.normalize(rawUrl)
+                ?: return Result.failure(IllegalArgumentException(str(R.string.plugin_import_url_https_only)))
+            if (!PluginUrlPolicy.isAllowed(url)) {
+                return Result.failure(IllegalArgumentException(str(R.string.plugin_import_url_https_only)))
+            }
+            val importDir = File(appContext.cacheDir, "plugin_imports").apply { mkdirs() }
+            prunePluginImports(importDir)
+            val target = File(importDir, importFileName(url))
+            val connection = openHttpsConnection(url)
+            try {
+                val code = connection.responseCode
+                if (code !in 200..299) {
+                    return Result.failure(
+                        IllegalStateException(str(R.string.plugin_catalog_download_failed, code)),
+                    )
+                }
+                if (connection.contentLengthLong > MAX_PLUGIN_SOURCE_BYTES) {
+                    return Result.failure(IllegalArgumentException(str(R.string.plugin_catalog_download_too_large)))
+                }
+                var received = 0L
+                connection.inputStream.use { input ->
+                    target.outputStream().use { output ->
+                        val buffer = ByteArray(16 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            received += read
+                            if (received > MAX_PLUGIN_SOURCE_BYTES) {
+                                target.delete()
+                                return Result.failure(
+                                    IllegalArgumentException(str(R.string.plugin_catalog_download_too_large)),
+                                )
+                            }
+                            output.write(buffer, 0, read)
+                        }
+                    }
+                }
+                if (target.length() == 0L) {
+                    target.delete()
+                    return Result.failure(IllegalStateException(str(R.string.plugin_catalog_download_empty)))
+                }
+                Result.success(
+                    FileProvider.getUriForFile(appContext, "${appContext.packageName}.provider", target),
+                )
+            } finally {
+                connection.disconnect()
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "importFromUrl", t)
+            val message = if (t is java.io.IOException) {
+                str(R.string.plugin_import_url_failed)
+            } else {
+                t.message ?: str(R.string.plugin_import_url_failed)
+            }
+            Result.failure(Exception(message, t))
+        }
+    }
+
+    /**
+     * Opens [url] without letting the HTTP stack follow redirects on our behalf, then follows up
+     * to [PluginUrlPolicy.MAX_REDIRECTS] hops manually so every hop is validated as HTTPS.
+     */
+    private fun openHttpsConnection(url: URL): HttpURLConnection {
+        var current = url
+        var hops = 0
+        while (true) {
+            val connection = (current.openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 30_000
+                instanceFollowRedirects = false
+                setRequestProperty("User-Agent", "Dolphy-Android")
+            }
+            val code = connection.responseCode
+            if (code !in 300..399) return connection
+
+            val location = connection.getHeaderField("Location")
+            connection.disconnect()
+            if (location.isNullOrBlank() || hops >= PluginUrlPolicy.MAX_REDIRECTS) {
+                throw IllegalStateException(str(R.string.plugin_import_url_failed))
+            }
+            current = PluginUrlPolicy.resolveRedirect(current, location)
+                ?: throw SecurityException(str(R.string.plugin_import_url_https_only))
+            hops++
+        }
+    }
+
+    private fun importFileName(url: URL): String {
+        val decoded = runCatching {
+            URLDecoder.decode(url.path.orEmpty(), "UTF-8")
+        }.getOrDefault(url.path.orEmpty())
+        val rawName = decoded.substringAfterLast('/')
+        val safe = rawName.replace(Regex("[^A-Za-z0-9._-]"), "_").trim('.', '_')
+        val base = safe.ifBlank { "plugin_${System.currentTimeMillis()}" }
+        return if (base.endsWith(".dolphyplugin", true)) base else "$base.dolphyplugin"
+    }
+
+    private fun prunePluginImports(dir: File) {
+        val cutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        dir.listFiles()?.forEach { file ->
+            if (file.isFile && file.lastModified() < cutoff) file.delete()
+        }
+    }
+
+    fun installFromUri(uri: Uri, allowUntrusted: Boolean = false): Result<PluginManifest> {
         return try {
             val name = queryDisplayName(uri)
                 ?: uri.lastPathSegment?.substringAfterLast('/')
@@ -280,12 +375,12 @@ object PluginManager {
                         val read = input.read(buffer)
                         if (read < 0) break
                         total += read
-                        if (total > MAX_PLUGIN_SOURCE_BYTES) throw IllegalArgumentException("Файл плагина слишком большой")
+                        if (total > MAX_PLUGIN_SOURCE_BYTES) throw IllegalArgumentException(str(R.string.plugin_err_too_big))
                         output.write(buffer, 0, read)
                     }
                 }
-            } ?: return Result.failure(IllegalStateException("Не удалось прочитать файл"))
-            val result = installFromFile(tmp)
+            } ?: return Result.failure(IllegalStateException(str(R.string.file_read_failed)))
+            val result = installFromFile(tmp, allowUntrusted = allowUntrusted)
             tmp.delete()
             result
         } catch (t: Throwable) {
@@ -294,11 +389,21 @@ object PluginManager {
         }
     }
 
-    fun installFromFile(sourceFile: File): Result<PluginManifest> {
-        if (!sourceFile.exists()) return Result.failure(IllegalArgumentException("Файл не найден"))
+    fun installFromFile(sourceFile: File, allowUntrusted: Boolean = false): Result<PluginManifest> {
+        if (!sourceFile.exists()) return Result.failure(IllegalArgumentException(str(R.string.plugin_err_file_missing)))
         return try {
             val raw = sourceFile.readText(Charsets.UTF_8)
-            if (raw.isBlank()) return Result.failure(IllegalArgumentException("Пустой файл"))
+            if (raw.isBlank()) return Result.failure(IllegalArgumentException(str(R.string.plugin_err_empty)))
+            when (PluginSignature.verify(raw, PluginTrustStore.keys)) {
+                is PluginSignatureStatus.Invalid ->
+                    return Result.failure(SecurityException(str(R.string.plugin_signature_invalid)))
+                is PluginSignatureStatus.Trusted -> Unit
+                is PluginSignatureStatus.UnknownKey,
+                is PluginSignatureStatus.Unsigned,
+                -> if (!allowUntrusted) {
+                    return Result.failure(SecurityException(str(R.string.plugin_signature_untrusted)))
+                }
+            }
             val fallbackId = sourceFile.nameWithoutExtension
                 .replace(Regex("[^A-Za-z0-9_-]"), "_")
                 .lowercase()
@@ -312,7 +417,10 @@ object PluginManager {
         }
     }
 
-    private fun installSource(manifest: PluginManifest, raw: String, runtime: String): Result<PluginManifest> {
+    private fun installSource(sourceManifest: PluginManifest, raw: String, runtime: String): Result<PluginManifest> {
+        val manifest = sourceManifest.copy(
+            permissions = sourceManifest.permissions.ifEmpty { PluginPermissions.resolve(raw) },
+        )
 
         if (permanentlyDeleted.remove(manifest.id)) {
             saveDeletedIds()
@@ -335,7 +443,7 @@ object PluginManager {
         saveMeta(manifest, enabled = shouldEnable, runtime = runtime, pinned = wasPinned)
 
         if (!saved.exists() || saved.length() == 0L) {
-            return Result.failure(IllegalStateException("Не удалось сохранить плагин на диск"))
+            return Result.failure(IllegalStateException(str(R.string.plugin_err_save)))
         }
 
         if (!shouldEnable) {
@@ -349,7 +457,7 @@ object PluginManager {
             updateMetaEnabled(manifest.id, false)
             loaded[manifest.id] = LoadedPlugin(manifest, saved, raw, enabled = false, runtime = runtime, pinned = wasPinned)
             publish()
-            return Result.failure(IllegalStateException("Не установлены или отключены библиотеки: ${missingDependencies.joinToString()}"))
+            return Result.failure(IllegalStateException(str(R.string.plugin_err_missing_deps, missingDependencies.joinToString())))
         }
 
         val session = try {
@@ -365,7 +473,7 @@ object PluginManager {
             publish()
             return Result.failure(
                 IllegalStateException(
-                    "Плагин сохранён, но не запустился: ${t.javaClass.simpleName}: ${t.message}",
+                    str(R.string.plugin_err_start, "${t.javaClass.simpleName}: ${t.message}"),
                     t,
                 ),
             )
@@ -529,6 +637,12 @@ object PluginManager {
                             isDesignLibrary = fromSource.isDesignLibrary || serial.isDesignLibrary,
                             icon = fromSource.icon,
                             dependencies = fromSource.dependencies.ifEmpty { serial.dependencies },
+                            permissions = if (serial.permissions.isEmpty()) {
+                                // Installed before permission tracking existed: fall back to the source.
+                                fromSource.permissions
+                            } else {
+                                PluginPermission.parse(serial.permissions)
+                            },
                         )
                     } catch (_: Exception) {
                         fromSource
@@ -634,6 +748,7 @@ object PluginManager {
             runtime = runtime,
             pinned = pinned,
             dependencies = manifest.dependencies,
+            permissions = manifest.permissions.map { it.token }.sorted(),
         )
         metaDir.mkdirs()
         File(metaDir, "${manifest.id}.json").writeText(
@@ -796,11 +911,12 @@ object PluginManager {
     }
 
     private fun parseManifest(runtime: String, raw: String, fallbackId: String, fallbackName: String): PluginManifest {
-        return if (runtime == "python") {
+        val parsed = if (runtime == "python") {
             PythonPluginSession.parseManifest(raw, fallbackId, fallbackName)
         } else {
             JsPluginSession.parseManifest(raw, fallbackId, fallbackName)
         }
+        return parsed.copy(permissions = PluginPermissions.resolve(raw))
     }
 
     private fun looksLikePython(raw: String): Boolean {
@@ -825,6 +941,7 @@ object PluginManager {
         val icon: String = "extension",
         val pinned: Boolean = false,
         val dependencies: List<String> = emptyList(),
+        val permissions: List<String> = emptyList(),
     ) {
         fun toManifest() = PluginManifest(
             id, name, version, description, author,
@@ -832,6 +949,7 @@ object PluginManager {
             isDesignLibrary = isDesignLibrary,
             icon = icon,
             dependencies = dependencies,
+            permissions = PluginPermission.parse(permissions),
         )
     }
 

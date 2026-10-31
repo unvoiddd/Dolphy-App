@@ -16,7 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Launch
+import androidx.compose.material.icons.automirrored.filled.Launch
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -233,7 +233,7 @@ internal fun PcConsumerControlsSection(hidConnection: Connection) {
                                 count = filtered.size,
                                 headline = item.label,
                                 supporting = "0x${item.usage.toString(16).uppercase()}",
-                                leadingIcon = if (selectedPage == 1) Icons.Default.Launch else Icons.Default.TouchApp,
+                                leadingIcon = if (selectedPage == 1) Icons.AutoMirrored.Filled.Launch else Icons.Default.TouchApp,
                                 showChevron = false,
                                 onClick = {
                                     runCatching {

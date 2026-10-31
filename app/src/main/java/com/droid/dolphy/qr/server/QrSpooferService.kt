@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.droid.dolphy.MainActivity
+import com.droid.dolphy.R
 
 class QrSpooferService : Service() {
     private val binder = LocalBinder()
@@ -67,7 +68,7 @@ class QrSpooferService : Service() {
 
         return NotificationCompat.Builder(this, "qr_spoofer_channel")
             .setContentTitle("Dolphy Spoofer")
-            .setContentText("Сервер активен в фоновом режиме")
+            .setContentText(getString(R.string.qr_server_active_background))
             .setSmallIcon(android.R.drawable.stat_sys_headset)
             .setOngoing(true)
             .setContentIntent(mainPendingIntent)

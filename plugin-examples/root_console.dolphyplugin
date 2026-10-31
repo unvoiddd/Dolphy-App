@@ -1,0 +1,137 @@
+import json
+
+__id__ = "root_console"
+__name__ = "Root Console"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Run root commands with presets and keep the output on screen"
+__icon__ = "rounded:terminal"
+__permissions__ = ["root"]
+
+PRESETS = [
+    ["identity", "Identity", "id; whoami; getprop ro.build.version.release"],
+    ["selinux", "SELinux", "getenforce"],
+    ["storage", "Disk usage", "df -h 2>/dev/null | head -n 20"],
+    ["processes", "Processes", "ps -A 2>/dev/null | head -n 40"],
+    ["packages", "Packages", "pm list packages 2>/dev/null | head -n 40"],
+    ["props", "Properties", "getprop 2>/dev/null | head -n 40"],
+]
+
+
+class RootConsole(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.command = "id"
+        self.output = ""
+        self.status = "Idle"
+        self.available = False
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Root Console",
+            "Guarded root shell with presets",
+            "terminal",
+            "main",
+            "OTHER",
+            110,
+        )
+        try:
+            self.available = bool(self.api.getDevice().rootAvailable())
+        except Exception:
+            self.available = False
+        self.status = "Root available" if self.available else "Root is not available"
+        self.output = "Root console ready" if self.available else "No root access detected on this device."
+
+    def on_plugin_unload(self):
+        self.status = "Stopped"
+
+    def set_command(self, value):
+        self.command = str(value)
+        self.refresh()
+
+    def run(self):
+        command = str(self.command).strip()
+        if not command:
+            self.status = "Enter a command"
+            self.refresh()
+            return
+        try:
+            result = self.root(command)
+        except Exception as error:
+            result = {"ok": False, "err": str(error), "out": ""}
+        if not isinstance(result, dict):
+            result = {"ok": False, "err": str(result), "out": ""}
+        out = str(result.get("out", ""))
+        err = str(result.get("err", ""))
+        code = int(result.get("code", -1))
+        self.output = ("$ su -c " + command + "\n" + out + ("\n" + err if err else "")).strip()
+        self.status = "Exit code " + str(code)
+        self.refresh()
+
+    def preset_callback(self, command):
+        def callback(value=None):
+            self.command = command
+            self.run()
+
+        return callback
+
+    def clear(self):
+        self.output = ""
+        self.status = "Cleared"
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        rows = [
+            ui.settings_row(label, command, "terminal", on_click=self.preset_callback(command))
+            for _, label, command in PRESETS
+        ]
+        return ui.scaffold(
+            title="Root Console",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("root", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("Root shell", "titleLarge"),
+                                            ui.text("Commands run through the Dolphy root broker", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Root available" if self.available else "No root", self.available),
+                                    ui.chip(self.status, False),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.text_field(self.command, self.set_command, "Command", single_line=False),
+                            ui.row(
+                                [
+                                    ui.button("Run", self.run, enabled=self.available, fill_max_width=True),
+                                    ui.button("Clear", self.clear, style="tonal", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                        ]
+                    ),
+                    ui.card(
+                        [
+                            ui.text("Output", "titleMedium"),
+                            ui.log_panel(self.output or "No output yet", 320),
+                        ]
+                    ),
+                    ui.text("Presets", "titleMedium"),
+                    ui.segmented_list(rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )

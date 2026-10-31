@@ -1,0 +1,159 @@
+import json
+
+__id__ = "shizuku_console"
+__name__ = "Shizuku Console"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Run privileged shell commands through Shizuku without root"
+__icon__ = "rounded:security"
+__permissions__ = ["shizuku"]
+
+PRESETS = [
+    ["identity", "Identity", "id"],
+    ["model", "Device model", "getprop ro.product.model"],
+    ["android", "Android version", "getprop ro.build.version.release"],
+    ["packages", "Packages", "pm list packages 2>/dev/null | head -n 40"],
+    ["battery", "Battery", "dumpsys battery 2>/dev/null | head -n 20"],
+    ["wifi", "Wi-Fi status", "cmd wifi status 2>/dev/null | head -n 20"],
+]
+
+
+class ShizukuConsole(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.command = "id"
+        self.output = ""
+        self.status = "Idle"
+        self.available = False
+        self.granted = False
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Shizuku Console",
+            "Privileged shell through Shizuku",
+            "shizuku",
+            "main",
+            "OTHER",
+            120,
+        )
+        self.refresh_state()
+
+    def refresh_state(self):
+        device = self.api.getDevice()
+        try:
+            self.available = bool(device.shizukuAvailable())
+            self.granted = bool(device.shizukuHasPermission())
+        except Exception:
+            self.available = False
+            self.granted = False
+        if not self.available:
+            self.status = "Shizuku is not running"
+        elif not self.granted:
+            self.status = "Shizuku permission is required"
+        else:
+            self.status = "Ready"
+
+    def request_permission(self):
+        try:
+            self.api.getDevice().shizukuRequestPermission()
+            self.status = "Permission request sent"
+        except Exception:
+            self.status = "Could not request permission"
+        self.refresh()
+
+    def set_command(self, value):
+        self.command = str(value)
+        self.refresh()
+
+    def run(self):
+        command = str(self.command).strip()
+        if not command:
+            self.status = "Enter a command"
+            self.refresh()
+            return
+        try:
+            result = self.shizuku(command)
+        except Exception as error:
+            result = {"ok": False, "err": str(error), "out": ""}
+        if not isinstance(result, dict):
+            result = {"ok": False, "err": str(result), "out": ""}
+        out = str(result.get("out", ""))
+        err = str(result.get("err", ""))
+        self.output = ("$ shizuku " + command + "\n" + out + ("\n" + err if err else "")).strip()
+        self.status = "Exit code " + str(result.get("code", -1))
+        self.refresh()
+
+    def preset_callback(self, command):
+        def callback(value=None):
+            self.command = command
+            self.run()
+
+        return callback
+
+    def clear(self):
+        self.output = ""
+        self.status = "Cleared"
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        rows = [
+            ui.settings_row(label, command, "terminal", on_click=self.preset_callback(command))
+            for _, label, command in PRESETS
+        ]
+        return ui.scaffold(
+            title="Shizuku Console",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("shizuku", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("Shizuku shell", "titleLarge"),
+                                            ui.text("Privileged commands without root", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Shizuku running" if self.available else "Shizuku stopped", self.available),
+                                    ui.chip("Permission granted" if self.granted else "No permission", self.granted),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                            ui.button("Request permission", self.request_permission, enabled=self.available, fill_max_width=True),
+                            ui.text_field(self.command, self.set_command, "Command", single_line=False),
+                            ui.row(
+                                [
+                                    ui.button("Run", self.run, enabled=self.granted, fill_max_width=True),
+                                    ui.button("Refresh state", self.refresh_and_render, style="tonal", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                            ui.button("Clear output", self.clear, style="text"),
+                        ]
+                    ),
+                    ui.card(
+                        [
+                            ui.text("Output", "titleMedium"),
+                            ui.log_panel(self.output or "No output yet", 320),
+                        ]
+                    ),
+                    ui.text("Presets", "titleMedium"),
+                    ui.segmented_list(rows),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def refresh_and_render(self):
+        self.refresh_state()
+        self.refresh()

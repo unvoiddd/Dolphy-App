@@ -12,3 +12,8 @@
 .cxx/
 **/app/.cxx/
 /plugin-test-suite/
+core/*/build
+rootd/build
+bridge/flipper/build
+!core/model/build.gradle.kts
+!rootd/build.gradle.kts

@@ -1,0 +1,12 @@
+title = "Dolphy secret scanning"
+
+[extend]
+# Keep the upstream rule set and only add scoped allowlists below.
+useDefault = true
+
+[allowlist]
+description = "Vendored test fixtures contain intentionally fake credentials"
+paths = [
+  '''\.agents/skills/.*/fixtures/.*''',
+  '''\.agents/skills/.*/tests?/fixtures/.*''',
+]

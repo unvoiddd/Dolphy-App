@@ -46,7 +46,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BluetoothSearching
+import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DevicesOther
 import androidx.compose.material.icons.filled.Headset
@@ -250,7 +250,10 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Bar colors are deprecated on API 35+; keep painting them on older releases.
+        @Suppress("DEPRECATION")
         window.statusBarColor = android.graphics.Color.BLACK
+        @Suppress("DEPRECATION")
         window.navigationBarColor = android.graphics.Color.BLACK
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
@@ -1001,7 +1004,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                         val delayMs = (550L + reconnectAttemptCount * 140L).coerceAtMost(if (isPcBonding) 2500L else 1800L)
                         mainHandler.postDelayed({
                             reconnectInProgress = false
-                            targetAddress?.let { service.connectDirect(it) }
+                            service.connectDirect(targetAddress)
                         }, delayMs)
                     } else if (reconnectAttemptCount >= maxAttempts) {
                         hidStatus.value = HidStatus.Disconnected
@@ -1075,7 +1078,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
         BtDeviceKind.Headphones -> Icons.Default.Headset
         BtDeviceKind.Tv -> Icons.Default.Tv
         BtDeviceKind.Wearable -> Icons.Default.Watch
-        BtDeviceKind.Other -> if (isSearching) Icons.Default.BluetoothSearching else Icons.Default.DevicesOther
+        BtDeviceKind.Other -> if (isSearching) Icons.AutoMirrored.Filled.BluetoothSearching else Icons.Default.DevicesOther
     }
 }
 

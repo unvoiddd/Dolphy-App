@@ -57,7 +57,7 @@ fun PluginAboutScreen(navController: NavController) {
                         accent = accent,
                     )
                 }
-                item { SectionTitle("Минимальный плагин") }
+                item { SectionTitle(stringResource(R.string.plugin_guide_min_section)) }
                 item {
                     CodeBlock(
                         """
@@ -93,12 +93,12 @@ fun PluginAboutScreen(navController: NavController) {
                         """.trimIndent(),
                     )
                 }
-                item { SectionTitle("Полный доступ") }
+                item { SectionTitle(stringResource(R.string.plugin_guide_full_section)) }
                 item {
                     GuideCard(
                         icon = Icons.Default.Terminal,
-                        title = "Android, Root и Shizuku",
-                        body = "api.getContext(), api.getApplicationContext(), api.getClassLoader(), api.getAndroid() и api.getDevice() возвращают реальные Java-объекты Dolphy. Команды доступны через api.shellExec(), api.rootExec(), api.shizukuExec() и api.smartExec().",
+                        title = stringResource(R.string.plugin_guide_android_title),
+                        body = stringResource(R.string.plugin_guide_android_body),
                         accent = accent,
                     )
                 }
@@ -117,29 +117,29 @@ fun PluginAboutScreen(navController: NavController) {
                         """.trimIndent(),
                     )
                 }
-                item { SectionTitle("Радиоинтерфейсы") }
+                item { SectionTitle(stringResource(R.string.plugin_guide_radio_section)) }
                 item {
                     GuideCard(
                         icon = Icons.Default.Bluetooth,
-                        title = "Bluetooth и BLE",
-                        body = "Через api.getAndroid() доступны advertising, GATT client/server, RFCOMM, bonding и сведения об адаптере. api.getDevice() предоставляет BLE scan, возможности оборудования и системные операции.",
+                        title = stringResource(R.string.plugin_guide_bt_title),
+                        body = stringResource(R.string.plugin_guide_bt_body),
                         accent = accent,
                     )
                 }
                 item {
                     GuideCard(
                         icon = Icons.Default.Wifi,
-                        title = "Wi-Fi и сеть",
-                        body = "Доступны результаты Wi-Fi-сканирования, интерфейсы, DHCP, каналы, NSD, сокеты, HTTP и прямой доступ к Android WifiManager. Root и Shizuku позволяют использовать системные сетевые инструменты устройства.",
+                        title = stringResource(R.string.plugin_guide_net_title),
+                        body = stringResource(R.string.plugin_guide_net_body),
                         accent = accent,
                     )
                 }
-                item { SectionTitle("Вмешательство в приложение") }
+                item { SectionTitle(stringResource(R.string.plugin_guide_hooks_section)) }
                 item {
                     GuideCard(
                         icon = Icons.Default.Code,
-                        title = "Экраны, действия и сервисы",
-                        body = "hook_screen() добавляет слой, FAB или полностью заменяет штатный экран. hook_action() перехватывает именованные операции и может изменить данные, обработать или отменить действие. provide_service() подключает новую реализацию системной возможности с приоритетом и штатным fallback.",
+                        title = stringResource(R.string.plugin_guide_screens_title),
+                        body = stringResource(R.string.plugin_guide_screens_body),
                         accent = accent,
                     )
                 }
@@ -175,12 +175,12 @@ fun PluginAboutScreen(navController: NavController) {
                 item {
                     GuideCard(
                         icon = Icons.Default.Security,
-                        title = "Режимы экранных хуков",
-                        body = "replace заменяет экран, overlay рисует свободный слой поверх него, top и bottom добавляют Material 3-панель, fab добавляет компактное плавающее действие. Маски маршрутов поддерживают *, например ir_* или other/*.",
+                        title = stringResource(R.string.plugin_guide_hook_modes_title),
+                        body = stringResource(R.string.plugin_guide_hook_modes_body),
                         accent = accent,
                     )
                 }
-                item { SectionTitle("Состояние и настройки") }
+                item { SectionTitle(stringResource(R.string.plugin_guide_state_section)) }
                 item {
                     CodeBlock(
                         """
@@ -197,8 +197,8 @@ fun PluginAboutScreen(navController: NavController) {
                 item {
                     GuideCard(
                         icon = Icons.Default.Security,
-                        title = "Доверенная модель",
-                        body = "Python-плагин выполняется внутри процесса Dolphy и может получить разрешения приложения, внутренние данные, Root и Shizuku. Устанавливайте только код, который вы прочитали или которому полностью доверяете.",
+                        title = stringResource(R.string.plugin_guide_trust_title),
+                        body = stringResource(R.string.plugin_guide_trust_body),
                         accent = accent,
                     )
                 }

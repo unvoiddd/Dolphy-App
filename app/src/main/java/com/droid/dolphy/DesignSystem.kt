@@ -1672,8 +1672,8 @@ fun WavyCircularProgressIndicator(
             for (i in 0..maxSegments) {
                 val angle = (i.toFloat() / segments) * 2f * Math.PI.toFloat()
                 val r = radius + kotlin.math.sin(angle * frequency + phase) * amplitude
-                val x = center.x + r * kotlin.math.cos(angle).toFloat()
-                val y = center.y + r * kotlin.math.sin(angle).toFloat()
+                val x = center.x + r * kotlin.math.cos(angle)
+                val y = center.y + r * kotlin.math.sin(angle)
                 if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
             }
             if (fillColor != Color.Transparent) {

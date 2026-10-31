@@ -1,0 +1,233 @@
+import json
+
+__id__ = "bt_classic_lab"
+__name__ = "Classic Bluetooth Lab"
+__version__ = "1.0.0"
+__author__ = "Dolphy"
+__description__ = "Bonded devices, discovery and classic Bluetooth device details"
+__icon__ = "rounded:bluetooth"
+__permissions__ = ["bluetooth"]
+
+
+class BtClassicLab(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.bonded = []
+        self.discovered = {}
+        self.scanning = False
+        self.selected = None
+        self.details = None
+        self.status = "Idle"
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Classic Bluetooth Lab",
+            "Bonded devices, discovery and device details",
+            "bluetooth",
+            "main",
+            "BLUETOOTH",
+            50,
+        )
+        self.load_bonded()
+
+    def on_plugin_unload(self):
+        self.stop_scan()
+
+    def capabilities(self):
+        try:
+            return json.loads(str(self.api.getDevice().btCapabilitiesJson()))
+        except Exception:
+            return {}
+
+    def load_bonded(self):
+        try:
+            devices = json.loads(str(self.api.getAndroid().btBondedDevicesJson()))
+        except Exception:
+            devices = []
+        self.bonded = devices if isinstance(devices, list) else []
+        self.status = str(len(self.bonded)) + " bonded devices"
+
+    def toggle_scan(self):
+        if self.scanning:
+            self.stop_scan()
+        else:
+            self.discovered = {}
+            try:
+                started = bool(self.api.getAndroid().btStartDiscovery(self.on_found))
+            except Exception:
+                started = False
+            self.scanning = started
+            self.status = "Discovering classic devices…" if started else "Discovery unavailable"
+        self.refresh()
+
+    def stop_scan(self):
+        if self.scanning:
+            try:
+                self.api.getAndroid().btStopDiscovery()
+            except Exception:
+                pass
+            self.scanning = False
+            self.refresh()
+
+    def on_found(self, payload):
+        try:
+            device = json.loads(str(payload))
+        except Exception:
+            return
+        address = str(device.get("address", ""))
+        if address:
+            self.discovered[address] = device
+            self.status = str(len(self.discovered)) + " devices discovered"
+            self.refresh()
+
+    def device_callback(self, device):
+        def callback(value=None):
+            self.open_device(device)
+
+        return callback
+
+    def open_device(self, device):
+        self.selected = device
+        address = str(device.get("address", ""))
+        try:
+            self.details = json.loads(str(self.api.getAndroid().btDeviceInfoJson(address)))
+        except Exception:
+            self.details = {}
+        self.navigate("device")
+
+    def bond_state(self, value):
+        states = {10: "None", 11: "Bonding", 12: "Bonded"}
+        return states.get(int(value or -1), "Unknown")
+
+    def create_bond(self):
+        address = str((self.selected or {}).get("address", ""))
+        if not address:
+            return
+        try:
+            ok = bool(self.api.getAndroid().btCreateBond(address))
+        except Exception:
+            ok = False
+        self.status = "Bond request sent" if ok else "Bond request rejected"
+        self.refresh()
+
+    def remove_bond(self):
+        address = str((self.selected or {}).get("address", ""))
+        if not address:
+            return
+        try:
+            ok = bool(self.api.getAndroid().btRemoveBond(address))
+        except Exception:
+            ok = False
+        self.status = "Bond removed" if ok else "Could not remove the bond"
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        capabilities = self.capabilities()
+        discovered_rows = []
+        for device in sorted(self.discovered.values(), key=lambda item: int(item.get("rssi", -999)), reverse=True):
+            title = device.get("name") or "Unknown device"
+            subtitle = str(device.get("address", "")) + " · " + self.bond_state(device.get("bondState", -1)) + " · RSSI " + str(device.get("rssi", "?"))
+            discovered_rows.append(ui.function_row(title, subtitle, "bluetooth", on_click=self.device_callback(device)))
+        bonded_rows = []
+        for device in self.bonded:
+            title = device.get("name") or "Unnamed device"
+            subtitle = str(device.get("address", "")) + " · " + self.bond_state(device.get("bondState", -1))
+            bonded_rows.append(ui.function_row(title, subtitle, "link", on_click=self.device_callback(device)))
+        if not bonded_rows:
+            bonded_rows = [ui.text("No bonded devices", "bodyMedium")]
+        if not discovered_rows:
+            discovered_rows = [ui.text("Nothing discovered yet", "bodyMedium")]
+        return ui.scaffold(
+            title="Classic Bluetooth Lab",
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.row(
+                                [
+                                    ui.icon("bluetooth", 36),
+                                    ui.column(
+                                        [
+                                            ui.text("Classic Bluetooth", "titleLarge"),
+                                            ui.text("Adapter state, discovery and bonds", "bodySmall"),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=12,
+                            ),
+                            ui.row(
+                                [
+                                    ui.chip("Enabled" if capabilities.get("enabled") else "Disabled", bool(capabilities.get("enabled"))),
+                                    ui.chip("Name: " + str(capabilities.get("name", "unknown")), False),
+                                ],
+                                spacing=6,
+                            ),
+                            ui.row(
+                                [
+                                    ui.button("Stop discovery" if self.scanning else "Start discovery", self.toggle_scan, fill_max_width=True),
+                                    ui.button("Refresh bonds", self.refresh_bonds, style="tonal", fill_max_width=True),
+                                ],
+                                spacing=8,
+                            ),
+                            ui.text(self.status, "bodySmall"),
+                        ]
+                    ),
+                    ui.text("Bonded devices (" + str(len(self.bonded)) + ")", "titleMedium"),
+                    ui.segmented_list(bonded_rows),
+                    ui.text("Discovered devices (" + str(len(self.discovered)) + ")", "titleMedium"),
+                    ui.segmented_list(discovered_rows),
+                    ui.button("Open Bluetooth settings", lambda: self.api.getAndroid().btOpenSettings(), style="text"),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
+
+    def refresh_bonds(self):
+        self.load_bonded()
+        self.refresh()
+
+    def screen_device(self, ui, api, state):
+        device = self.selected or {}
+        details = self.details or {}
+        name = device.get("name") or details.get("name") or "Bluetooth device"
+        uuids = details.get("uuids", [])
+        uuid_nodes = [ui.settings_row("Service UUID", str(value), "link") for value in uuids] if isinstance(uuids, list) and uuids else [ui.text("No service UUIDs cached", "bodySmall")]
+        return ui.scaffold(
+            title=name,
+            content=ui.lazy_column(
+                [
+                    ui.card(
+                        [
+                            ui.icon("bluetooth", 48),
+                            ui.text(name, "headlineSmall"),
+                            ui.text(str(device.get("address", details.get("address", ""))), "bodyMedium"),
+                            ui.text("Bond state: " + self.bond_state(details.get("bondState", device.get("bondState", -1))), "bodySmall"),
+                        ]
+                    ),
+                    ui.segmented_list(
+                        [
+                            ui.settings_row("Device class", str(details.get("deviceClass", device.get("deviceClass", -1))), "info"),
+                            ui.settings_row("Major class", str(details.get("majorClass", -1)), "info"),
+                            ui.settings_row("Type", str(details.get("type", device.get("type", -1))), "memory"),
+                            ui.settings_row("RSSI", str(device.get("rssi", "unavailable")), "sensors"),
+                        ]
+                    ),
+                    ui.text("Cached services", "titleMedium"),
+                    ui.segmented_list(uuid_nodes),
+                    ui.row(
+                        [
+                            ui.button("Bond", self.create_bond, fill_max_width=True),
+                            ui.button("Remove bond", self.remove_bond, style="tonal", fill_max_width=True),
+                        ],
+                        spacing=8,
+                    ),
+                    ui.text(self.status, "bodySmall"),
+                ],
+                padding=16,
+                spacing=12,
+                fill_max_size=True,
+            ),
+        )
