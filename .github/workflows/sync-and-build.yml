@@ -67,7 +67,6 @@ jobs:
 
           if [ "$LOCAL_REV" != "$UPSTREAM_REV" ] || [ "${{ github.event.inputs.force_sync }}" == "true" ]; then
             echo "Attempting to merge upstream/${UPSTREAM_BRANCH}..."
-            # Merge upstream favoring local rebranding customizations if conflict arises
             git merge upstream/${UPSTREAM_BRANCH} -m "chore(sync): merge upstream changes from official repo" || {
               echo "Resolving merge conflicts favoring Deadcow branding..."
               git checkout --ours app/src/main/res/values/strings.xml || true
@@ -109,8 +108,9 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
