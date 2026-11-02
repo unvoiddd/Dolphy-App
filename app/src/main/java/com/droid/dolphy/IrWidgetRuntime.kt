@@ -79,7 +79,7 @@ object IrWidgetRuntime {
                 val buttons = withContext(Dispatchers.IO) {
                     val flIndex = IrRepository.getFlipperIndex(context)
                     flIndex.entries
-                        .filter { it.key.substringBefore('/').equals("»  „ÎÛ¯ËÎÍ‡", ignoreCase = true) }
+                        .filter { it.key.substringBefore('/').equals("–ò–ö –≥–ª—É—à–∏–ª–∫–∞", ignoreCase = true) }
                         .flatMap { (_, models) ->
                             models.values.flatMap { assetPath -> IrRepository.loadButtons(context, assetPath) }
                         }
@@ -131,7 +131,7 @@ object IrWidgetRuntime {
 
     private fun normalizeSearch(text: String): String {
         return text.lowercase()
-            .replace(Regex("[^a-z0-9‡-ˇ∏]+"), " ")
+            .replace(Regex("[^a-z0-9–∞-—è—ë]+"), " ")
             .trim()
     }
 

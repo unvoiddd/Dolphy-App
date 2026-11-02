@@ -77,7 +77,7 @@ data class ScannerDeviceUi(
     val name: String,
     val address: String,
     val rssi: Int,
-    
+
     val hasFastPair: Boolean = false,
 )
 

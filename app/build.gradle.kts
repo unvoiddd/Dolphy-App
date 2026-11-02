@@ -18,7 +18,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.droid.dolphy"
+        applicationId = "com.droid.deadcow"
         minSdk = 26
         targetSdk = 36
         versionCode = 26

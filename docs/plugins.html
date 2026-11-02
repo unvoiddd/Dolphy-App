@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ff8a00">
-  <meta name="description" content="Documentation for creating Python .dolphyplugin extensions for Dolphy.">
-  <meta property="og:title" content="Dolphy Plugin Documentation">
-  <meta property="og:image" content="assets/dolphy-icon.png">
-  <title>Dolphy Plugin Documentation</title>
-  <link rel="icon" type="image/png" href="assets/dolphy-icon.png">
+  <meta name="description" content="Documentation for creating Python .dolphyplugin extensions for Deadcow.">
+  <meta property="og:title" content="Deadcow Plugin Documentation">
+  <meta property="og:image" content="assets/deadcow-icon.png">
+  <title>Deadcow Plugin Documentation</title>
+  <link rel="icon" type="image/png" href="assets/deadcow-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=swap" rel="stylesheet">
@@ -21,21 +21,21 @@
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
   <header class="site-header">
-    <a class="brand" href="index.html" aria-label="Dolphy home"><img src="assets/dolphy-icon.png" alt="" width="44" height="44"><span>Dolphy</span></a>
+    <a class="brand" href="index.html" aria-label="Deadcow home"><img src="assets/deadcow-icon.png" alt="" width="44" height="44"><span>Deadcow</span></a>
     <nav class="top-nav" aria-label="Main navigation">
       <a class="nav-item" href="index.html"><span class="material-symbols-rounded">home</span><span data-i18n="navHome">Home</span></a>
       <a class="nav-item active" href="plugins.html"><span class="material-symbols-rounded">extension</span><span data-i18n="navDocs">Plugin docs</span></a>
     </nav>
-    <button class="language-button" type="button" data-language-toggle aria-label="Switch language"><span class="material-symbols-rounded">language</span><span data-language-label>RU</span></button>
+    <button class="language-button" type="button" data-language-toggle aria-label="Switch language"><span class="material-symbols-rounded">language</span><span data-language-label>FR</span></button>
   </header>
 
   <main id="main">
     <section class="docs-hero section-shell reveal">
       <div>
         <div class="eyebrow"><span class="material-symbols-rounded">extension</span><span data-i18n="docsEyebrow">Developer documentation</span></div>
-        <h1 data-i18n="docsTitle">Build something powerful for Dolphy.</h1>
-        <p data-i18n="docsLead">A plugin is one readable Python file with the .dolphyplugin extension. It can create screens, integrate hardware and extend existing Dolphy features.</p>
-        <div class="hero-actions"><a class="button button-primary" href="#quick-start"><span class="material-symbols-rounded">rocket_launch</span><span data-i18n="quickStart">Quick start</span></a><a class="button button-tonal" href="https://github.com/unvoiddd/Dolphy-App/tree/main/plugin-examples" target="_blank" rel="noopener"><span class="material-symbols-rounded">folder_code</span><span data-i18n="examples">Examples</span></a></div>
+        <h1 data-i18n="docsTitle">Build something powerful for Deadcow.</h1>
+        <p data-i18n="docsLead">A plugin is one readable Python file with the .dolphyplugin extension. It can create screens, integrate hardware and extend existing Deadcow features.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#quick-start"><span class="material-symbols-rounded">rocket_launch</span><span data-i18n="quickStart">Quick start</span></a><a class="button button-tonal" href="https://github.com/unvoiddd/Deadcow-App/tree/main/plugin-examples" target="_blank" rel="noopener"><span class="material-symbols-rounded">folder_code</span><span data-i18n="examples">Examples</span></a></div>
       </div>
       <div class="docs-hero-mark"><span class="material-symbols-rounded">deployed_code</span><i></i><i></i></div>
     </section>
@@ -69,10 +69,10 @@
 
       <article class="docs-content">
         <section id="overview" class="doc-section reveal">
-          <div class="section-index">01</div><div class="doc-heading"><span class="material-symbols-rounded">auto_awesome</span><div><h2 data-i18n="overviewTitle">What a plugin can do</h2><p data-i18n="overviewLead">Plugins run inside Dolphy and use the same design system and hardware access layer as the app.</p></div></div>
+          <div class="section-index">01</div><div class="doc-heading"><span class="material-symbols-rounded">auto_awesome</span><div><h2 data-i18n="overviewTitle">What a plugin can do</h2><p data-i18n="overviewLead">Plugins run inside Deadcow and use the same design system and hardware access layer as the app.</p></div></div>
           <div class="capability-grid">
             <div><span class="material-symbols-rounded">dashboard_customize</span><strong data-i18n="capScreens">Create complete screens</strong><p data-i18n="capScreensBody">Compose multi-screen Material 3 Expressive tools with state and callbacks.</p></div>
-            <div><span class="material-symbols-rounded">hub</span><strong data-i18n="capHooks">Extend Dolphy</strong><p data-i18n="capHooksBody">Add overlays, FABs, replace screens and hook named actions.</p></div>
+            <div><span class="material-symbols-rounded">hub</span><strong data-i18n="capHooks">Extend Deadcow</strong><p data-i18n="capHooksBody">Add overlays, FABs, replace screens and hook named actions.</p></div>
             <div><span class="material-symbols-rounded">usb</span><strong data-i18n="capHardware">Integrate hardware</strong><p data-i18n="capHardwareBody">Work with Bluetooth, Wi-Fi, NFC, USB, IR and Android services.</p></div>
             <div><span class="material-symbols-rounded">terminal</span><strong data-i18n="capSystem">Use system access</strong><p data-i18n="capSystemBody">Call Java APIs and use Shell, Root or Shizuku when available.</p></div>
           </div>
@@ -80,7 +80,7 @@
         </section>
 
         <section id="metadata" class="doc-section reveal">
-          <div class="section-index">02</div><div class="doc-heading"><span class="material-symbols-rounded">badge</span><div><h2 data-i18n="metadataTitle">Plugin metadata</h2><p data-i18n="metadataLead">Put metadata at the beginning of the text file. Dolphy reads it before installation without executing Python.</p></div></div>
+          <div class="section-index">02</div><div class="doc-heading"><span class="material-symbols-rounded">badge</span><div><h2 data-i18n="metadataTitle">Plugin metadata</h2><p data-i18n="metadataLead">Put metadata at the beginning of the text file. Deadcow reads it before installation without executing Python.</p></div></div>
           <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>my_plugin.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"my_wireless_lab"</span>
 <span class="code-key">__name__</span> = <span class="code-string">"My Wireless Lab"</span>
 <span class="code-key">__version__</span> = <span class="code-string">"1.0.0"</span>
@@ -92,7 +92,7 @@
 <span class="code-key">__dependencies__</span> = [<span class="code-string">"shared_radio_core"</span>]
 <span class="code-key">__permissions__</span> = [<span class="code-string">"ble_spam"</span>, <span class="code-string">"download"</span>, <span class="code-string">"files"</span>]</code></pre></div>
           <div class="property-list">
-            <div><code>__id__</code><span data-i18n="metaId">Stable lowercase identifier</span></div><div><code>__name__</code><span data-i18n="metaName">Name shown in Dolphy</span></div><div><code>__version__</code><span data-i18n="metaVersion">Plugin version</span></div><div><code>__author__</code><span data-i18n="metaAuthor">Developer name</span></div><div><code>__description__</code><span data-i18n="metaDescription">Short description</span></div><div><code>__icon__</code><span data-i18n="metaIcon">Material Icon: filled, outlined, rounded, sharp or twotone</span></div><div><code>__library__</code><span data-i18n="metaLibrary">Load before regular plugins as a shared library</span></div><div><code>__design_library__</code><span data-i18n="metaDesignLibrary">Mark a shared design library</span></div><div><code>__dependencies__</code><span data-i18n="metaDependencies">Required plugin ids loaded before this plugin</span></div><div><code>__permissions__</code><span data-i18n="metaPermissions">Capabilities shown before installation; Dolphy also detects direct API usage in the source</span></div>
+            <div><code>__id__</code><span data-i18n="metaId">Stable lowercase identifier</span></div><div><code>__name__</code><span data-i18n="metaName">Name shown in Deadcow</span></div><div><code>__version__</code><span data-i18n="metaVersion">Plugin version</span></div><div><code>__author__</code><span data-i18n="metaAuthor">Developer name</span></div><div><code>__description__</code><span data-i18n="metaDescription">Short description</span></div><div><code>__icon__</code><span data-i18n="metaIcon">Material Icon: filled, outlined, rounded, sharp or twotone</span></div><div><code>__library__</code><span data-i18n="metaLibrary">Load before regular plugins as a shared library</span></div><div><code>__design_library__</code><span data-i18n="metaDesignLibrary">Mark a shared design library</span></div><div><code>__dependencies__</code><span data-i18n="metaDependencies">Required plugin ids loaded before this plugin</span></div><div><code>__permissions__</code><span data-i18n="metaPermissions">Capabilities shown before installation; Deadcow also detects direct API usage in the source</span></div>
           </div>
           <div class="route-box"><strong data-i18n="manifestRulesTitle">Manifest parsing rules</strong><p data-i18n="manifestRulesBody">The file is UTF-8 text and may be at most 48 MiB. String fields must be top-level single- or double-quoted assignments. id is lowercased, invalid characters become underscores and the result is limited to 64 characters. Missing fields fall back to the filename, version 1.0 and icon extension.</p><div class="api-chips"><code>.dolphyplugin</code><code>application/x-dolphy-plugin</code><code>UTF-8</code><code>48 MiB max</code><code>[a-z0-9_-], 64 chars</code></div></div>
           <div class="callout current"><span class="material-symbols-rounded">library_books</span><div><strong data-i18n="libraryTruthTitle">Library plugins and dependencies</strong><p data-i18n="libraryTruthBody">Library plugins start before consumers. __dependencies__ declares required plugin ids, determines startup order and prevents a consumer from starting while a dependency is missing or disabled. Java classes and objects may be exported by name and imported by dependent plugins.</p></div></div>
@@ -102,14 +102,14 @@
         <section id="quick-start" class="doc-section reveal">
           <div class="section-index">03</div><div class="doc-heading"><span class="material-symbols-rounded">rocket_launch</span><div><h2 data-i18n="quickTitle">Minimal working plugin</h2><p data-i18n="quickLead">Extend BasePlugin, register a module during load and return a UI tree from screen_main.</p></div></div>
           <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>hello_dolphy.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"hello_dolphy"</span>
-<span class="code-key">__name__</span> = <span class="code-string">"Hello Dolphy"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"Hello Deadcow"</span>
 <span class="code-key">__version__</span> = <span class="code-string">"1.0.0"</span>
 <span class="code-key">__icon__</span> = <span class="code-string">"rounded:waving_hand"</span>
 
-<span class="code-key">class</span> HelloDolphy(BasePlugin):
+<span class="code-key">class</span> HelloDeadcow(BasePlugin):
     <span class="code-key">def</span> on_plugin_load(self):
         self.add_module(
-            title=<span class="code-string">"Hello Dolphy"</span>,
+            title=<span class="code-string">"Hello Deadcow"</span>,
             description=<span class="code-string">"My first plugin"</span>,
             icon=<span class="code-string">"waving_hand"</span>,
             screen=<span class="code-string">"main"</span>,
@@ -118,7 +118,7 @@
 
     <span class="code-key">def</span> screen_main(self, ui, api, state):
         <span class="code-key">return</span> ui.scaffold(
-            title=<span class="code-string">"Hello Dolphy"</span>,
+            title=<span class="code-string">"Hello Deadcow"</span>,
             content=ui.column([
                 ui.card([
                     ui.text(<span class="code-string">"It works!"</span>, <span class="code-string">"headlineSmall"</span>),
@@ -134,7 +134,7 @@
         </section>
 
         <section id="ui" class="doc-section reveal">
-          <div class="section-index">04</div><div class="doc-heading"><span class="material-symbols-rounded">palette</span><div><h2 data-i18n="uiTitle">Material 3 Expressive UI</h2><p data-i18n="uiLead">Python describes a UI tree. Dolphy renders native Jetpack Compose components with the current theme and accent color.</p></div></div>
+          <div class="section-index">04</div><div class="doc-heading"><span class="material-symbols-rounded">palette</span><div><h2 data-i18n="uiTitle">Material 3 Expressive UI</h2><p data-i18n="uiLead">Python describes a UI tree. Deadcow renders native Jetpack Compose components with the current theme and accent color.</p></div></div>
           <div class="flow-diagram"><div><span class="material-symbols-rounded">code</span><strong>Python ui.*</strong></div><span class="material-symbols-rounded">arrow_forward</span><div><span class="material-symbols-rounded">account_tree</span><strong>UI tree</strong></div><span class="material-symbols-rounded">arrow_forward</span><div><span class="material-symbols-rounded">android</span><strong>Compose MD3</strong></div></div>
           <div class="api-chips"><code>ui.scaffold</code><code>ui.column</code><code>ui.lazy_column</code><code>ui.card</code><code>ui.segmented_list</code><code>ui.function_row</code><code>ui.button</code><code>ui.split_button</code><code>ui.icon_button</code><code>ui.text_field</code><code>ui.switch</code><code>ui.slider</code><code>ui.tabs</code><code>ui.dropdown</code><code>ui.floating_toolbar</code><code>ui.wavy_progress</code></div>
           <div class="contract-table">
@@ -146,7 +146,7 @@
             <div><code>WebView</code><span data-i18n="uiWebViewValues">Loads either url or html, with JavaScript and DOM storage enabled. Treat remote and embedded content as trusted executable UI.</span></div>
           </div>
           <div class="route-box"><strong data-i18n="uiSignatureTitle">Complete UiFactory signatures</strong><p data-i18n="uiSignatureBody">Every argument below is supported by the Python runtime. Dimensions and spacing use dp.</p><div class="api-chips"><code>scaffold(content, title=None, show_back=True, fab=None, actions=None)</code><code>top_action(icon, on_click=None)</code><code>column(children=None, padding=0, spacing=8, fill_max_size=False)</code><code>row(children=None, padding=0, spacing=8, fill_max_width=True)</code><code>box(children=None, padding=0, fill_max_size=False)</code><code>lazy_column(children=None, padding=0, spacing=4, fill_max_size=True)</code><code>lazy_row(children=None, padding=0, spacing=8, fill_max_width=True)</code><code>text(text, style="bodyMedium", color=None, max_lines=2147483647)</code><code>button(text, on_click=None, style="filled", enabled=True, fill_max_width=False)</code><code>bounce_button(text, on_click=None, enabled=True, fill_max_width=True)</code><code>split_button(text, on_click=None, on_secondary=None, enabled=True, fill_max_width=True)</code><code>icon_button(icon, on_click=None, enabled=True)</code><code>text_field(value="", on_change=None, label="", single_line=True, fill_max_width=True)</code><code>switch(checked=False, on_change=None, title="", subtitle="", enabled=True)</code><code>checkbox(checked=False, on_change=None, title="", subtitle="", enabled=True)</code><code>slider(value=0, on_change=None, minimum=0, maximum=100, title="", steps=0)</code><code>linear_progress(progress=None, fill_max_width=True)</code><code>circular_progress(progress=None)</code><code>wavy_progress(progress=None, size=64)</code><code>divider(vertical=False)</code><code>spacer(height=8, width=0)</code><code>icon(name, size=24, tint=None)</code><code>image(source, width=None, height=None, scale="fit", corner_radius=0, fill_max_width=False, content_description="")</code><code>chip(text, selected=False, on_click=None)</code><code>card(children=None, padding=16, index=None, count=None, on_click=None)</code><code>function_row(title, description="", icon="extension", icon_tint=None, on_click=None)</code><code>segmented_list(children=None, spacing=4)</code><code>settings_row(title, subtitle="", icon=None, on_click=None, trailing=None)</code><code>tabs(tabs, selected=0, on_select=None)</code><code>button_group(options, selected, on_select=None)</code><code>floating_toolbar(items)</code><code>toolbar_item(icon, on_click=None, selected=False, label="")</code><code>radio_group(options, selected, on_select=None, title="")</code><code>dropdown(options, selected, on_select=None, label="", enabled=True)</code><code>webview(url="", html="", fill_max_size=True, height=320)</code><code>log_panel(text, max_height=200)</code><code>alert_dialog(show, title, message, confirm_text="OK", dismiss_text="Cancel", on_confirm=None, on_dismiss=None, cancelable=True)</code><code>empty()</code></div></div>
-          <div class="route-box" id="plugin-settings"><strong data-i18n="settingsContribTitle">Native plugin settings</strong><p data-i18n="settingsContribBody">api.registerSettings adds Material 3 Expressive sections directly to Dolphy Settings. Switches and sliders persist in the plugin store and emit setting_changed; nav and card items open plugin screens.</p><div class="api-chips"><code>header</code><code>switch</code><code>slider</code><code>nav</code><code>card</code></div></div>
+          <div class="route-box" id="plugin-settings"><strong data-i18n="settingsContribTitle">Native plugin settings</strong><p data-i18n="settingsContribBody">api.registerSettings adds Material 3 Expressive sections directly to Deadcow Settings. Switches and sliders persist in the plugin store and emit setting_changed; nav and card items open plugin screens.</p><div class="api-chips"><code>header</code><code>switch</code><code>slider</code><code>nav</code><code>card</code></div></div>
           <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>plugin_settings.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">import</span> json
 
 <span class="code-key">def</span> on_plugin_load(self):
@@ -177,8 +177,8 @@
         </section>
 
         <section id="integration" class="doc-section reveal">
-          <div class="section-index">05</div><div class="doc-heading"><span class="material-symbols-rounded">conversion_path</span><div><h2 data-i18n="integrationTitle">Integrate with existing features</h2><p data-i18n="integrationLead">Plugins can participate in Dolphy instead of living on an isolated screen.</p></div></div>
-          <div class="callout truth"><span class="material-symbols-rounded">fact_check</span><div><strong data-i18n="integrationTruthTitle">Integration points, not arbitrary patching</strong><p data-i18n="integrationTruthBody">Screen hooks work for every route hosted by Dolphy. Action and service hooks work only where the app explicitly dispatches a named integration point. A plugin does not automatically intercept every Kotlin function.</p></div></div>
+          <div class="section-index">05</div><div class="doc-heading"><span class="material-symbols-rounded">conversion_path</span><div><h2 data-i18n="integrationTitle">Integrate with existing features</h2><p data-i18n="integrationLead">Plugins can participate in Deadcow instead of living on an isolated screen.</p></div></div>
+          <div class="callout truth"><span class="material-symbols-rounded">fact_check</span><div><strong data-i18n="integrationTruthTitle">Integration points, not arbitrary patching</strong><p data-i18n="integrationTruthBody">Screen hooks work for every route hosted by Deadcow. Action and service hooks work only where the app explicitly dispatches a named integration point. A plugin does not automatically intercept every Kotlin function.</p></div></div>
           <div class="integration-stack">
             <div><span class="material-symbols-rounded">layers</span><div><strong>hook_screen(route, screen, mode, priority)</strong><p data-i18n="hookScreenBody">Add an overlay, top or bottom panel, FAB, or replace a route. Wildcards such as ir_* are supported.</p></div></div>
             <div><span class="material-symbols-rounded">bolt</span><div><strong>hook_action(action, priority)</strong><p data-i18n="hookActionBody">Inspect or change data, mark an action handled, or cancel it.</p></div></div>
@@ -247,9 +247,9 @@
             <div><code>{"cancel": true}</code><span data-i18n="returnCancel">Stop the hook chain and cancel the built-in operation.</span></div>
             <div><code>False</code><span data-i18n="returnFalse">Cancel immediately. True marks the action handled.</span></div>
           </div>
-          <div class="callout current"><span class="material-symbols-rounded">account_tree</span><div><strong data-i18n="currentPointsTitle">Integration points available now</strong><p data-i18n="currentPointsBody">Dolphy exposes shared infrared transmission plus Bluetooth section selection, All actions, BLE modes, Advert presets and every outgoing BLE advertising packet. The complete exact list is in the hook catalog.</p></div></div>
+          <div class="callout current"><span class="material-symbols-rounded">account_tree</span><div><strong data-i18n="currentPointsTitle">Integration points available now</strong><p data-i18n="currentPointsBody">Deadcow exposes shared infrared transmission plus Bluetooth section selection, All actions, BLE modes, Advert presets and every outgoing BLE advertising packet. The complete exact list is in the hook catalog.</p></div></div>
           <h3 class="doc-subtitle" data-i18n="bleModeApiTitle">Add a first-class BLE Spam mode</h3>
-          <p class="doc-copy" data-i18n="bleModeApiLead">register_ble_mode adds the plugin beside the built-in BLE modes using the same card, active state, shared delay and Stop All behavior. Dolphy sends ble_mode_start, ble_mode_stop and ble_mode_delay_changed only to the owning plugin. The plugin owns its advertising loop and must stop it on both stop and unload.</p>
+          <p class="doc-copy" data-i18n="bleModeApiLead">register_ble_mode adds the plugin beside the built-in BLE modes using the same card, active state, shared delay and Stop All behavior. Deadcow sends ble_mode_start, ble_mode_stop and ble_mode_delay_changed only to the owning plugin. The plugin owns its advertising loop and must stop it on both stop and unload.</p>
           <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>custom_ble_mode.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
     self.register_ble_mode(<span class="code-string">"lab_beacon"</span>, <span class="code-string">"Lab Beacon"</span>, <span class="code-string">"Custom advertising payload"</span>, <span class="code-string">"radar"</span>)
 
@@ -266,7 +266,7 @@
 <span class="code-key">def</span> on_plugin_unload(self):
     self.stop_loop()</code></pre></div>
           <h3 class="doc-subtitle" data-i18n="assetApiTitle">Download and apply plugin assets</h3>
-          <p class="doc-copy" data-i18n="assetApiLead">download_assets requests all files as one batch. Each destination is confined to this plugin’s private directory; maxBytes limits each response and sha256 can verify it. Unless the user disabled confirmation in Plugin settings → Security, Dolphy shows the plugin name, file count and declared total size before network transfer. apply_asset imports a saved file into a stock Bad USB editor, user IR remotes or QR Audio Spoofer custom HTML.</p>
+          <p class="doc-copy" data-i18n="assetApiLead">download_assets requests all files as one batch. Each destination is confined to this plugin’s private directory; maxBytes limits each response and sha256 can verify it. Unless the user disabled confirmation in Plugin settings → Security, Deadcow shows the plugin name, file count and declared total size before network transfer. apply_asset imports a saved file into a stock Bad USB editor, user IR remotes or QR Audio Spoofer custom HTML.</p>
           <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>asset_pack.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> fetch_remote(self):
     files = [{
         <span class="code-string">"url"</span>: <span class="code-string">"https://example.org/remotes/tv.ir"</span>,
@@ -353,17 +353,17 @@
           <div class="property-list">
             <div><code>name</code><span data-i18n="stormPayloadName">Signal or button name when available</span></div><div><code>frequency</code><span data-i18n="stormPayloadFrequency">Carrier frequency in hertz</span></div><div><code>pattern</code><span data-i18n="stormPayloadPattern">Alternating mark and space durations in microseconds</span></div><div><code>protocol</code><span data-i18n="stormPayloadProtocol">Protocol label when known</span></div><div><code>code</code><span data-i18n="stormPayloadCode">Original encoded value when available</span></div><div><code>timings</code><span data-i18n="stormPayloadTimings">Original timing representation when available</span></div>
           </div>
-          <div class="callout current"><span class="material-symbols-rounded">route</span><div><strong data-i18n="stormScopeTitle">What this example affects</strong><p data-i18n="stormScopeBody">It intercepts both ir_storm and other/ir_storm. Returning None on every other route preserves ordinary remotes, TV Be Gone and IR Jammer. Remove the route check to intercept every Dolphy IR transmission.</p></div></div>
+          <div class="callout current"><span class="material-symbols-rounded">route</span><div><strong data-i18n="stormScopeTitle">What this example affects</strong><p data-i18n="stormScopeBody">It intercepts both ir_storm and other/ir_storm. Returning None on every other route preserves ordinary remotes, TV Be Gone and IR Jammer. Remove the route check to intercept every Deadcow IR transmission.</p></div></div>
           <div class="contract-table compact-contract">
-            <div><code>{"payload": payload}</code><span data-i18n="stormModify">Change frequency or pattern, then let Dolphy continue sending.</span></div><div><code>{"handled": true, "result": true}</code><span data-i18n="stormHandle">The plugin sent the signal; skip the built-in transmitter and report success.</span></div><div><code>{"cancel": true}</code><span data-i18n="stormCancel">Block the signal without sending it.</span></div>
+            <div><code>{"payload": payload}</code><span data-i18n="stormModify">Change frequency or pattern, then let Deadcow continue sending.</span></div><div><code>{"handled": true, "result": true}</code><span data-i18n="stormHandle">The plugin sent the signal; skip the built-in transmitter and report success.</span></div><div><code>{"cancel": true}</code><span data-i18n="stormCancel">Block the signal without sending it.</span></div>
           </div>
         </section>
 
         <section id="dex-libraries" class="doc-section reveal">
           <div class="section-index">05A</div><div class="doc-heading"><span class="material-symbols-rounded">deployed_code</span><div><h2 data-i18n="dexLibrariesTitle">DEX loading and library plugins</h2><p data-i18n="dexLibrariesLead">Keep a plugin as one readable Python file while embedding compiled Java or Kotlin code and sharing native capabilities with other plugins.</p></div></div>
-          <div class="callout warning"><span class="material-symbols-rounded">verified_user</span><div><strong data-i18n="dexTrustTitle">DEX is native trusted code</strong><p data-i18n="dexTrustBody">A loaded DEX runs inside the Dolphy process with the app permissions. Always publish the SHA-256, verify it before loading and never execute an untrusted downloaded payload.</p></div></div>
+          <div class="callout warning"><span class="material-symbols-rounded">verified_user</span><div><strong data-i18n="dexTrustTitle">DEX is native trusted code</strong><p data-i18n="dexTrustBody">A loaded DEX runs inside the Deadcow process with the app permissions. Always publish the SHA-256, verify it before loading and never execute an untrusted downloaded payload.</p></div></div>
           <h3 class="doc-subtitle" data-i18n="dexEmbeddedTitle">Embed and load a raw DEX</h3>
-          <p class="doc-copy" data-i18n="dexEmbeddedLead">Store the raw DEX as Base64 in the .dolphyplugin file. Dolphy removes whitespace, decodes it, verifies SHA-256 and creates the class loader. Raw DEX uses InMemoryDexClassLoader on Android 8+; older Android and ZIP-based JAR/APK payloads use a private read-only code-cache file and DexClassLoader.</p>
+          <p class="doc-copy" data-i18n="dexEmbeddedLead">Store the raw DEX as Base64 in the .dolphyplugin file. Deadcow removes whitespace, decodes it, verifies SHA-256 and creates the class loader. Raw DEX uses InMemoryDexClassLoader on Android 8+; older Android and ZIP-based JAR/APK payloads use a private read-only code-cache file and DexClassLoader.</p>
           <div class="code-card docs-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>native_radio_core.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"shared_radio_core"</span>
 <span class="code-key">__name__</span> = <span class="code-string">"Shared Radio Core"</span>
 <span class="code-key">__version__</span> = <span class="code-string">"1.0.0"</span>
@@ -413,14 +413,14 @@ DEX_BASE64 = <span class="code-string">"ZGV4CjAzNQ..."</span>
         self.toast(str(result))</code></pre></div>
           <div class="property-list">
             <div><code>export_dex_class(name, module, class_name)</code><span data-i18n="exportDexClassBody">Resolve and publish a class from the current DEX module.</span></div>
-            <div><code>export_app_class(name, class_name)</code><span data-i18n="exportAppClassBody">Publish a Dolphy or dependency class by its fully qualified name.</span></div>
+            <div><code>export_app_class(name, class_name)</code><span data-i18n="exportAppClassBody">Publish a Deadcow or dependency class by its fully qualified name.</span></div>
             <div><code>export_java_class(name, java_class)</code><span data-i18n="exportJavaClassBody">Publish a Class object already obtained through Java reflection.</span></div>
             <div><code>export_java_object(name, value)</code><span data-i18n="exportJavaObjectBody">Publish a live Java object, adapter, controller or facade.</span></div>
             <div><code>import_java_class(name)</code><span data-i18n="importJavaClassBody">Get a named Class export from any enabled dependency.</span></div>
             <div><code>import_java_object(name)</code><span data-i18n="importJavaObjectBody">Get a named live object export from any enabled dependency.</span></div>
             <div><code>java_exports()</code><span data-i18n="javaExportsBody">Inspect all loaded modules and exported class/object names for diagnostics.</span></div>
           </div>
-          <h3 class="doc-subtitle" data-i18n="sourceBridgeTitle">Expose Dolphy internals from open source</h3>
+          <h3 class="doc-subtitle" data-i18n="sourceBridgeTitle">Expose Deadcow internals from open source</h3>
           <p class="doc-copy" data-i18n="sourceBridgeLead">Use the repository to find a fully qualified JVM class name, then export that Class or wrap it in a stable DEX facade. Consumers should depend on the library facade instead of duplicating fragile reflection code.</p>
           <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>dolphy_internal_facade.py</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">def</span> on_plugin_load(self):
     self.export_app_class(
@@ -440,7 +440,7 @@ DEX_BASE64 = <span class="code-string">"ZGV4CjAzNQ..."</span>
             <div><code>new_java_instance(java_class, *args)</code><span data-i18n="reflectionNew">Calls the first compatible declared constructor, including a private constructor.</span></div>
           </div>
           <div class="code-card docs-code small-code"><div class="code-top"><span class="code-dots"><i></i><i></i><i></i></span><span>reflection_library.dolphyplugin</span><button class="copy-code" type="button"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copy">Copy</span></button></div><pre><code><span class="code-key">__id__</span> = <span class="code-string">"dolphy_reflection_facade"</span>
-<span class="code-key">__name__</span> = <span class="code-string">"Dolphy Reflection Facade"</span>
+<span class="code-key">__name__</span> = <span class="code-string">"Deadcow Reflection Facade"</span>
 <span class="code-key">__library__</span> = <span class="code-key">True</span>
 
 <span class="code-key">class</span> ReflectionFacade(BasePlugin):
@@ -451,16 +451,16 @@ DEX_BASE64 = <span class="code-string">"ZGV4CjAzNQ..."</span>
         description = self.inspect_java_class(activity_class)
         self.export_java_class(<span class="code-string">"dolphy.main_activity"</span>, activity_class)
         self.set_setting(<span class="code-string">"known_methods"</span>, [item[<span class="code-string">"name"</span>] <span class="code-key">for</span> item <span class="code-key">in</span> description[<span class="code-string">"methods"</span>]])</code></pre></div>
-          <div class="callout warning"><span class="material-symbols-rounded">warning</span><div><strong data-i18n="reflectionLimitsTitle">Reflection compatibility</strong><p data-i18n="reflectionLimitsBody">Private names and signatures may change between Dolphy builds. Catch exceptions, declare the library dependency, verify the app version yourself and prefer stable screen, surface, action and service hooks whenever one exists. Overload resolution does not perform arbitrary type conversion.</p></div></div>
+          <div class="callout warning"><span class="material-symbols-rounded">warning</span><div><strong data-i18n="reflectionLimitsTitle">Reflection compatibility</strong><p data-i18n="reflectionLimitsBody">Private names and signatures may change between Deadcow builds. Catch exceptions, declare the library dependency, verify the app version yourself and prefer stable screen, surface, action and service hooks whenever one exists. Overload resolution does not perform arbitrary type conversion.</p></div></div>
           <div class="callout truth"><span class="material-symbols-rounded">extension</span><div><strong data-i18n="sourceBridgeBoundaryTitle">Class access versus host hooks</strong><p data-i18n="sourceBridgeBoundaryBody">Class export enables reflection, construction and method calls; it does not rewrite an already compiled Compose function. Use hook_screen for screens, hook_surface("bottom_bar") for the navigation panel, action hooks for logic and service providers for replaceable hardware backends. A DEX library can hide reflection behind a stable facade shared by other plugins.</p></div></div>
-          <div class="route-box"><strong data-i18n="dexLimitsTitle">Limits and lifecycle</strong><p data-i18n="dexLimitsBody">A .dolphyplugin may be 48 MiB; each decoded DEX/JAR/APK payload may be 32 MiB. Disabling, deleting or updating a library automatically disables enabled dependent plugins first; re-enable consumers when the library is ready. Android cannot unload a Class once code has referenced it. Dolphy drops loaders and exports when the owner stops, but a process restart is the only guaranteed complete unload after an update. Keep export names globally unique and close threads, receivers, sockets and hardware handles in on_plugin_unload.</p><div class="api-chips"><code>48 MiB source</code><code>32 MiB decoded module</code><code>SHA-256</code><code>read-only code cache</code><code>process-local exports</code></div></div>
+          <div class="route-box"><strong data-i18n="dexLimitsTitle">Limits and lifecycle</strong><p data-i18n="dexLimitsBody">A .dolphyplugin may be 48 MiB; each decoded DEX/JAR/APK payload may be 32 MiB. Disabling, deleting or updating a library automatically disables enabled dependent plugins first; re-enable consumers when the library is ready. Android cannot unload a Class once code has referenced it. Deadcow drops loaders and exports when the owner stops, but a process restart is the only guaranteed complete unload after an update. Keep export names globally unique and close threads, receivers, sockets and hardware handles in on_plugin_unload.</p><div class="api-chips"><code>48 MiB source</code><code>32 MiB decoded module</code><code>SHA-256</code><code>read-only code cache</code><code>process-local exports</code></div></div>
         </section>
 
         <section id="apis" class="doc-section reveal">
-          <div class="section-index">06</div><div class="doc-heading"><span class="material-symbols-rounded">memory</span><div><h2 data-i18n="apisTitle">Android and device APIs</h2><p data-i18n="apisLead">Use high-level Dolphy bridges or import Android Java classes directly.</p></div></div>
+          <div class="section-index">06</div><div class="doc-heading"><span class="material-symbols-rounded">memory</span><div><h2 data-i18n="apisTitle">Android and device APIs</h2><p data-i18n="apisLead">Use high-level Deadcow bridges or import Android Java classes directly.</p></div></div>
           <div class="api-table"><div><code>api.getContext()</code><span data-i18n="apiContext">Android application context</span></div><div><code>api.getActivity()</code><span data-i18n="apiActivity">Current Activity when available</span></div><div><code>api.getAndroid()</code><span data-i18n="apiAndroid">Files, intents, USB, IR, networking and Android helpers</span></div><div><code>api.getDevice()</code><span data-i18n="apiDevice">BLE scans and device capabilities</span></div><div><code>self.shell(command)</code><span data-i18n="apiShell">Regular shell command</span></div><div><code>self.root(command)</code><span data-i18n="apiRoot">Root command when granted</span></div><div><code>self.shizuku(command)</code><span data-i18n="apiShizuku">Shizuku command when available</span></div></div>
           <h3 class="doc-subtitle" data-i18n="fullApiTitle">Complete runtime map</h3>
-          <p class="doc-copy" data-i18n="fullApiLead">These groups mirror the callable surface currently shipped with Dolphy. Open a group to see every public helper name.</p>
+          <p class="doc-copy" data-i18n="fullApiLead">These groups mirror the callable surface currently shipped with Deadcow. Open a group to see every public helper name.</p>
           <div class="contract-table">
             <div><code>self / BasePlugin</code><span data-i18n="layerBase">Convenience helpers for modules, navigation, state, screen/action/service hooks and shell access.</span></div>
             <div><code>self.ui</code><span data-i18n="layerUi">Builds a JSON-compatible UI tree rendered as native Compose Material 3 components.</span></div>
@@ -527,8 +527,8 @@ result = self.shizuku(<span class="code-string">"id"</span>)</code></pre></div>
         </section>
 
         <section id="hook-catalog" class="doc-section reveal">
-          <div class="section-index">07</div><div class="doc-heading"><span class="material-symbols-rounded">format_list_bulleted</span><div><h2 data-i18n="hookCatalogTitle">Complete hook catalog</h2><p data-i18n="hookCatalogLead">Every screen route, named action, service operation and event currently emitted by Dolphy.</p></div></div>
-          <div class="callout truth"><span class="material-symbols-rounded">rule</span><div><strong data-i18n="hookCatalogRuleTitle">Call and intercept are different</strong><p data-i18n="hookCatalogRuleBody">The Android and Device API lists contain functions a plugin can call. Only the entries below can be intercepted. Registering hook_action("*") does not expose functions that Dolphy never dispatches.</p></div></div>
+          <div class="section-index">07</div><div class="doc-heading"><span class="material-symbols-rounded">format_list_bulleted</span><div><h2 data-i18n="hookCatalogTitle">Complete hook catalog</h2><p data-i18n="hookCatalogLead">Every screen route, named action, service operation and event currently emitted by Deadcow.</p></div></div>
+          <div class="callout truth"><span class="material-symbols-rounded">rule</span><div><strong data-i18n="hookCatalogRuleTitle">Call and intercept are different</strong><p data-i18n="hookCatalogRuleBody">The Android and Device API lists contain functions a plugin can call. Only the entries below can be intercepted. Registering hook_action("*") does not expose functions that Deadcow never dispatches.</p></div></div>
           <h3 class="doc-subtitle" data-i18n="actionCatalogTitle">Named action hooks</h3>
           <div class="hook-table">
             <div class="hook-head"><span data-i18n="catalogName">Name</span><span data-i18n="catalogHandler">Python handler</span><span data-i18n="catalogWhere">Triggered by</span></div>
@@ -559,7 +559,7 @@ result = self.shizuku(<span class="code-string">"id"</span>)</code></pre></div>
           <h3 class="doc-subtitle" data-i18n="serviceCatalogTitle">Service providers and operations</h3>
           <div class="hook-table">
             <div class="hook-head"><span data-i18n="catalogName">Name</span><span data-i18n="catalogHandler">Python handler</span><span data-i18n="catalogWhere">Triggered by</span></div>
-            <div><code>infrared.transmitter.available</code><code>service_infrared_transmitter_available(payload)</code><span data-i18n="infraredAvailableWhere">When Dolphy checks whether any IR transmitter is available.</span></div>
+            <div><code>infrared.transmitter.available</code><code>service_infrared_transmitter_available(payload)</code><span data-i18n="infraredAvailableWhere">When Deadcow checks whether any IR transmitter is available.</span></div>
             <div><code>infrared.transmitter.transmit</code><code>service_infrared_transmitter_transmit(payload)</code><span data-i18n="infraredTransmitWhere">After action hooks, before the built-in ConsumerIrManager fallback.</span></div>
           </div>
           <p class="doc-copy catalog-note" data-i18n="serviceCatalogNote">Registration: provide_service("infrared.transmitter", priority). Service identifiers are exact and do not use wildcard matching.</p>
@@ -588,7 +588,7 @@ result = self.shizuku(<span class="code-string">"id"</span>)</code></pre></div>
               <code>audio_scanner</code><code>ble_section/{section}</code><code>bluetooth</code><code>bluetooth_whisperpair</code><code>bt_audio_stress_run/{name}/{address}/{rssi}</code><code>bt_audio_stress_scan</code><code>flipper_brand/{catEnc}/{brandEnc}</code><code>flipper_cat/{catEnc}</code><code>flipper_remote/{catEnc}/{brandEnc}/{remoteEnc}</code><code>ir_favorites</code><code>ir_flipper_home</code><code>ir_jammer</code><code>ir_storm</code><code>ir_tv_home</code><code>lan_camera_results</code><code>lan_camera_scan</code><code>lan_scanner</code><code>lan_scanner_run</code><code>network_diagnostic_hub</code><code>nfc_audio_spoofer</code><code>nfc_emulator_list</code><code>nfc_emulator_run/{id}</code><code>nfc_erase</code><code>nfc_history</code><code>nfc_master_key</code><code>nfc_result/{id}</code><code>nfc_tools</code><code>nfc_trolls</code><code>nfc_wait</code><code>nfc_write_contact</code><code>nfc_write_form/{kind}</code><code>nfc_write_menu</code><code>nfc_write_wait</code><code>nrf_scanner</code><code>other</code><code>other/audio_scanner</code><code>other/bad_usb</code><code>other/bluetooth_jammer</code><code>other/bluetooth_whisperpair</code><code>other/bt_audio_stress_run/{name}/{address}/{rssi}</code><code>other/bt_audio_stress_scan</code><code>other/dolphy_chat</code><code>other/dolphy_chat_conversation/{userId}/{userName}</code><code>other/dolphy_chat_global</code><code>other/dolphy_chat_main/{userName}</code><code>other/flipper_brand/{catEnc}/{brandEnc}</code><code>other/flipper_cat/{catEnc}</code><code>other/flipper_remote/{catEnc}/{brandEnc}/{remoteEnc}</code><code>other/ir_favorites</code><code>other/ir_flipper_home</code><code>other/ir_jammer</code><code>other/ir_storm</code><code>other/ir_tv_home</code><code>other/lan_camera_results</code><code>other/lan_camera_scan</code><code>other/lan_scanner</code><code>other/lan_scanner_run</code><code>other/network_diagnostic_hub</code><code>other/nfc_audio_spoofer</code><code>other/nfc_emulator_list</code><code>other/nfc_emulator_run/{id}</code><code>other/nfc_erase</code><code>other/nfc_history</code><code>other/nfc_master_key</code><code>other/nfc_result/{id}</code><code>other/nfc_tools</code><code>other/nfc_trolls</code><code>other/nfc_wait</code><code>other/nfc_write_contact</code><code>other/nfc_write_form/{kind}</code><code>other/nfc_write_menu</code><code>other/nfc_write_wait</code><code>other/nrf_scanner</code><code>other/qr_audio_spoofer</code><code>other/qr_detail/{qrId}</code><code>other/qr_generator_main</code><code>other/qr_tools</code><code>other/scooter_hack</code><code>other/smarttv_cast</code><code>other/tv_brand/{brandEnc}</code><code>other/tv_remote/{brandEnc}/{remoteEnc}</code><code>other/universal_remote/{categoryId}</code><code>other/universal_remotes_home</code><code>other/user_ir_remote/{remoteId}</code><code>other/user_ir_remotes</code><code>other/wifi_print</code><code>plugin_about</code><code>plugin_file_preview/{uri}</code><code>plugin_install_helper</code><code>plugin_manager</code><code>plugin/{pluginId}/{screenId}</code><code>qr_audio_spoofer</code><code>qr_detail/{qrId}</code><code>qr_generator_main</code><code>qr_tools</code><code>settings</code><code>smarttv_cast</code><code>tv_brand/{brandEnc}</code><code>tv_remote/{brandEnc}/{remoteEnc}</code><code>universal_remote/{categoryId}</code><code>universal_remotes_home</code><code>user_ir_remote/{remoteId}</code><code>user_ir_remotes</code><code>wifi_print</code>
             </div></details>
           </div>
-          <div class="callout current"><span class="material-symbols-rounded">code_blocks</span><div><strong data-i18n="newHookTitle">When a function is missing from this catalog</strong><p data-i18n="newHookBody">It cannot currently be intercepted through the public plugin hook API. Dolphy must add invokeActionHooks(name, payload) or invokeServices(service, operation, payload) at that Kotlin call site before plugin authors can hook it.</p></div></div>
+          <div class="callout current"><span class="material-symbols-rounded">code_blocks</span><div><strong data-i18n="newHookTitle">When a function is missing from this catalog</strong><p data-i18n="newHookBody">It cannot currently be intercepted through the public plugin hook API. Deadcow must add invokeActionHooks(name, payload) or invokeServices(service, operation, payload) at that Kotlin call site before plugin authors can hook it.</p></div></div>
         </section>
 
         <section id="lifecycle" class="doc-section reveal">
@@ -612,8 +612,8 @@ self.refresh()
         </section>
 
         <section id="install" class="doc-section reveal">
-          <div class="section-index">09</div><div class="doc-heading"><span class="material-symbols-rounded">verified_user</span><div><h2 data-i18n="installTitle">Install, update and recover</h2><p data-i18n="installLead">Dolphy is registered as a .dolphyplugin file handler and shows a safe preview before executing code.</p></div></div>
-          <ol class="step-list"><li><span>1</span><div><strong data-i18n="stepOpen">Open the file</strong><p data-i18n="stepOpenBody">Tap a .dolphyplugin file in your file manager and choose Dolphy.</p></div></li><li><span>2</span><div><strong data-i18n="stepReview">Review metadata</strong><p data-i18n="stepReviewBody">Check the icon, author, version and description on the installation page.</p></div></li><li><span>3</span><div><strong data-i18n="stepInstall">Install</strong><p data-i18n="stepInstallBody">Code starts only after you press Install. Reopening the file updates it.</p></div></li></ol>
+          <div class="section-index">09</div><div class="doc-heading"><span class="material-symbols-rounded">verified_user</span><div><h2 data-i18n="installTitle">Install, update and recover</h2><p data-i18n="installLead">Deadcow is registered as a .dolphyplugin file handler and shows a safe preview before executing code.</p></div></div>
+          <ol class="step-list"><li><span>1</span><div><strong data-i18n="stepOpen">Open the file</strong><p data-i18n="stepOpenBody">Tap a .dolphyplugin file in your file manager and choose Deadcow.</p></div></li><li><span>2</span><div><strong data-i18n="stepReview">Review metadata</strong><p data-i18n="stepReviewBody">Check the icon, author, version and description on the installation page.</p></div></li><li><span>3</span><div><strong data-i18n="stepInstall">Install</strong><p data-i18n="stepInstallBody">Code starts only after you press Install. Reopening the file updates it.</p></div></li></ol>
           <div class="contract-table">
             <div><code>preview</code><span data-i18n="installPreviewContract">Reads metadata and size without executing Python; shows whether the same id is already installed.</span></div>
             <div><code>install / update</code><span data-i18n="installUpdateContract">Saves the source privately and starts it immediately unless Safe Mode is active. Installing the same id replaces the previous session and keeps its pinned state.</span></div>
@@ -624,12 +624,12 @@ self.refresh()
           </div>
           <div class="callout safe"><span class="material-symbols-rounded">health_and_safety</span><div><strong data-i18n="safeTitle">Automatic Safe Mode</strong><p data-i18n="safeBody">If the app closes while plugin code is running, the next launch disables every plugin and offers a crash log. You can then enable plugins one by one.</p></div></div>
           <div class="route-box"><strong data-i18n="safeDetailsTitle">Safe Mode behavior</strong><p data-i18n="safeDetailsBody">The recovery sheet explains that a plugin error closed the app and offers Copy log or Disable Safe Mode. Dismissing it leaves Safe Mode enabled and a persistent item remains on the Plugins screen. While active, every plugin is disabled and cannot be enabled until Safe Mode is turned off.</p></div>
-          <div class="docs-cta"><img src="assets/dolphy-icon.png" alt="" width="78" height="78"><div><strong data-i18n="docsCtaTitle">Ready to build?</strong><p data-i18n="docsCtaBody">Start with the examples in the Dolphy repository.</p></div><a class="button button-light" href="https://github.com/unvoiddd/Dolphy-App/tree/main/plugin-examples" target="_blank" rel="noopener"><span class="material-symbols-rounded">code</span><span data-i18n="viewExamples">View examples</span></a></div>
+          <div class="docs-cta"><img src="assets/deadcow-icon.png" alt="" width="78" height="78"><div><strong data-i18n="docsCtaTitle">Ready to build?</strong><p data-i18n="docsCtaBody">Start with the examples in the Deadcow repository.</p></div><a class="button button-light" href="https://github.com/unvoiddd/Deadcow-App/tree/main/plugin-examples" target="_blank" rel="noopener"><span class="material-symbols-rounded">code</span><span data-i18n="viewExamples">View examples</span></a></div>
         </section>
       </article>
     </div>
   </main>
 
-  <footer class="site-footer section-shell"><div class="footer-brand"><img src="assets/dolphy-icon.png" alt="" width="42" height="42"><div><strong>Dolphy</strong><span data-i18n="footerTagline">Hack the World.</span></div></div><div class="footer-links"><a href="index.html" data-i18n="navHome">Home</a><a href="https://github.com/unvoiddd/Dolphy-App" target="_blank" rel="noopener">GitHub</a><a href="https://t.me/dolphy_app_official" target="_blank" rel="noopener">Telegram</a></div><p>© <span data-current-year></span> Dolphy</p></footer>
+  <footer class="site-footer section-shell"><div class="footer-brand"><img src="assets/deadcow-icon.png" alt="" width="42" height="42"><div><strong>Deadcow</strong><span data-i18n="footerTagline">Hack the World.</span></div></div><div class="footer-links"><a href="index.html" data-i18n="navHome">Home</a><a href="https://github.com/unvoiddd/Deadcow-App" target="_blank" rel="noopener">GitHub</a><a href="https://t.me/dolphy_app_official" target="_blank" rel="noopener">Telegram</a></div><p>© <span data-current-year></span> Deadcow</p></footer>
 </body>
 </html>

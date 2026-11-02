@@ -395,7 +395,7 @@ class JsUiBuilder {
         return ui
     }
 
-    
+
     private fun buildMaterial3Pack(cx: Context, scope: Scriptable, ui: Scriptable): Scriptable {
         val m3 = cx.newObject(scope)
 

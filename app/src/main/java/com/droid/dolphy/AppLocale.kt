@@ -13,8 +13,12 @@ import java.util.Locale
 object AppLocale {
     fun wrap(context: Context): Context {
         val prefs = context.getSharedPreferences("DolphyPrefs", Context.MODE_PRIVATE)
-        val language = prefs.getString("app_language", "ru") ?: "ru"
-        val locale = Locale.forLanguageTag(if (language == "en") "en" else "ru")
+        val language = prefs.getString("app_language", "fr") ?: "fr"
+        val locale = when (language) {
+            "en" -> Locale.ENGLISH
+            "ru" -> Locale.forLanguageTag("ru")
+            else -> Locale.FRENCH
+        }
         Locale.setDefault(locale)
 
         val config = Configuration(context.resources.configuration)

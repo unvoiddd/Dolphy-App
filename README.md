@@ -1,86 +1,88 @@
-# Dolphy
+# 🐮 Deadcow — V1.0
 
-Dolphy is a powerful Android multi-tool developed for wireless protocol research, cybersecurity testing, and hardware emulation. It brings advanced hardware-focused utility functions to stock Android devices completely without root access.
+<p align="center">
+  <img src="docs/assets/deadcow-icon.png" alt="Deadcow Mascot" width="160" height="160" style="border-radius: 24px;">
+</p>
 
-Dolphy releases telegram channel - https://t.me/Dolphy_app_official
+<p align="center">
+  <b>La boîte à outils Android d'expérimentation radio, sans-fil et pentest matériel.</b><br>
+  <i>Un projet dédié à la communauté de la <b>CDC (Cult of the Dead Cow)</b> et au collectif pirate français <b>Deadcow</b>.</i>
+</p>
 
-## The project is protected by a license; please review it!
-
-## Features & Modules
-
-### 🚨 Infrared (IR)
-- Universal Remotes: Comprehensive database integration supporting TVs, ACs, Audio systems, and Projectors (compiled from Flipper-IRDB-main and flipperzero-firmware-dev).
-- IR-Storm: Automated module to send consecutive power-off signals to multiple hardware targets.
-- IR Jammer: Prevents surrounding remote control devices from interacting with nearby hardware.
-
-### 📶 Bluetooth & BLE
-- Audio Device Scanner: Specialized tool to discover, test, and connect to various Bluetooth audio hardware, speakers, and headphones.
-- Advanced NRF Scanner: Professional-grade Bluetooth Low Energy (BLE) device discovery and packet analysis.
-- Dolphy Chat: local chat application operating entirely over BLE protocols with other Dolphy users.
-- HID Keyboard & Mouse: Hardware emulation layer allowing your smartphone to act as a wireless Bluetooth keyboard or mouse.
-- Bluetooth Jammer: Stress-testing module utilizing L2CAP flood attacks to evaluate wireless network resilience.
-
-### 📡 NFC & QR Tools
-- NFC Instruments: Low-level modules designed for reading, writing, and interacting with diverse NFC tags and cards.
-- QR Tools: Fast QR-code generation and specialized remote audio control mechanisms.
-
-### 🌐 Network & Wi-Fi Testing
-- Wi-Fi Attacks: Built-in network diagnostic environment capable of wireless network scanning, Wi-Fi DoS simulations, and credential Brute-forcing.
-- LAN Scanner: Rapid discovery tool to map all connected hosts and devices within the current local Wi-Fi subnet.
-
-### 📺 Media Protocols
-- SmartTV Cast: Native media streaming and broadcasting support using Chromecast, DIAL, DLNA, and UPnP protocols.
-
-## Credits & Special Thanks
-
-Special thanks to the developers and researchers who helped bring this project to life:
-- ZalexDev
-- ars3nb
-- Astrocodee
-
-================================================================================
-
-# Dolphy
-
-Dolphy — это мощный Android-мультитул, созданный для исследования беспроводных протоколов, тестирования кибербезопасности и эмуляции работы различного железа. Приложение переносит продвинутый технический функционал на обычные Android-смартфоны полностью без необходимости получения root-прав.
+<p align="center">
+  <a href="#-fonctionnalités"><img src="https://img.shields.io/badge/Version-v1.0-orange.svg" alt="Version"></a>
+  <a href="#-licence--crédits"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License"></a>
+  <a href="#-documentation-en-ligne"><img src="https://img.shields.io/badge/Docs-GitHub%20Pages-green.svg" alt="Docs"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Langues-Français%20%7C%20English%20%7C%20Русский-purple.svg" alt="Languages"></a>
+</p>
 
 ---
 
-## Функционал и модули
+## 🏴‍☠️ À propos du Projet
 
-### 🚨 Инфракрасный порт (IR)
-- Универсальные пульты: Интеграция обширных баз данных для управления телевизорами, кондиционерами, аудиосистемами и проекторами (на основе репозиториев Flipper-IRDB-main и flipperzero-firmware-dev).
-- ИК-Шторм: Автоматизированный модуль для массовой отправки сигналов выключения на окружающие устройства.
-- ИК Глушилка: Блокирует сигналы сторонних пультов, не позволяя им управлять целевой техникой.
+**Deadcow** est une suite logicielle Android puissante, portable et modulaire conçue pour les passionnés d'audit de sécurité, de radiofréquences et de bidouillage matériel. Inspirée de l'esprit du **Flipper Zero** et développée pour fonctionner sans nécessiter de droits root, elle transforme un smartphone standard en véritable couteau suisse d'interception et d'émission de protocoles.
 
-### 📶 Bluetooth и BLE
-- Сканер аудиоустройств: Специализированный инструмент для поиска, тестирования и подключения к беспроводным колонкам и наушникам.
-- Продвинутый NRF сканер: Инструмент профессионального уровня для обнаружения BLE-устройств и анализа пакетов данных.
-[26.06.2026 12:40] : - Dolphy Chat: Локальный защищенный чат, работающий напрямую через протоколы BLE между пользователями Dolphy.
-- HID клавиатура и мышь: Эмуляция аппаратных компонентов, позволяющая использовать смартфон как беспроводную клавиатуру или мышь для ПК и других систем.
-- Bluetooth Jammer: Модуль стресс-тестирования беспроводных систем, использующий атаки типа L2CAP flood для проверки устойчивости оборудования.
-
-### 📡 NFC и QR инструменты
-- NFC инструменты: Низкоуровневые модули для чтения, анализа, записи и взаимодействия с различными типами NFC-меток и смарт-карт.
-- QR инструменты: Быстрая генерация QR-кодов и реализация функций удаленного управления аудиосистемами.
-
-### 🌐 Сеть и Wi-Fi
-- Wi-Fi атаки: Встроенная среда для диагностики сетей, включающая сканирование радиоэфира, симуляцию Wi-Fi DoS-атак и проверку паролей на устойчивость к брутфорсу.
-- LAN сканер: Быстрое обнаружение и составление карты всех активных устройств в текущей локальной Wi-Fi сети.
-
-### 📺 Медиа-протоколы
-- SmartTV Cast: Поддержка прямой трансляции и вещания медиапотоков на телевизоры через протоколы Chromecast, DIAL, DLNA и UPnP.
+Ce fork est dédié :
+* **À l'esprit et à l'héritage de la cDc (Cult of the Dead Cow)** : pionniers du hacktivisme, de la recherche en vulnérabilités et de la libération technologique.
+* **Au groupe pirate français Deadcow** : pour leurs expérimentations, leurs outils et leurs besoins d'audit de proximité sur le terrain.
 
 ---
 
-## Разработка и архитектура
+## 🚀 Fonctionnalités & Arsenal V1
 
-Приложение разработано с нуля с использованием современного стека Java и Kotlin.
+### 📡 Infrarouge (IR)
+* **Base de données de télécommandes universelles** : Contrôle immédiat de téléviseurs, systèmes de climatisation, amplificateurs audio et projecteurs (intégrée depuis les dépôts Flipper-IRDB et firmware Flipper Zero).
+* **IR-Storm** : Rafale automatisée de signaux de mise hors tension pour tests massifs d'environnements.
+* **Brouilleur IR (IR Jammer)** : Saturation optique empêchant la réception de commandes par les équipements récepteurs.
+
+### 📶 Bluetooth & Bluetooth Low Energy (BLE)
+* **Scanner NRF Avancé** : Détection exhaustive des balises BLE, analyse de payloads publicitaires et surveillance spectrale.
+* **Spam & Émulation d'appairage** : Tests de robustesse via l'émission de trames FastPair (Android), SwiftPair (Windows) et Continuity / Setup (iOS/macOS).
+* **Clavier & Souris sans fil (HID)** : Émulation d'un périphérique d'entrée humain Bluetooth pour piloter un ordinateur ou déclencher des scénarios d'automatisation.
+* **Deadcow Chat** : Messagerie locale directe hors-réseau (mesh P2P) fonctionnant à 100% via le protocole BLE entre utilisateurs de Deadcow.
+
+### 💳 NFC & RFID
+* **Lecture & Émulation de cartes/tags** : Lecture bas niveau, clonage et rejeu d'identifiants NFC compatibles.
+* **Analyse de protocoles** : Détection des puces MIFARE, NTAG, FeliCa et ISO-DEP.
+
+### 🌐 Réseau Local & Wi-Fi
+* **Scanner LAN Ultra-rapide** : Cartographie des hôtes actifs, détection des services ouverts, identification des adresses MAC et fabricants sur le sous-réseau.
+* **Outils d'audit réseau** : Simulations de résilience et tests de robustesse Wi-Fi.
+
+### 🎮 Système de Mascotte Deadcow
+* Plus vous effectuez d'actions (scans, émissions, analyses), plus votre **Deadcow** monte en niveau d'expérience (Level 1, Level 2, etc.) avec des animations personnalisées.
+
 ---
 
-## Благодарности / Credits
+## 🌐 Documentation en ligne (GitHub Pages)
 
-Искренняя благодарность разработчикам и исследователям, внесшим вклад в развитие проекта:
-- ZalexDev
-- ars3nb
-- Astrocodee
+La documentation complète du projet et des plugins Python est hébergée et déployée sur **GitHub Pages** dans le dossier `/docs` :
+* Guide d'installation et de démarrage rapide.
+* Documentation des modules et de l'architecture.
+* Guide de création de plugins Python (`.dolphyplugin` / `.deadcowplugin`).
+
+---
+
+## ⚙️ Build Automatique & Synchronisation CI/CD (GitHub Actions)
+
+Ce dépôt est doté d'une intégration continue autonome :
+* **Synchronisation Amont Quotidienne** : Chaque nuit à 04:00 UTC, le workflow GitHub Actions inspecte le dépôt officiel `unvoiddd/Dolphy-App`, récupère les dernières améliorations et les intègre tout en préservant l'identité et les réglages Deadcow.
+* **Compilation d'APK en un clic** : Depuis l'onglet **Actions** -> `Sync Upstream & Build Deadcow APK`, vous pouvez générer l'APK **Release** ou **Debug** sans avoir besoin d'installer Android Studio sur votre machine.
+* **Publication automatique des Releases** : Chaque nouveau build produit un fichier installable `Deadcow-release.apk` disponible dans l'onglet **Releases**.
+
+---
+
+## 📥 Téléchargement & Installation
+
+1. Rendez-vous sur l'onglet **[Releases](../../releases)** du dépôt.
+2. Téléchargez le fichier `Deadcow-release.apk`.
+3. Sur votre appareil Android (version 8.0 ou supérieure requise), ouvrez le fichier et autorisez l'installation d'applications tierces.
+4. Lancez **Deadcow** — l'application démarre directement en **Français** !
+
+---
+
+## 📜 Licence & Mentions Légales
+
+* Distribué sous licence **GNU General Public License v3.0 (GPLv3)**.
+* Développé à des fins éducatives, de recherche et d'audit défensif d'équipements autorisés.
+* Remerciements et crédits aux développeurs du projet Flipper Zero et du projet source Dolphy.

@@ -374,7 +374,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
         }
     }
 
-    
+
     fun getDhcpDnsServers(context: Context): List<String> {
         return try {
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager

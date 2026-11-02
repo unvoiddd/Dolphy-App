@@ -27,11 +27,11 @@ import java.net.URL
 import java.util.Base64
 import java.util.Locale
 
-/**
- * CamCatch: поиск домашней IP-камеры в локальной сети, вход на её HTTP-интерфейс
- * с логином admin/admin и получение живого видео (MJPEG-поток, покадровые снимки
- * или RTSP).
- */
+
+
+
+
+
 object MyCamEngine {
 
     sealed interface Status {
@@ -62,7 +62,7 @@ object MyCamEngine {
             get() = "$user / ${if (password.isEmpty()) "(пустой пароль)" else password}"
     }
 
-    /** Стандартные логины/пароли камер — перебираются на каждой найденной камере. */
+
     val CREDENTIALS = listOf(
         Credentials("admin", ""),
         Credentials("admin", "123456"),
@@ -112,9 +112,9 @@ object MyCamEngine {
         "keenetic", "routerlogin", "tplinkwifi", "miwifi", "pppoe", "wan settings",
     )
 
-    /**
-     * @param forceAll проверять все устройства сети, а не только похожие на камеры.
-     */
+
+
+
     suspend fun findCamera(
         onStatus: (Status) -> Unit,
         onLog: (String) -> Unit,

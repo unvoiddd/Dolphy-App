@@ -73,7 +73,7 @@ fun BondSpamScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Upper half: Discovered Devices list
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -198,7 +198,7 @@ fun BondSpamScreen(
                         }
                     }
 
-                    // Lower half: Target info, Delay slider, Start/Stop
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()

@@ -27,7 +27,7 @@ fun DolphyIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    
+
     liquidTint: Color = Color.Unspecified,
     forTopBar: Boolean = false,
     content: @Composable () -> Unit,

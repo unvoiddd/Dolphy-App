@@ -8,9 +8,9 @@ data class PluginManifest(
     val version: String = "1.0",
     val description: String = "",
     val author: String = "",
-    
+
     val isLibrary: Boolean = false,
-    
+
     val isDesignLibrary: Boolean = false,
     val icon: String = "extension",
     val dependencies: List<String> = emptyList(),

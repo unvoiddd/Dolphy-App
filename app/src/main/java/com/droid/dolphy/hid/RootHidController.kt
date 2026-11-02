@@ -44,7 +44,7 @@ class RootHidController : HidController {
 
     fun hasHidNodes(): Boolean = suTestExists(KEYBOARD_DEV) && suTestExists(MOUSE_DEV)
 
-    
+
     fun probeLinkStatus(hasRoot: Boolean): UsbLinkStatus {
         if (!hasRoot) return UsbLinkStatus.NO_ROOT
         return try {
@@ -68,7 +68,7 @@ class RootHidController : HidController {
         }
     }
 
-    
+
     fun wakeAsMouse() {
         try {
             mouseMove(2, 0)

@@ -1,7 +1,7 @@
 <resources>
     <string name="ble_plugin_modes">Plugins</string>
     
-    <string name="app_name">Dolphy</string>
+    <string name="app_name">Deadcow</string>
     
     
     <string name="nav_bluetooth">Bluetooth</string>
@@ -44,7 +44,7 @@
     <string name="settings_language">Language</string>
     <string name="settings_interface">Interface</string>
     <string name="settings_flipper_font">Flipper Font</string>
-    <string name="settings_cyclic_dolphin_animation">Cyclic Animation</string>
+    <string name="settings_cyclic_cow_animation">Cyclic Animation</string>
     <string name="settings_hid_config">HID Configuration</string>
     <string name="settings_hid_sensitivity_move">Touchpad Sensitivity (Move)</string>
     <string name="settings_hid_sensitivity_scroll">Touchpad Sensitivity (Scroll)</string>
@@ -296,7 +296,7 @@
     <string name="hid_blueducky_info_title">BlueDucky</string>
     <string name="hid_blueducky_info_body">Performs a quiet connection to devices via the Blue Ducky vulnerability (CVE-2023-45866) — HID without PIN or pairing confirmation dialogs.\n\nWorks against vulnerable targets:\n• Android 4.2.2 – Android 13 (before 2023/2024 Bluetooth security patches)\n• Unpatched Linux BlueZ stacks\n• Some early iOS/macOS revisions\n\nOn Android 14+ and freshly patched OEMs the host may still require confirmation or reject unauthenticated HID. \"Connect\" is the normal path with dialogs; \"Quiet connect\" uses silent Just Works + auto-confirm pairing.</string>
     <string name="audio_whisper_pair">WhisperPair</string>
-    <string name="audio_dolphy_pair">DolphyPair</string>
+    <string name="audio_deadcow_pair">DeadcowPair</string>
     <string name="audio_hijack_starting">Starting hijack…</string>
     <string name="audio_hijack_ok">Hijack: %1$s</string>
     <string name="audio_hijack_fail">Hijack failed: %1$s</string>
@@ -363,7 +363,7 @@
     <string name="nfc_emulating">Emulating...</string>
     <string name="nfc_hce_not_supported">HCE is not supported on this device.</string>
     <string name="nfc_tag_not_found">Tag not found</string>
-    <string name="nfc_set_default_payment">Set Dolphy as default payment app.</string>
+    <string name="nfc_set_default_payment">Set Deadcow as default payment app.</string>
     <string name="nfc_present_to_reader">Present phone to reader.</string>
     <string name="nfc_open_payment_settings">Open NFC payment settings</string>
     <string name="nfc_edit_mode">Edit</string>
@@ -583,7 +583,7 @@
     <string name="zero_u2f_not_supported">U2F is not supported in Android version</string>
     
     
-    <string name="splash_app_name">Dolphy</string>
+    <string name="splash_app_name">Deadcow</string>
     
     
     <string name="ble_smart_home">BLE Smart Home</string>
@@ -633,6 +633,8 @@
     <string name="advertise_empty_presets">You have not added any devices yet.</string>
     <string name="ble_company_code_line">Company code: 0x%1$04X • %2$s</string>
     <string name="language_russian">Russian</string>
+    <string name="language_french">French</string>
+    <string name="language_english">English</string>
     <string name="theme_selection_title">Theme</string>
     <string name="theme_mode_auto_desc">Match system</string>
     <string name="theme_mode_dark_desc">Dark theme</string>
@@ -646,7 +648,7 @@
     <string name="hid_paired">Paired</string>
     <string name="hid_device_lower">device</string>
     <string name="onboarding_welcome">Welcome</string>
-    <string name="onboarding_in_dolphy">to Dolphy!</string>
+    <string name="onboarding_in_deadcow">to Deadcow!</string>
     <string name="onboarding_tagline">Universal remote\ncontrol</string>
     <string name="onboarding_next">Next</string>
     <string name="privacy_setup_title">Privacy</string>
@@ -658,7 +660,7 @@
     <string name="privacy_step_rename">Rename the device</string>
     <string name="privacy_copy_and_setup">Copy and open settings</string>
     <string name="privacy_done">Done ✓</string>
-    <string name="settings_about_footer">Dolphy (%1$s)\nSome resources and code are derived from the Flipper Zero firmware project.\nCopyright © Flipper Devices.\nLicensed under the GNU GPL.</string>
+    <string name="settings_about_footer">Deadcow (%1$s)\nSome resources and code are derived from the Flipper Zero firmware project.\nCopyright © Flipper Devices.\nLicensed under the GNU GPL.</string>
     <string name="ble_smarthome_need_perms">Bluetooth permissions are required for scanning.</string>
     <string name="ble_smarthome_device_not_found">Device not found</string>
     <string name="ble_smarthome_connect_failed">Could not connect</string>
@@ -863,10 +865,10 @@
     <string name="root_required_message">This feature requires Root rights</string>
 
     
-    <string name="other_chat">Dolphy Chat</string>
-    <string name="other_chat_desc">Global chat for Dolphy users</string>
+    <string name="other_chat">Deadcow Chat</string>
+    <string name="other_chat_desc">Global chat for Deadcow users</string>
 
-    <string name="chat_title">Dolphy Chat</string>
+    <string name="chat_title">Deadcow Chat</string>
     <string name="chat_connecting">Connecting to chat...</string>
     <string name="chat_connected">Connected</string>
     <string name="chat_disconnected">Disconnected</string>
@@ -878,7 +880,7 @@
     <string name="chat_user_left">%s left the chat</string>
     <string name="global_chat">Global Chat</string>
     <string name="global_chat_title">Global Chat</string>
-    <string name="global_chat_desc">Chat with all Dolphy users</string>
+    <string name="global_chat_desc">Chat with all Deadcow users</string>
     <string name="lan_tools_title">LAN Tools</string>
     <string name="lan_tools_subtitle">Local network tools</string>
     <string name="lan_tools_item_scanner">LAN scanner</string>
@@ -941,8 +943,8 @@
     <string name="lan_scanner_log_audit_warn_creds">WARN: admin/admin found!</string>
     <string name="lan_scanner_log_audit_wps">Checking WPS status...</string>
     <string name="lan_scanner_log_audit_warn_wps">WARN: WPS V1 Enabled</string>
-    <string name="welcome_dialog_title">Welcome to Dolphy</string>
-    <string name="welcome_dialog_text">Your Dolphy reached Level 1 !\n\nDolphy is a free Android app for mobile pentesting that doesn\'t require Root rights. We recommend subscribing to the developer\'s Telegram channel so you don\'t miss updates!</string>
+    <string name="welcome_dialog_title">Welcome to Deadcow</string>
+    <string name="welcome_dialog_text">Your Deadcow reached Level 1 !\n\nDeadcow is a free Android app for mobile pentesting that doesn\'t require Root rights. We recommend subscribing to the developer\'s Telegram channel so you don\'t miss updates!</string>
     <string name="welcome_dialog_btn_tg">Subscribe to TG</string>
     <string name="welcome_dialog_btn_support">Support</string>
     <string name="welcome_dialog_btn_ok">Got it</string>
@@ -960,7 +962,7 @@
     <string name="smarttv_cast_card_description">Stream video to TV via Chromecast, DIAL, DLNA and UPnP</string>
 
     
-    <string name="other_dolphy_chat_desc">BLE chat with other Dolphy users</string>
+    <string name="other_deadcow_chat_desc">BLE chat with other Deadcow users</string>
 
     
     <string name="wifi_brute_force_passwords">Passwords for Brute-Force</string>
@@ -1007,7 +1009,7 @@
     <string name="wifi_print_printer_info">Printer</string>
     <string name="wifi_print_reading">Reading printer capabilities…</string>
     <string name="wifi_print_document">Document</string>
-    <string name="wifi_print_document_desc">PDF, JPEG, PNG, and WebP are supported. Dolphy converts the file to PWG Raster when needed.</string>
+    <string name="wifi_print_document_desc">PDF, JPEG, PNG, and WebP are supported. Deadcow converts the file to PWG Raster when needed.</string>
     <string name="wifi_print_choose_file">Choose file</string>
     <string name="wifi_print_change_file">Choose another file</string>
     <string name="wifi_print_settings">Print settings</string>
@@ -1036,21 +1038,20 @@
     <string name="settings_plugins_summary">Manage and install plugins</string>
     <string name="settings_general">General</string>
 
-    <!-- Plugins -->
-    <string name="plugin_manager_title">Plugins</string>
-    <string name="plugin_manager_card_title">Dolphy Python plugins</string>
-    <string name="plugin_manager_card_body">One textual .dolphyplugin file: custom screens, Bluetooth, Wi-Fi, NFC, IR, USB, Root, Shizuku, Shell, and direct Android API access.</string>
+        <string name="plugin_manager_title">Plugins</string>
+    <string name="plugin_manager_card_title">Deadcow Python plugins</string>
+    <string name="plugin_manager_card_body">One textual .deadcowplugin file: custom screens, Bluetooth, Wi-Fi, NFC, IR, USB, Root, Shizuku, Shell, and direct Android API access.</string>
     <string name="plugin_manager_pick_file">Choose file</string>
     <string name="plugin_manager_about">Learn more</string>
     <string name="plugin_manager_installed">Installed</string>
-    <string name="plugin_manager_empty">No plugins yet. Choose a .dolphyplugin file above.</string>
+    <string name="plugin_manager_empty">No plugins yet. Choose a .deadcowplugin file above.</string>
     <string name="plugin_manager_installed_toast">Plugin %1$s installed</string>
     <string name="plugin_manager_installed_msg">Installed: %1$s</string>
     <string name="plugin_manager_error">Error: %1$s</string>
     <string name="plugin_about_title">About plugins</string>
     <string name="plugin_about_guide_title">Author guide</string>
-    <string name="plugin_about_guide_body">A plugin is one textual Python .dolphyplugin file. Import it from Settings → General → Plugins → Choose file.\n\nPlugins can build Material 3 Expressive screens, add modules, use Bluetooth, Wi-Fi, NFC, IR, USB, files, networking, Root, Shizuku and Shell, import Android Java classes, and access Dolphy internals.</string>
-    <string name="plugin_preview_title">Dolphy plugin</string>
+    <string name="plugin_about_guide_body">A plugin is one textual Python .deadcowplugin file. Import it from Settings → General → Plugins → Choose file.\n\nPlugins can build Material 3 Expressive screens, add modules, use Bluetooth, Wi-Fi, NFC, IR, USB, files, networking, Root, Shizuku and Shell, import Android Java classes, and access Deadcow internals.</string>
+    <string name="plugin_preview_title">Deadcow plugin</string>
     <string name="plugin_preview_install">Install</string>
     <string name="plugin_preview_update">Update</string>
     <string name="plugin_preview_installed">Installed</string>
@@ -1061,7 +1062,7 @@
     <string name="plugin_preview_file">File</string>
     <string name="plugin_preview_size">Size</string>
     <string name="plugin_preview_security">Full access</string>
-    <string name="plugin_preview_security_body">The plugin runs inside Dolphy and can use app permissions, Android APIs, Bluetooth, Wi-Fi, USB, Root, and Shizuku. Only install files from developers you trust.</string>
+    <string name="plugin_preview_security_body">The plugin runs inside Deadcow and can use app permissions, Android APIs, Bluetooth, Wi-Fi, USB, Root, and Shizuku. Only install files from developers you trust.</string>
     <string name="plugin_preview_no_description">The developer did not provide a description.</string>
     <string name="plugin_preview_invalid">Could not open plugin</string>
     <string name="plugin_preview_install_success">Plugin installed</string>
@@ -1080,7 +1081,7 @@
     <string name="plugin_delete">Delete</string>
     <string name="plugin_empty_center">You don’t have any installed plugins yet</string>
     <string name="plugin_host_title">Plugin</string>
-    <string name="plugin_host_not_installed">Plugin “%1$s” is not installed.\nImport a .dolphyplugin file from Plugin manager.</string>
+    <string name="plugin_host_not_installed">Plugin “%1$s” is not installed.\nImport a .deadcowplugin file from Plugin manager.</string>
     <string name="plugin_host_empty_screen">Empty screen</string>
     <string name="plugin_settings_title">Plugin settings</string>
     <string name="plugin_security_section">SECURITY</string>
@@ -1092,8 +1093,8 @@
     <string name="plugin_download_deny">Deny</string>
     <string name="plugin_download_unknown_size">unknown size</string>
     <string name="plugin_documentation_site">Documentation website</string>
-    <string name="plugin_open_with_hint">Open the plugin file with “Open with” and select Dolphy to install it</string>
-    <string name="plugin_system_warning_title">Dolphy 2.5 plugin system</string>
+    <string name="plugin_open_with_hint">Open the plugin file with “Open with” and select Deadcow to install it</string>
+    <string name="plugin_system_warning_title">Deadcow 2.5 plugin system</string>
     <string name="plugin_system_warning_text">This version introduces a powerful plugin system with broad freedom of action. The price of that freedom and extensive capability is security. Install plugins only from trusted sources and check them for malicious code. The developer is not responsible for damage caused by malicious code in a user plugin.</string>
     <string name="plugin_system_warning_countdown">OK (%1$d)</string>
     <string name="plugin_preview_permissions">Capabilities and access</string>
@@ -1112,8 +1113,7 @@
     <string name="plugin_capability_shell">Shell commands</string>
     <string name="plugin_capability_hooks">Screen and logic modification</string>
 
-    <!-- ScooterHack -->
-    <string name="scooter_hack_title">ScooterHack</string>
+        <string name="scooter_hack_title">ScooterHack</string>
     <string name="scooter_hack_card_desc">Scan Xiaomi/Ninebot, lock/unlock, beep, battery</string>
     <string name="scooter_scan_start">Scan scooters</string>
     <string name="scooter_scan_stop">Stop scan</string>
@@ -1127,8 +1127,7 @@
     <string name="scooter_unlock">Unlock</string>
     <string name="scooter_perm_denied">Bluetooth and location permissions are required</string>
 
-    <!-- Dolphin Animations Customization -->
-    <string name="customize_animations_title">Customize animations</string>
+        <string name="customize_animations_title">Customize animations</string>
     <string name="customize_animations_reset">Reset</string>
     <string name="customize_animations_dialog_title">Set animation as permanent on home screen?</string>
     <string name="customize_animations_dialog_yes">Yes</string>

@@ -18,9 +18,9 @@ object PluginLibraryRegistry {
         val name: String,
         val kind: Kind,
         val value: Scriptable,
-        
+
         val androidName: String? = null,
-        
+
         val dolphyName: String? = null,
     )
 

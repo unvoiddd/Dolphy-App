@@ -27,17 +27,17 @@ enum class BlurDirection {
     BOTTOM
 }
 
-/**
- * Progressive blur for the top and bottom edges of [content].
- *
- * The AGSL RuntimeShader approach used previously applied a full-screen
- * RenderEffect to the entire content node. On a number of devices (most
- * notoriously Samsung / Exynos / Xclipse GPUs) such shaders silently render
- * black instead of failing, which blanked the whole screen. Here the content
- * itself is never passed through a RenderEffect: the blur lives in two small
- * overlay strips, so a GPU-side failure can at worst degrade a decorative
- * edge, never the content.
- */
+
+
+
+
+
+
+
+
+
+
+
 @Composable
 fun ProgressiveBlurContent(
     modifier: Modifier = Modifier,

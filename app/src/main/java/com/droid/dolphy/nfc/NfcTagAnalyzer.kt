@@ -64,7 +64,7 @@ object NfcTagAnalyzer {
         } else if(techSimple.contains("IsoDep")) {
             Triple("NFC Type 4 Tag", false, null)
         } else {
-            Triple("Ìåòêà", false, null)
+            Triple("ÐœÐµÑ‚ÐºÐ°", false, null)
         }
 
         val (passwordSupported, passwordEnabled) = if(ntag != null) {
@@ -78,25 +78,25 @@ object NfcTagAnalyzer {
             if(ntag != null) {
                 append("NTAG: ${ntag.name}")
             } else {
-                append("Òèï ìåòêè: íåèçâåñòíî")
+                append("Ð¢Ð¸Ð¿ Ð¼ÐµÑ‚ÐºÐ¸: Ð½ÐµÐ¸Ð·Ð²ÐµÑÑ‚Ð½Ð¾")
             }
 
-            if(isReadOnly == true) append(" • Read-only")
+            if(isReadOnly == true) append(" â€¢ Read-only")
             if(passwordSupported == true) {
                 when(passwordEnabled) {
-                    true -> append(" • Password: âêëþ÷åíî")
-                    false -> append(" • Password: âûêëþ÷åíî")
-                    null -> append(" • Password: íåèçâåñòíî")
+                    true -> append(" â€¢ Password: Ð²ÐºÐ»ÑŽÑ‡ÐµÐ½Ð¾")
+                    false -> append(" â€¢ Password: Ð²Ñ‹ÐºÐ»ÑŽÑ‡ÐµÐ½Ð¾")
+                    null -> append(" â€¢ Password: Ð½ÐµÐ¸Ð·Ð²ÐµÑÑ‚Ð½Ð¾")
                 }
             }
-            if(emvDetected) append(" • EMV")
+            if(emvDetected) append(" â€¢ EMV")
         }
 
         NfcScanEntity(
             scannedAtMillis = System.currentTimeMillis(),
-            uidHex = uidHex.ifBlank { "—" },
+            uidHex = uidHex.ifBlank { "â€”" },
             type = type,
-            techListCsv = techListCsv.ifBlank { "—" },
+            techListCsv = techListCsv.ifBlank { "â€”" },
             writable = writable,
             maxSizeBytes = maxSizeBytes,
             ndefRecordType = ndefRecordType,
@@ -187,16 +187,16 @@ object NfcTagAnalyzer {
                 val paymentSystem = detectPaymentSystem(aids, appLabels)
 
                 return buildString {
-                    appendLine("Òèï: EMV Contactless")
-                    appendLine("Ñòàíäàðò: ISO 14443-4")
-                    appendLine("Ïîääåðæêà APDU: Äà")
-                    appendLine("Ïëàòåæíàÿ ñèñòåìà: ${paymentSystem ?: "Íå îïðåäåëåíà"}")
-                    appendLine("Ïðèëîæåíèé íà êàðòå: ${aids.size}")
-                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "—"}")
+                    appendLine("Ð¢Ð¸Ð¿: EMV Contactless")
+                    appendLine("Ð¡Ñ‚Ð°Ð½Ð´Ð°Ñ€Ñ‚: ISO 14443-4")
+                    appendLine("ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ° APDU: Ð”Ð°")
+                    appendLine("ÐŸÐ»Ð°Ñ‚ÐµÐ¶Ð½Ð°Ñ ÑÐ¸ÑÑ‚ÐµÐ¼Ð°: ${paymentSystem ?: "ÐÐµ Ð¾Ð¿Ñ€ÐµÐ´ÐµÐ»ÐµÐ½Ð°"}")
+                    appendLine("ÐŸÑ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ð¹ Ð½Ð° ÐºÐ°Ñ€Ñ‚Ðµ: ${aids.size}")
+                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "â€”"}")
                     append("PPSE: 2PAY.SYS.DDF01")
                     if(appLabels.isNotEmpty()) {
                         appendLine()
-                        append("Ìåòêà ïðèëîæåíèÿ: ${appLabels.joinToString(", ")}")
+                        append("ÐœÐµÑ‚ÐºÐ° Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ: ${appLabels.joinToString(", ")}")
                     }
                 }
             }
@@ -215,7 +215,7 @@ object NfcTagAnalyzer {
         if(aidUpper.any { it.startsWith("A000000025") }) return "American Express"
         if(aidUpper.any { it.startsWith("A000000065") }) return "JCB"
         if(aidUpper.any { it.startsWith("A000000333") }) return "UnionPay"
-        if(aidUpper.any { it.startsWith("A000000658") }) return "Ìèð"
+        if(aidUpper.any { it.startsWith("A000000658") }) return "ÐœÐ¸Ñ€"
         if(aidUpper.any { it.startsWith("A000000524") }) return "RuPay"
         if(aidUpper.any { it.startsWith("A000000152") }) return "Discover"
 
@@ -226,7 +226,7 @@ object NfcTagAnalyzer {
             "AMEX" in labelText || "AMERICAN EXPRESS" in labelText -> "American Express"
             "JCB" in labelText -> "JCB"
             "UNIONPAY" in labelText -> "UnionPay"
-            "MIR" in labelText || "ÌÈÐ" in labelText -> "Ìèð"
+            "MIR" in labelText || "ÐœÐ˜Ð " in labelText -> "ÐœÐ¸Ñ€"
             "RUPAY" in labelText -> "RuPay"
             "DISCOVER" in labelText -> "Discover"
             else -> null

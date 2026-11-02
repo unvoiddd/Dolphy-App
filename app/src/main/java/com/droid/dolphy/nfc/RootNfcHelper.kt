@@ -17,7 +17,7 @@ object RootNfcHelper {
         false
     }
 
-    
+
     fun prepareForRead(context: Context): String {
         if (!hasRoot()) return "standard"
         val results = mutableListOf<String>()
@@ -34,7 +34,7 @@ object RootNfcHelper {
         return "root"
     }
 
-    
+
     fun prepareForEmulation(context: Context): String {
         if (!hasRoot()) return "standard"
         val component = ComponentName(context, NfcType4HostApduService::class.java)
@@ -56,7 +56,7 @@ object RootNfcHelper {
         return "root"
     }
 
-    
+
     fun isoDepTimeoutMs(): Int = if (hasRoot()) 5000 else 2500
 
     fun isNfcEnabled(context: Context): Boolean {

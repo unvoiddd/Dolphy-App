@@ -190,7 +190,7 @@ class ContinuitySpam(private val type: ContinuityType, private val crashMode: Bo
         return DEVICE_COLORS[deviceIdNoPrefix]?.randomOrNull() ?: COLOR_KEY_DEFAULT
     }
 
-    
+
     private fun buildTutozzDevicePayload(deviceIdHex: String): String {
         val buds = getRandomBudsBatteryLevelHex()
         val charging = getRandomChargingCaseBatteryLevelHex()
@@ -308,7 +308,7 @@ class ContinuitySpam(private val type: ContinuityType, private val crashMode: Bo
         }
         private const val TAG = "ContinuitySpam"
         private const val COLOR_KEY_DEFAULT = "00"
-        
+
         private const val CONTINUITY_TYPE = "07"
         private const val PAYLOAD_SIZE = "19"
         private const val STATUS = "55"

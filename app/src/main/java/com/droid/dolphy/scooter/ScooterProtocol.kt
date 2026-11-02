@@ -3,12 +3,12 @@ package com.droid.dolphy.scooter
 import java.util.UUID
 
 object ScooterProtocol {
-    
+
     val SERVICE_UUID: UUID = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
     val WRITE_UUID: UUID = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
     val NOTIFY_UUID: UUID = UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e")
 
-    
+
     const val NINEBOT_MANUFACTURER_ID = 0x424E
 
     val PAYLOAD_MAX_2G = byteArrayOf(0x55, 0xAB.toByte(), 0x4D, 0x41, 0x58, 0x32, 0x53, 0x63, 0x6F, 0x6F, 0x74, 0x65, 0x72, 0x5F, 0x31)

@@ -65,7 +65,7 @@ class NfcViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private var masterKeyJob: kotlinx.coroutines.Job? = null
 
-    
+
     fun startMasterKey() {
         if (_masterKeyRunning.value) return
         if (!RootNfcHelper.hasRoot()) {

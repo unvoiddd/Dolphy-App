@@ -27,7 +27,7 @@ fun SectionTopBar(
     transparent: Boolean = false,
     accentColor: Color = MaterialTheme.colorScheme.primary,
     alwaysCollapsed: Boolean = false,
-    
+
     showRootBadge: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {

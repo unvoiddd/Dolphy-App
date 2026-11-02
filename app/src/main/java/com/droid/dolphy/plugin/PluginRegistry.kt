@@ -133,13 +133,13 @@ object PluginRegistry {
             val insertAt = if (newIndex in 0..inTarget.size) newIndex else inTarget.size
             inTarget.add(insertAt, updated)
             val reordered = inTarget.mapIndexed { idx, c -> c.copy(order = idx) }
-            
+
             prefs?.edit()?.let { editor ->
                 editor.putString("${pluginId}:${screenId}:${title}:section", targetSection)
                 editor.putInt("${pluginId}:${screenId}:${title}:order", insertAt)
                 editor.apply()
             }
-            
+
             outsideTarget + reordered
         }
         bump()

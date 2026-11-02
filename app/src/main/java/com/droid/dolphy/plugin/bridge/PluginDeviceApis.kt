@@ -157,7 +157,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         }
     }
 
-    
+
     @SuppressLint("MissingPermission")
     fun wifiSetEnabled(enabled: Boolean): Boolean {
         return try {
@@ -285,7 +285,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
             .toString()
     }
 
-    
+
     fun nfcRootSetEnabled(enabled: Boolean, callback: (String) -> Unit) {
         if (!rootAvailable()) {
             mainHandler.post {
@@ -755,7 +755,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         }
     }
 
-    
+
     fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
 
     private fun rootCmd(cmd: String, callback: (String) -> Unit) = rootExec(cmd, callback)
@@ -1181,7 +1181,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         private set
     @Volatile private var nfcTagCallback: ((String) -> Unit)? = null
 
-    
+
     fun onNfcTagDiscovered(tag: Tag) {
         lastNfcTag = tag
         val id = tag.id
@@ -1634,7 +1634,7 @@ class PluginDeviceApis(private val context: Context, private val pluginId: Strin
         }
     }
 
-    
+
     @SuppressLint("MissingPermission")
     fun bleScanResultToJson(result: ScanResult): String {
         val d = result.device

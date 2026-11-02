@@ -1,0 +1,154 @@
+name: Sync Upstream & Build Deadcow APK
+
+on:
+  schedule:
+    # Check for upstream updates every night at 04:00 UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: 'Force pull and merge latest upstream commits'
+        required: false
+        type: boolean
+        default: false
+      build_type:
+        description: 'Build Type (release or debug)'
+        required: true
+        type: choice
+        options:
+          - release
+          - debug
+        default: release
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.gitignore'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync with Official Upstream
+    runs-on: ubuntu-latest
+    outputs:
+      has_updates: ${{ steps.sync_step.outputs.has_updates }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch and Check Upstream
+        id: sync_step
+        run: |
+          echo "Adding upstream remote..."
+          git remote add upstream https://github.com/unvoiddd/Dolphy-App.git || git remote set-url upstream https://github.com/unvoiddd/Dolphy-App.git
+          git fetch upstream main || git fetch upstream master || true
+
+          UPSTREAM_BRANCH="main"
+          if ! git rev-parse upstream/main >/dev/null 2>&1; then
+            UPSTREAM_BRANCH="master"
+          fi
+
+          LOCAL_REV=$(git rev-parse HEAD)
+          UPSTREAM_REV=$(git rev-parse upstream/${UPSTREAM_BRANCH})
+          echo "Local rev: $LOCAL_REV"
+          echo "Upstream rev: $UPSTREAM_REV"
+
+          if [ "$LOCAL_REV" != "$UPSTREAM_REV" ] || [ "${{ github.event.inputs.force_sync }}" == "true" ]; then
+            echo "Attempting to merge upstream/${UPSTREAM_BRANCH}..."
+            # Merge upstream favoring local rebranding customizations if conflict arises
+            git merge upstream/${UPSTREAM_BRANCH} -m "chore(sync): merge upstream changes from official repo" || {
+              echo "Resolving merge conflicts favoring Deadcow branding..."
+              git checkout --ours app/src/main/res/values/strings.xml || true
+              git checkout --ours app/src/main/res/values-en/strings.xml || true
+              git checkout --ours app/src/main/res/values-fr/strings.xml || true
+              git checkout --ours app/src/main/res/values-ru/strings.xml || true
+              git checkout --ours app/src/main/java/com/droid/dolphy/AppLocale.kt || true
+              git checkout --ours app/build.gradle.kts || true
+              git add -A
+              git commit -m "chore(sync): resolve upstream merge keeping Deadcow customizations"
+            }
+            git push origin main || echo "No changes to push or push not allowed."
+            echo "has_updates=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Already up to date."
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build Deadcow Android APK
+    needs: sync
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Python for Chaquopy
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x gradlew
+
+      - name: Build Android APK
+        run: |
+          BUILD_TYPE="${{ github.event.inputs.build_type || 'release' }}"
+          echo "Starting Gradle build ($BUILD_TYPE)..."
+          if [ "$BUILD_TYPE" = "debug" ]; then
+            ./gradlew :app:assembleDebug --stacktrace
+            cp app/build/outputs/apk/debug/app-debug.apk Deadcow-debug.apk
+            echo "APK_PATH=Deadcow-debug.apk" >> "$GITHUB_ENV"
+          else
+            ./gradlew :app:assembleRelease --stacktrace
+            cp app/build/outputs/apk/release/app-release.apk Deadcow-release.apk
+            echo "APK_PATH=Deadcow-release.apk" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deadcow-APK
+          path: ${{ env.APK_PATH }}
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || needs.sync.outputs.has_updates == 'true')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}.${{ github.run_attempt }}
+          name: "Deadcow Release v${{ github.run_number }}"
+          body: |
+            ### 🐮 Deadcow Android Release
+            
+            - **Langue par défaut** : Français (Support complet Français, Anglais, Russe).
+            - **Mascotte** : Deadcow Cow.
+            - **Synchronisation amont** : Automatique depuis `unvoiddd/Dolphy-App`.
+            - **APK inclus** : Téléchargez `${{ env.APK_PATH }}` ci-dessous et installez-le sur votre appareil Android.
+          files: ${{ env.APK_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

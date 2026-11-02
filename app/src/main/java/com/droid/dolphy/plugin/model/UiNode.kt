@@ -119,7 +119,7 @@ sealed class UiNode {
         val tint: String? = null,
     ) : UiNode()
 
-    
+
     data class Image(
         val source: String,
         val width: Float? = null,
@@ -197,21 +197,21 @@ sealed class UiNode {
     )
 
 
-    
+
     data class ConnectedButtonGroup(
         val options: List<Pair<String, String>>,
         val selectedValue: String,
         val onSelectId: String? = null,
     ) : UiNode()
 
-    
+
     data class TabRow(
         val tabs: List<String>,
         val selectedIndex: Int = 0,
         val onSelectId: String? = null,
     ) : UiNode()
 
-    
+
     data class BounceButton(
         val text: String,
         val onClickId: String? = null,
@@ -219,7 +219,7 @@ sealed class UiNode {
         val fillMaxWidth: Boolean = true,
     ) : UiNode()
 
-    
+
     data class SplitButton(
         val primaryText: String,
         val onPrimaryId: String? = null,
@@ -228,13 +228,13 @@ sealed class UiNode {
         val fillMaxWidth: Boolean = true,
     ) : UiNode()
 
-    
+
     data class WavyProgress(
         val progress: Float? = null,
         val size: Float = 64f,
     ) : UiNode()
 
-    
+
     data class FloatingToolbar(
         val items: List<ToolbarItem>,
     ) : UiNode()
@@ -318,7 +318,7 @@ data class PluginMediaRequest(
     val multiple: Boolean = false,
     val destPath: String? = null,
     val includeBase64: Boolean = false,
-    
+
     val suggestedName: String? = null,
     val onResult: (String) -> Unit,
 )

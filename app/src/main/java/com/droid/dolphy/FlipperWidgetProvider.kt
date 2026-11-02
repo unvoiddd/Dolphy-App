@@ -53,12 +53,12 @@ class FlipperWidgetProvider : AppWidgetProvider() {
         private val mainItems = listOf("BLE", "IR")
 
         private val irMenuItems = listOf(
-            "Óí. ÒÂ",
-            "Óí. Audio",
-            "Óí. AC",
-            "Óí. Proj",
-            "ÈÊ øòîðì",
-            "ÈÊ ãëóøèëêà"
+            "Ð£Ð½. Ð¢Ð’",
+            "Ð£Ð½. Audio",
+            "Ð£Ð½. AC",
+            "Ð£Ð½. Proj",
+            "Ð˜Ðš ÑˆÑ‚Ð¾Ñ€Ð¼",
+            "Ð˜Ðš Ð³Ð»ÑƒÑˆÐ¸Ð»ÐºÐ°"
         )
 
         private val bleSections = listOf(BleSection.IOS, BleSection.SAMSUNG, BleSection.ANDROID, BleSection.WINDOWS)
@@ -159,7 +159,7 @@ class FlipperWidgetProvider : AppWidgetProvider() {
                 )
 
                 if (screen == WidgetScreen.IR && irMode == IrMode.MENU) {
-                    views.setTextViewText(R.id.ir_header_title, "IR ìåíþ")
+                    views.setTextViewText(R.id.ir_header_title, "IR Ð¼ÐµÐ½ÑŽ")
                     irIds.forEachIndexed { i, viewId ->
                         val label = irMenuItems.getOrNull(i).orEmpty()
                         views.setTextViewText(viewId, label)
@@ -176,10 +176,10 @@ class FlipperWidgetProvider : AppWidgetProvider() {
                     }
                 } else if (screen == WidgetScreen.IR) {
                     val title = when (irCategory) {
-                        UniversalCategory.TV -> "Óí. ÒÂ"
-                        UniversalCategory.AUDIO -> "Óí. Audio"
-                        UniversalCategory.AC -> "Óí. AC"
-                        UniversalCategory.PROJECTOR -> "Óí. Proj"
+                        UniversalCategory.TV -> "Ð£Ð½. Ð¢Ð’"
+                        UniversalCategory.AUDIO -> "Ð£Ð½. Audio"
+                        UniversalCategory.AC -> "Ð£Ð½. AC"
+                        UniversalCategory.PROJECTOR -> "Ð£Ð½. Proj"
                     }
                     views.setTextViewText(R.id.ir_header_title, title)
                     val actions = actionsForCategory(irCategory)

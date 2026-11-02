@@ -240,7 +240,7 @@ object PluginManager {
             .distinct()
     }
 
-    
+
     fun dispatchNfcTag(tag: android.nfc.Tag) {
         sessions.values.forEach { session ->
             try {

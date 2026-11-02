@@ -41,13 +41,13 @@ class BluetoothJammerEngine(private val context: Context) {
     private val aclCycles = AtomicLong(0)
 
     private val rfcommUuids = listOf(
-        UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"), // SDP
-        UUID.fromString("00001105-0000-1000-8000-00805F9B34FB"), // OBEX
-        UUID.fromString("0000111F-0000-1000-8000-00805F9B34FB"), // HFP AG
-        UUID.fromString("0000110A-0000-1000-8000-00805F9B34FB"), // A2DP Sink
-        UUID.fromString("00001108-0000-1000-8000-00805F9B34FB"), // Headset
-        UUID.fromString("0000110E-0000-1000-8000-00805F9B34FB"), // AVRCP
-        UUID.fromString("0000112F-0000-1000-8000-00805F9B34FB"), // PBAP
+        UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"),
+        UUID.fromString("00001105-0000-1000-8000-00805F9B34FB"),
+        UUID.fromString("0000111F-0000-1000-8000-00805F9B34FB"),
+        UUID.fromString("0000110A-0000-1000-8000-00805F9B34FB"),
+        UUID.fromString("00001108-0000-1000-8000-00805F9B34FB"),
+        UUID.fromString("0000110E-0000-1000-8000-00805F9B34FB"),
+        UUID.fromString("0000112F-0000-1000-8000-00805F9B34FB"),
     )
 
     fun startJamming(targetAddress: String, onLog: (String) -> Unit) {

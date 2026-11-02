@@ -72,7 +72,7 @@ class JsPluginSession(
     override var navigateToScreen: ((String) -> Unit)? = null
     override var requestUiRefresh: (() -> Unit)? = null
 
-    
+
     override var mediaRequestHandler: ((PluginMediaRequest) -> Unit)? = null
     override var permissionRequestHandler: ((PluginPermissionRequest) -> Unit)? = null
 
@@ -2283,7 +2283,7 @@ class JsPluginSession(
         return api
     }
 
-    
+
     private fun exportLibrary(args: Array<Any?>, defaultKind: PluginLibraryRegistry.Kind): Any {
         val first = args.getOrNull(0)
         val name: String
@@ -2336,7 +2336,7 @@ class JsPluginSession(
         return true
     }
 
-    
+
     private fun bindDesignPack(cx: RhinoContext, sc: Scriptable, pack: Scriptable): Scriptable {
         val bound = cx.newObject(sc)
         val ui = uiBuilder.createUiObject(cx, sc)
@@ -2377,7 +2377,7 @@ class JsPluginSession(
         return bound
     }
 
-    
+
     private fun buildDolphyNamespace(cx: RhinoContext, sc: Scriptable, api: Scriptable): Scriptable {
         fun ns(build: (Scriptable) -> Unit): Scriptable {
             val o = cx.newObject(sc)
@@ -2562,7 +2562,7 @@ class JsPluginSession(
         return BleSpamRuntime.isSectionActive(section)
     }
 
-    
+
     private fun requestMediaPick(action: PluginMediaAction, args: Array<Any?>): Any? {
         val first = args.getOrNull(0)
         val second = args.getOrNull(1)
@@ -2655,7 +2655,7 @@ class JsPluginSession(
     fun exportSandboxToUri(sandboxPath: String, destUri: String): String =
         androidApis.exportSandboxToUri(sandboxPath, android.net.Uri.parse(destUri))
 
-    
+
     override fun onNfcTag(tag: android.nfc.Tag) {
         device.onNfcTagDiscovered(tag)
     }
@@ -2833,7 +2833,7 @@ class JsPluginSession(
             }
         }
         val cb = args.getOrNull(1) as? org.mozilla.javascript.Function ?: args.getOrNull(0) as? org.mozilla.javascript.Function
-        
+
         val req = PluginPermissionRequest(
             permissions = perms,
             onResult = { granted ->

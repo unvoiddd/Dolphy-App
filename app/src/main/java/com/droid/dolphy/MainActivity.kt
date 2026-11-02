@@ -3043,8 +3043,9 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                             }
                             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                                 listOf(
-                                    stringResource(R.string.language_russian) to "ru",
+                                    "Français" to "fr",
                                     "English" to "en",
+                                    "Русский" to "ru",
                                 ).forEachIndexed { index, (label, language) ->
                                     SegmentedButton(
                                         selected = appLanguage == language,
@@ -3052,7 +3053,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                                             spamViewModel.setAppLanguage(language)
                                             applyInAppLocale(context)
                                         },
-                                        shape = SegmentedButtonDefaults.itemShape(index, 2),
+                                        shape = SegmentedButtonDefaults.itemShape(index, 3),
                                         label = { Text(label) },
                                     )
                                 }
@@ -5813,13 +5814,13 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     val liquidGlassTopBars: StateFlow<Boolean> = _liquidGlassTopBars
     private val _liquidGlassNav = MutableStateFlow(prefs.getBoolean("liquid_glass_nav", true))
     val liquidGlassNav: StateFlow<Boolean> = _liquidGlassNav
-    
+
     val glassNavEnabled: StateFlow<Boolean> = _liquidGlassEnabled
     private val _animatedBackgroundEnabled = MutableStateFlow(prefs.getBoolean("animated_background_enabled", false))
     val animatedBackgroundEnabled: StateFlow<Boolean> = _animatedBackgroundEnabled
     private val _expressiveEnabled = MutableStateFlow(prefs.getBoolean("md3_expressive", false))
     val expressiveEnabled: StateFlow<Boolean> = _expressiveEnabled
-    private val _appLanguage = MutableStateFlow(prefs.getString("app_language", "ru") ?: "ru")
+    private val _appLanguage = MutableStateFlow(prefs.getString("app_language", "fr") ?: "fr")
     val appLanguage: StateFlow<String> = _appLanguage
     private val _cyclicDolphinAnimationEnabled = MutableStateFlow(prefs.getBoolean("cyclic_dolphin_animation_enabled", false))
     val cyclicDolphinAnimationEnabled: StateFlow<Boolean> = _cyclicDolphinAnimationEnabled
@@ -6041,7 +6042,11 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     }
 
     fun setAppLanguage(language: String) {
-        val normalized = if (language == "en") "en" else "ru"
+        val normalized = when (language) {
+            "en" -> "en"
+            "ru" -> "ru"
+            else -> "fr"
+        }
         prefs.edit { putString("app_language", normalized) }
         _appLanguage.value = normalized
     }
@@ -6061,11 +6066,11 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
         _performanceModeEnabled.value = enabled
     }
 
-    /**
-     * On the very first launch, turns on performance mode automatically on
-     * low-end devices (system low-RAM flag or under ~4.5 GB of RAM). Runs
-     * once; afterwards the user's own choice in settings is authoritative.
-     */
+
+
+
+
+
     fun maybeAutoEnablePerformanceMode() {
         if (prefs.getBoolean("performance_mode_auto_applied", false)) return
         prefs.edit { putBoolean("performance_mode_auto_applied", true) }
