@@ -25,17 +25,10 @@ class Connection(
 ) : HidController {
     private var service: BluetoothHidDevice? = null
 
-
-
-
-
-
     fun injectProxy(proxy: BluetoothHidDevice?) {
         service = proxy
         Log.d("Connection", "injectProxy called: proxy=${proxy != null}, hostDevice=${hostDevice?.address}")
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun onAppRegistered(proxy: BluetoothHidDevice?) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         service = proxy
@@ -45,7 +38,7 @@ class Connection(
         }
         Log.d("Connection", "Attempting HID connection to ${hostDevice?.address}")
         try {
-            proxy.connect(hostDevice)
+            try { proxy.connect(hostDevice) } catch (error: SecurityException) { Log.w("Connection", "Bluetooth permission revoked", error) }
         } catch (e: Exception) {
             Log.e("Connection", "Failed to connect", e)
             val handler = Handler(Looper.getMainLooper())
@@ -54,8 +47,6 @@ class Connection(
             }
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun onConnectionStateChanged(device: BluetoothDevice, state: Int) {
         if (device.address != hostDevice?.address) return
 
@@ -73,7 +64,7 @@ class Connection(
             BluetoothProfile.STATE_CONNECTED -> {
                 hostDevice = device
                 handler.post {
-                    Toast.makeText(context, "Connected: ${device.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Connected: ${try { device.name } catch (_: SecurityException) { device.address }}", Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -101,8 +92,6 @@ class Connection(
         Log.d("", "interrupt $reportId $data")
         if (reportId == 0x01.toByte()) onCapsLock((data[0] and 0x02) > 0)
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun close() {
         flushScheduled = false
         mouseHandler.removeCallbacksAndMessages(null)
@@ -118,8 +107,6 @@ class Connection(
 
     private var modifierByte: Byte = 0x00
     private var keyBytes = mutableListOf<Byte>()
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun sendKeyboardReport(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
         if (service == null) {
@@ -140,8 +127,6 @@ class Connection(
             false
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun keyDown(key: String) {
         val code = keyCodes[key] ?: return
         Log.d("Connection", "keyDown $key ($code)")
@@ -152,8 +137,6 @@ class Connection(
             sendKeyboardReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun keyUp(key: String) {
         val code = keyCodes[key] ?: return
         Log.d("Connection", "keyUp $key ($code)")
@@ -164,11 +147,6 @@ class Connection(
             sendKeyboardReport()
         }
     }
-
-
-
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun releaseAllKeyboard() {
         synchronized(this) {
             modifierByte = 0x00
@@ -176,8 +154,6 @@ class Connection(
             sendKeyboardReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun modifierDown(key: String) {
         val code = keyCodes[key] ?: return
         Log.d("Connection", "modDown $key ($code)")
@@ -186,8 +162,6 @@ class Connection(
             sendKeyboardReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun modifierUp(key: String) {
         val code = keyCodes[key] ?: return
         Log.d("Connection", "modUp $key ($code)")
@@ -205,7 +179,6 @@ class Connection(
     private val mouseHandlerThread = HandlerThread("HidMouseHandler").apply { start() }
     private val mouseHandler = Handler(mouseHandlerThread.looper)
     private val mouseFlushRunnable = object : Runnable {
-        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun run() {
             val dx: Int
             val dy: Int
@@ -231,8 +204,6 @@ class Connection(
         }
     }
     private val mouseFlushDelayMs = 4L
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun sendMouseReport(
         buttonByte: Byte? = null,
         deltaX: Byte = 0,
@@ -264,8 +235,6 @@ class Connection(
             false
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mouseMove(deltaX: Int, deltaY: Int) {
         synchronized(this) {
             accumulatedDeltaX += deltaX
@@ -277,8 +246,6 @@ class Connection(
             }
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mouseDown(button: Int) {
         Log.d("", "mouseDown $button")
         synchronized(this) {
@@ -286,8 +253,6 @@ class Connection(
             sendMouseReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mouseUp(button: Int) {
         Log.d("", "mouseUp $button")
         synchronized(this) {
@@ -295,16 +260,12 @@ class Connection(
             sendMouseReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun releaseAllMouseButtons() {
         synchronized(this) {
             mouseButtonByte = 0x00
             sendMouseReport(buttonByte = 0x00)
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mouseWheel(delta: Int, horizontal: Boolean) {
         Log.d("", "mouseWheel $delta, horizontal=$horizontal")
         if (horizontal) {
@@ -313,8 +274,6 @@ class Connection(
             sendMouseReport(deltaWheel = delta.coerceIn(-128, 127).toByte())
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mouseClick(button: Int) {
         Log.d("Connection", "mouseClick $button")
         synchronized(this) {
@@ -332,8 +291,6 @@ class Connection(
     private var consumerBits: Int = 0
     private var launcherUsage: Int = 0
     private var applicationControlUsage: Int = 0
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun sendMediaReport(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
         val report = byteArrayOf(
@@ -344,10 +301,8 @@ class Connection(
             (applicationControlUsage and 0xFF).toByte(),
             ((applicationControlUsage ushr 8) and 0xFF).toByte(),
         )
-        return service?.sendReport(hostDevice, 0x03, report) ?: false
+        return try { service?.sendReport(hostDevice, 0x03, report) ?: false } catch (_: SecurityException) { false }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mediaDown(key: String) {
         val code = consumerControlCodes[key] ?: return
         Log.d("Connection", "mediaDown $key ($code)")
@@ -356,8 +311,6 @@ class Connection(
             sendMediaReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun mediaUp(key: String) {
         val code = consumerControlCodes[key] ?: return
         Log.d("Connection", "mediaUp $key ($code)")
@@ -366,24 +319,18 @@ class Connection(
             sendMediaReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun consumerDown(usageMask: Int) {
         synchronized(this) {
             consumerBits = consumerBits or usageMask
             sendMediaReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun consumerUp(usageMask: Int) {
         synchronized(this) {
             consumerBits = consumerBits and usageMask.inv()
             sendMediaReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun launchApplication(usage: Int) {
         synchronized(this) {
             launcherUsage = usage
@@ -392,8 +339,6 @@ class Connection(
             sendMediaReport()
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun controlApplication(usage: Int) {
         synchronized(this) {
             applicationControlUsage = usage
@@ -403,4 +348,3 @@ class Connection(
         }
     }
 }
-

@@ -1,6 +1,8 @@
 package com.droid.dolphy.plugin.ui
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -20,12 +22,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -46,6 +50,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.droid.dolphy.BlurHeaderBox
+import com.droid.dolphy.plugin.store.rememberTranslated
 import com.droid.dolphy.DolphyIconButton
 import com.droid.dolphy.DolphySwitch
 import com.droid.dolphy.MaterialBackground
@@ -61,50 +67,61 @@ fun PluginManagerScreen(navController: NavController) {
     val plugins by PluginManager.plugins.collectAsState()
     val safeMode by PluginManager.safeMode.collectAsState()
 
-    MaterialBackground(accentColor = MaterialTheme.colorScheme.primary) {
-        Column(Modifier.fillMaxSize()) {
-            SectionTopBar(
-                title = stringResource(R.string.plugin_manager_title),
-                onBack = { navController.popBackStack() },
-                accentColor = MaterialTheme.colorScheme.primary,
-                alwaysCollapsed = true,
-                actions = {
-                    DolphyIconButton(onClick = { navController.navigate("plugin_security") }) {
-                        Icon(Icons.Default.Settings, stringResource(R.string.plugin_settings_title))
-                    }
-                },
-            )
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 10.dp, bottom = 120.dp),
-                ) {
-                    item("safe_mode") {
-                        SafeModeAnimated(safeMode)
-                    }
-                    items(plugins, key = { it.manifest.id }) { plugin ->
-                        PluginCard(plugin, safeMode)
-                    }
-                    item("install_hint") {
-                        Text(
-                            text = stringResource(R.string.plugin_open_with_hint),
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            navController.currentBackStackEntry?.savedStateHandle?.set("plugin_preview_uri", uri.toString())
+            navController.navigate("plugin_file_preview")
+        }
+    }
+
+    BlurHeaderBox(
+        title = stringResource(R.string.plugin_manager_title),
+        onBack = { navController.popBackStack() },
+        accentColor = MaterialTheme.colorScheme.primary,
+        actions = {
+            DolphyIconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
+                Icon(Icons.Default.Add, stringResource(R.string.pmanager_import_plugin))
+            }
+            DolphyIconButton(onClick = { navController.navigate("plugin_store") }) {
+                Icon(Icons.Default.Storefront, stringResource(R.string.pmanager_plugin_store))
+            }
+            DolphyIconButton(onClick = { navController.navigate("plugin_security") }) {
+                Icon(Icons.Default.Settings, stringResource(R.string.plugin_settings_title))
+            }
+        },
+    ) { headerPadding ->
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(top = headerPadding + 10.dp, bottom = 120.dp),
+            ) {
+                item("safe_mode") {
+                    SafeModeAnimated(safeMode)
                 }
-                if (plugins.isEmpty()) {
+                items(plugins, key = { it.manifest.id }) { plugin ->
+                    PluginCard(plugin, safeMode)
+                }
+                item("install_hint") {
                     Text(
-                        stringResource(R.string.plugin_empty_center),
-                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 36.dp),
-                        style = MaterialTheme.typography.titleLarge,
+                        text = stringResource(R.string.plugin_open_with_hint),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
                 }
+            }
+            if (plugins.isEmpty()) {
+                Text(
+                    stringResource(R.string.plugin_empty_center),
+                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 36.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
@@ -162,6 +179,7 @@ private fun PluginCard(plugin: LoadedPlugin, safeMode: Boolean) {
     val context = LocalContext.current
     var menuExpanded by remember(plugin.manifest.id) { mutableStateOf(false) }
     val shareError = stringResource(R.string.plugin_manager_error)
+    val displayName = rememberTranslated(plugin.manifest.name)
     MaterialCard(
         modifier = Modifier.fillMaxWidth(),
         accentColor = MaterialTheme.colorScheme.primary,
@@ -181,7 +199,7 @@ private fun PluginCard(plugin: LoadedPlugin, safeMode: Boolean) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        plugin.manifest.name,
+                        displayName,
                         modifier = Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,

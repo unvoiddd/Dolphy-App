@@ -87,7 +87,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Shape
 
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.M3SegmentedListItem
 import com.droid.dolphy.M3SegmentedListItemSpacing
 import com.droid.dolphy.MaterialCard
@@ -128,9 +137,6 @@ fun LoadingScreen() {
         }
     }
 }
-
-
-
 
 data class IrButton(
     val name: String?,
@@ -375,582 +381,6 @@ object UserIrRemoteStore {
     }
 }
 
-object IrRepository {
-    private var tvIndexCache: Map<String, Map<String, String>>? = null
-    private var flIndexCache: Map<String, Map<String, String>>? = null
-    private val buttonsCache = mutableMapOf<String, List<IrButton>>()
-    private val resolvedAssetCache = mutableMapOf<String, String>()
-
-
-    private fun listAssets(context: Context, path: String): List<String> {
-        return try {
-            context.assets.list(path)?.toList() ?: emptyList()
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun rc5ToPattern(address: Int, command: Int, toggle: Int = 0): IntArray {
-        val bits = mutableListOf(1, 1, toggle)
-
-        for (i in 4 downTo 0) bits.add((address shr i) and 1)
-        for (i in 5 downTo 0) bits.add((command shr i) and 1)
-        val T = 889
-        val pattern = mutableListOf<Int>()
-        var state = true
-        for (bit in bits) {
-            val first = bit == 1
-            val second = !first
-            for (half in listOf(first, second)) {
-                if (pattern.isNotEmpty() && half == state) {
-                    pattern[pattern.lastIndex] = pattern.last() + T
-                } else {
-                    pattern.add(T)
-                    state = half
-                }
-            }
-        }
-        return pattern.toIntArray()
-    }
-
-    private fun necToPattern(addrBytes: List<Int>, cmdBytes: List<Int>): IntArray {
-        val bits = mutableListOf<Int>()
-        for (b in addrBytes) for (i in 0..7) bits.add((b shr i) and 1)
-        for (b in cmdBytes) for (i in 0..7) bits.add((b shr i) and 1)
-        val T = 562
-        val pattern = mutableListOf<Int>()
-
-        pattern.add(9000); pattern.add(4500)
-        for (bit in bits) {
-            pattern.add(T)
-            pattern.add(if (bit == 0) T else 3 * T)
-        }
-        pattern.add(T)
-        return pattern.toIntArray()
-    }
-
-    private fun previewTimings(pattern: IntArray, maxValues: Int = 24): String {
-        val preview = pattern.take(maxValues).joinToString(" ")
-        return if (pattern.size > maxValues) "$preview ..." else preview
-    }
-
-    private fun reverseByte(value: Int): Int {
-        var v = value and 0xFF
-        var out = 0
-        for (i in 0 until 8) {
-            if ((v and (1 shl i)) != 0) out = out or (1 shl (7 - i))
-        }
-        return out and 0xFF
-    }
-
-    private fun parseHexBytes(raw: String?): List<Int> {
-        if (raw.isNullOrBlank()) return emptyList()
-        return raw.trim()
-            .split(Regex("\\s+"))
-            .mapNotNull { it.trim().toIntOrNull(16) }
-    }
-
-    private fun bytesToIntLE(bytes: List<Int>): Int {
-        var value = 0
-        for (i in bytes.indices) {
-            value = value or ((bytes[i] and 0xFF) shl (8 * i))
-        }
-        return value
-    }
-
-    private fun intToBytesLE(value: Int, count: Int): ByteArray {
-        val out = ByteArray(count)
-        for (i in 0 until count) {
-            out[i] = ((value ushr (8 * i)) and 0xFF).toByte()
-        }
-        return out
-    }
-
-    private fun buildPdwmPattern(
-        preambleMark: Int,
-        preambleSpace: Int,
-        bit1Mark: Int,
-        bit1Space: Int,
-        bit0Mark: Int,
-        bit0Space: Int,
-        data: ByteArray,
-        bits: Int
-    ): IntArray {
-        val out = ArrayList<Int>(2 + bits * 2 + 1)
-        if (preambleMark > 0) out.add(preambleMark)
-        if (preambleSpace > 0) out.add(preambleSpace)
-        val pwm = bit1Space == bit0Space
-        for (i in 0 until bits) {
-            val b = (data[i / 8].toInt() ushr (i % 8)) and 0x1
-            if (b == 1) {
-                out.add(bit1Mark)
-                if (!pwm || i != bits - 1) out.add(bit1Space)
-            } else {
-                out.add(bit0Mark)
-                if (!pwm || i != bits - 1) out.add(bit0Space)
-            }
-        }
-        if (!pwm) {
-
-            out.add(bit1Mark)
-        }
-        return out.toIntArray()
-    }
-
-    private fun buildManchesterPattern(
-        preambleMark: Int,
-        preambleSpace: Int,
-        halfBit: Int,
-        data: ByteArray,
-        bits: Int,
-        toggleBitDoubleIndex: Int = -1
-    ): IntArray {
-        val out = ArrayList<Int>(2 + bits * 2)
-        var currentLevelMark = true
-        fun emit(markLevel: Boolean, duration: Int) {
-            if (duration <= 0) return
-            if (out.isEmpty()) {
-
-                if (!markLevel) {
-                    out.add(1)
-                    currentLevelMark = true
-                }
-            }
-            if (out.isEmpty()) {
-
-                out.add(duration)
-                currentLevelMark = markLevel
-                return
-            }
-            if (currentLevelMark == markLevel) {
-                out[out.lastIndex] = out.last() + duration
-            } else {
-                out.add(duration)
-                currentLevelMark = markLevel
-            }
-        }
-
-        if (preambleMark > 0) emit(true, preambleMark)
-        if (preambleSpace > 0) emit(false, preambleSpace)
-
-        for (i in 0 until bits) {
-            val b = (data[i / 8].toInt() ushr (i % 8)) and 0x1
-
-            val firstIsMark = b == 1
-            val firstDur = halfBit * if (i == toggleBitDoubleIndex) 2 else 1
-            val secondDur = halfBit
-            emit(firstIsMark, firstDur)
-            emit(!firstIsMark, secondDur)
-        }
-        return out.toIntArray()
-    }
-
-    private fun protocolFrequency(proto: String, defaultFreq: Int): Int {
-        return when (proto.uppercase()) {
-            "SIRC", "SIRC15", "SIRC20", "PIONEER" -> 40000
-            "RC5", "RC5X", "RC6" -> 36000
-            else -> defaultFreq
-        }
-    }
-
-    private fun parseIrText(text: String): List<IrButton> {
-        val out = mutableListOf<IrButton>()
-        var currentBlock = mutableListOf<String>()
-
-        fun parseBlock(lines: List<String>) {
-            if (lines.isEmpty()) return
-            var name: String? = null
-            var freq = 38000
-            var freqSet = false
-            var pattern: IntArray? = null
-            var proto: String? = null
-            var rawData: String? = null
-            var addressRaw: String? = null
-            var commandRaw: String? = null
-            var addressBytes = mutableListOf<Int>()
-            var commandBytes = mutableListOf<Int>()
-            for (line in lines) {
-                val trimmed = line.trim()
-                when {
-                    trimmed.startsWith("name:") -> name = trimmed.substringAfter(':').trim()
-                    trimmed.startsWith("frequency:") -> {
-                        freq = trimmed.substringAfter(':').trim().toFloatOrNull()?.toInt() ?: freq
-                        freqSet = true
-                    }
-                    trimmed.startsWith("data:") -> {
-                        rawData = trimmed.substringAfter(':').trim()
-                        pattern = rawData.split(Regex("\\s+"))
-                            .mapNotNull { it.toIntOrNull() }.toIntArray()
-                        if (pattern?.isEmpty() == true) pattern = null
-                    }
-                    trimmed.startsWith("type:") -> {
-
-                    }
-                    trimmed.startsWith("protocol:") -> proto = trimmed.substringAfter(':').trim()
-                    trimmed.startsWith("address:") -> {
-                        addressRaw = trimmed.substringAfter(':').trim()
-                        addressBytes = parseHexBytes(addressRaw).toMutableList()
-                    }
-                    trimmed.startsWith("command:") -> {
-                        commandRaw = trimmed.substringAfter(':').trim()
-                        commandBytes = parseHexBytes(commandRaw).toMutableList()
-                    }
-                }
-            }
-            if (name == null) return
-            if (pattern != null && pattern.isNotEmpty()) {
-                Log.d("IrRepository", "Parsed: $name (freq=$freq Hz, pattern_len=${pattern.size})")
-                out.add(
-                    IrButton(
-                        name = name,
-                        frequency = freq,
-                        pattern = pattern,
-                        protocol = proto ?: "RAW",
-                        irCode = rawData,
-                        timings = previewTimings(pattern)
-                    )
-                )
-            } else if (proto != null && addressBytes.isNotEmpty() && commandBytes.isNotEmpty()) {
-                val protoKey = proto.uppercase()
-                val addressInt = bytesToIntLE(addressBytes)
-                val commandInt = bytesToIntLE(commandBytes)
-                val pat = when (protoKey) {
-                    "NEC" -> {
-                        val address = addressInt and 0xFF
-                        val command = commandInt and 0xFF
-                        val data = address or ((address.inv() and 0xFF) shl 8) or
-                            ((command and 0xFF) shl 16) or ((command.inv() and 0xFF) shl 24)
-                        buildPdwmPattern(9000, 4500, 560, 1690, 560, 560, intToBytesLE(data, 4), 32)
-                    }
-                    "NECEXT" -> {
-                        val address = addressInt and 0xFFFF
-                        val command = commandInt and 0xFFFF
-                        val data = address or ((command and 0xFFFF) shl 16)
-                        buildPdwmPattern(9000, 4500, 560, 1690, 560, 560, intToBytesLE(data, 4), 32)
-                    }
-                    "NEC42" -> {
-                        val address = addressInt and 0x1FFF
-                        val command = commandInt and 0xFF
-                        val data1 = (address and 0x1FFF) or
-                            ((address.inv() and 0x1FFF) shl 13) or
-                            ((command and 0x3F) shl 26)
-                        val data2 = ((command and 0xC0) ushr 6) or
-                            ((command.inv() and 0xFF) shl 2)
-                        val bytes = ByteArray(8)
-                        val b1 = intToBytesLE(data1, 4)
-                        val b2 = intToBytesLE(data2, 4)
-                        System.arraycopy(b1, 0, bytes, 0, 4)
-                        System.arraycopy(b2, 0, bytes, 4, 4)
-                        buildPdwmPattern(9000, 4500, 560, 1690, 560, 560, bytes, 42)
-                    }
-                    "SAMSUNG32" -> {
-                        val address = addressInt and 0xFF
-                        val command = commandInt and 0xFF
-                        val data = address or (address shl 8) or
-                            ((command and 0xFF) shl 16) or ((command.inv() and 0xFF) shl 24)
-                        buildPdwmPattern(4500, 4500, 550, 1650, 550, 550, intToBytesLE(data, 4), 32)
-                    }
-                    "KASEIKYO" -> {
-                        val address = addressInt and 0x3FFFFFF
-                        val command = commandInt and 0x3FF
-                        val data = ByteArray(6)
-                        val id = (address ushr 24) and 0x3
-                        val vendorId = (address ushr 8) and 0xFFFF
-                        val genre1 = (address ushr 4) and 0xF
-                        val genre2 = address and 0xF
-                        data[0] = (vendorId and 0xFF).toByte()
-                        data[1] = ((vendorId ushr 8) and 0xFF).toByte()
-                        var vendorParity = (data[0].toInt() and 0xFF) xor (data[1].toInt() and 0xFF)
-                        vendorParity = (vendorParity and 0xF) xor (vendorParity ushr 4)
-                        data[2] = ((vendorParity and 0xF) or (genre1 shl 4)).toByte()
-                        data[3] = ((genre2 and 0xF) or ((command and 0xF) shl 4)).toByte()
-                        data[4] = ((id shl 6) or ((command ushr 4) and 0x3F)).toByte()
-                        data[5] = (data[2].toInt() xor data[3].toInt() xor data[4].toInt()).toByte()
-                        buildPdwmPattern(3456, 1728, 432, 1296, 432, 432, data, 48)
-                    }
-                    "RCA" -> {
-                        val address = addressInt and 0xF
-                        val command = commandInt and 0xFF
-                        val data = address or ((command and 0xFF) shl 4) or
-                            ((address.inv() and 0xF) shl 12) or ((command.inv() and 0xFF) shl 16)
-                        buildPdwmPattern(4000, 4000, 500, 2000, 500, 1000, intToBytesLE(data, 4), 24)
-                    }
-                    "PIONEER" -> {
-                        val address = addressInt and 0xFF
-                        val command = commandInt and 0xFF
-                        val data = ByteArray(5)
-                        data[0] = address.toByte()
-                        data[1] = (address.inv() and 0xFF).toByte()
-                        data[2] = command.toByte()
-                        data[3] = (command.inv() and 0xFF).toByte()
-                        data[4] = 0
-                        buildPdwmPattern(8500, 4225, 500, 1500, 500, 500, data, 33)
-                    }
-                    "SIRC" -> {
-                        val address = addressInt and 0x1F
-                        val command = commandInt and 0x7F
-                        val data = command or (address shl 7)
-                        buildPdwmPattern(2400, 600, 1200, 600, 600, 600, intToBytesLE(data, 3), 12)
-                    }
-                    "SIRC15" -> {
-                        val address = addressInt and 0xFF
-                        val command = commandInt and 0x7F
-                        val data = command or (address shl 7)
-                        buildPdwmPattern(2400, 600, 1200, 600, 600, 600, intToBytesLE(data, 3), 15)
-                    }
-                    "SIRC20" -> {
-                        val address = addressInt and 0x1FFF
-                        val command = commandInt and 0x7F
-                        val data = command or (address shl 7)
-                        buildPdwmPattern(2400, 600, 1200, 600, 600, 600, intToBytesLE(data, 4), 20)
-                    }
-                    "RC5", "RC5X" -> {
-                        val address = addressInt and 0x1F
-                        val command = commandInt and 0x3F
-                        var data = 0x01
-                        if (protoKey == "RC5") data = data or 0x02
-                        data = data or ((reverseByte(address) ushr 3) shl 3)
-                        data = data or ((reverseByte(command) ushr 2) shl 8)
-                        val b0 = (data.inv() and 0xFF).toByte()
-                        val b1 = ((data ushr 8).inv() and 0xFF).toByte()
-                        buildManchesterPattern(0, 0, 888, byteArrayOf(b0, b1), 14)
-                    }
-                    "RC6" -> {
-                        val address = addressInt and 0xFF
-                        val command = commandInt and 0xFF
-                        var data = 0x01
-                        data = data or (reverseByte(address) shl 5)
-                        data = data or (reverseByte(command) shl 13)
-                        buildManchesterPattern(2666, 889, 444, intToBytesLE(data, 4), 21, toggleBitDoubleIndex = 4)
-                    }
-                    else -> {
-                        Log.w("IrRepository", "Unsupported protocol: $proto for $name")
-                        null
-                    }
-                }
-                if (pat != null) {
-                    Log.d("IrRepository", "Parsed: $name (proto=$proto, freq=$freq Hz, pattern_len=${pat.size})")
-                    out.add(
-                        IrButton(
-                            name = name,
-                            frequency = if (freqSet) freq else protocolFrequency(proto, freq),
-                            pattern = pat,
-                            protocol = proto,
-                            irCode = "address: ${addressRaw ?: ""}; command: ${commandRaw ?: ""}",
-                            timings = previewTimings(pat)
-                        )
-                    )
-                } else {
-                    Log.w("IrRepository", "Failed to generate pattern for $name ($proto)")
-                }
-            } else {
-                Log.w("IrRepository", "Skipped $name: no pattern (raw=$pattern, proto=$proto, addr=${addressBytes.size}, cmd=${commandBytes.size})")
-            }
-        }
-
-        for (line in text.lineSequence()) {
-            val trimmedStart = line.trimStart()
-            if (trimmedStart.startsWith("name:")) {
-                parseBlock(currentBlock)
-                currentBlock = mutableListOf(line)
-            } else if (currentBlock.isNotEmpty()) {
-                currentBlock.add(line)
-            }
-        }
-        parseBlock(currentBlock)
-        return out
-    }
-
-    private fun resolveAssetPath(context: Context, requestedPath: String): String? {
-        resolvedAssetCache[requestedPath]?.let { return it }
-        val normalized = requestedPath.replace('\\', '/').removePrefix("/")
-        val candidates = LinkedHashSet<String>()
-        candidates.add(normalized)
-        if (normalized.startsWith("assets/")) {
-            candidates.add(normalized.removePrefix("assets/"))
-        }
-
-        val fileName = normalized.substringAfterLast('/')
-        val universalBase =
-            "flipperzero-firmware-dev/applications/main/infrared/resources/infrared/assets"
-        if (fileName.isNotBlank()) {
-            candidates.add("$universalBase/$fileName")
-        }
-
-        for (candidate in candidates) {
-            try {
-                context.assets.open(candidate).close()
-                resolvedAssetCache[requestedPath] = candidate
-                return candidate
-            } catch (_: Exception) {
-
-            }
-        }
-
-
-        if (fileName.isNotBlank()) {
-            val found = findAssetByName(context, fileName, "")
-            if (found != null) {
-                resolvedAssetCache[requestedPath] = found
-                return found
-            }
-        }
-        return null
-    }
-
-    private fun findAssetByName(context: Context, fileName: String, dir: String): String? {
-        val entries = try {
-            context.assets.list(dir)?.toList() ?: emptyList()
-        } catch (_: Exception) {
-            emptyList()
-        }
-        for (entry in entries) {
-            val path = if (dir.isBlank()) entry else "$dir/$entry"
-            if (entry.equals(fileName, ignoreCase = true)) {
-                try {
-                    context.assets.open(path).close()
-                    return path
-                } catch (_: Exception) {
-
-                }
-            }
-            val children = try { context.assets.list(path) } catch (_: Exception) { null }
-            if (!children.isNullOrEmpty()) {
-                val found = findAssetByName(context, fileName, path)
-                if (found != null) return found
-            }
-        }
-        return null
-    }
-
-    fun parseIrAsset(context: Context, assetPath: String): List<IrButton> {
-        val resolvedPath = resolveAssetPath(context, assetPath)
-        if (resolvedPath == null) {
-            Log.e("IrRepository", "Failed to resolve asset path: $assetPath")
-            return emptyList()
-        }
-        val text = try {
-            context.assets.open(resolvedPath).bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } catch (e: Exception) {
-            Log.e("IrRepository", "Failed to read asset $resolvedPath (requested $assetPath): ${e.message}")
-            return emptyList()
-        }
-        val parsed = parseIrText(text)
-        Log.i("IrRepository", "Parsed ${parsed.size} buttons from $resolvedPath (requested $assetPath)")
-        return parsed
-    }
-
-    fun parseIrUri(context: Context, uri: Uri): List<IrButton> {
-        val text = try {
-            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-        } catch (e: Exception) {
-            Log.e("IrRepository", "Failed to read user IR file $uri: ${e.message}")
-            null
-        } ?: return emptyList()
-        return parseIrText(text)
-    }
-
-    fun parseIrFile(file: File): List<IrButton> {
-        val text = try {
-            if (!file.exists() || !file.isFile) return emptyList()
-            file.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } catch (e: Exception) {
-            Log.e("IrRepository", "Failed to read IR file ${file.absolutePath}: ${e.message}")
-            return emptyList()
-        }
-        return parseIrText(text)
-    }
-
-    fun getTvIndex(context: Context): Map<String, Map<String, String>> {
-        tvIndexCache?.let { return it }
-
-        val base = "tv_best_remotes"
-        val brands = listAssets(context, base)
-        val result = mutableMapOf<String, MutableMap<String, String>>()
-        for (brand in brands) {
-            val models = listAssets(context, "$base/$brand")
-            val modelMap = mutableMapOf<String, String>()
-            for (model in models.filter { it.endsWith(".ir") }) {
-                modelMap[model.removeSuffix(".ir")] = "$base/$brand/$model"
-            }
-            if (modelMap.isNotEmpty()) result[brand] = modelMap
-        }
-        tvIndexCache = result
-        return result
-    }
-
-    fun getFlipperIndex(context: Context): Map<String, Map<String, String>> {
-        flIndexCache?.let { return it }
-
-        val cacheFile = java.io.File(context.filesDir, "ir_flipper_index_v1.txt")
-        if (cacheFile.isFile && cacheFile.length() > 64) {
-            try {
-                val result = mutableMapOf<String, MutableMap<String, String>>()
-                cacheFile.bufferedReader().useLines { lines ->
-                    lines.forEach { line ->
-                        val parts = line.split('\t')
-                        if (parts.size >= 3) {
-                            val catBrand = parts[0]
-                            val model = parts[1]
-                            val path = parts[2]
-                            result.getOrPut(catBrand) { mutableMapOf() }[model] = path
-                        }
-                    }
-                }
-                if (result.isNotEmpty()) {
-                    flIndexCache = result
-                    return result
-                }
-            } catch (e: Exception) {
-                Log.w("IrRepository", "IR index cache read failed: ${e.message}")
-            }
-        }
-        val base = "Flipper-IRDB-main"
-        val cats = listAssets(context, base)
-        val result = mutableMapOf<String, MutableMap<String, String>>()
-        for (cat in cats) {
-            val brands = listAssets(context, "$base/$cat")
-            for (brand in brands) {
-                val models = listAssets(context, "$base/$cat/$brand")
-                val modelMap = mutableMapOf<String, String>()
-                for (model in models.filter { it.endsWith(".ir") }) {
-                    modelMap[model.removeSuffix(".ir")] = "$base/$cat/$brand/$model"
-                }
-                if (modelMap.isNotEmpty()) result["$cat/$brand"] = modelMap
-            }
-        }
-        flIndexCache = result
-        try {
-            cacheFile.bufferedWriter().use { w ->
-                for ((catBrand, models) in result) {
-                    for ((model, path) in models) {
-                        w.append(catBrand).append('\t').append(model).append('\t').append(path).append('\n')
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.w("IrRepository", "IR index cache write failed: ${e.message}")
-        }
-        return result
-    }
-
-
-    fun warmIndexInBackground(context: Context) {
-        Thread({
-            try {
-                getFlipperIndex(context.applicationContext)
-                getTvIndex(context.applicationContext)
-            } catch (e: Exception) {
-                Log.w("IrRepository", "warmIndex: ${e.message}")
-            }
-        }, "ir-index-warm").start()
-    }
-
-    fun loadButtons(context: Context, assetPath: String): List<IrButton> {
-        return buttonsCache.getOrPut(assetPath) { parseIrAsset(context, assetPath) }
-    }
-}
-
 internal fun localizeFlipperCategory(res: Resources, cat: String): String {
     val id = when (cat.lowercase()) {
         "_converted_" -> R.string.ir_cat_standard
@@ -1072,18 +502,9 @@ private fun FlipperCategoryRow(
     }
 }
 
-
-
-
-
-
-
 fun transmitIr(context: Context, button: IrButton) {
     IrBackend.transmit(context, button)
 }
-
-
-
 
 fun hasIrEmitter(context: Context): Boolean {
     return IrBackend.isAvailable(context)
@@ -1122,16 +543,15 @@ fun IRTvHome(navController: NavController) {
         }
     }
     val accent = MaterialTheme.colorScheme.primary
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(title = stringResource(R.string.ir_tv_remotes), onBack = { navController.popBackStack() }, transparent = true)
+    BlurHeaderBox(
+        title = stringResource(R.string.ir_tv_remotes),
+        onBack = { navController.popBackStack() }
+    ) { headerPadding ->
         LazyColumn(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            contentPadding = PaddingValues(bottom = bottomScrollPadding),
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = headerPadding + 8.dp, bottom = bottomScrollPadding),
             verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
         ) {
             item {
@@ -1231,7 +651,7 @@ fun IRFlipperHome(navController: NavController) {
         Triple(Icons.Default.FolderOpen, userRemotesTitle, "other/user_ir_remotes"),
     )
     val catRows = buildList {
-        add(Triple(Icons.Default.Tv, "Телевизоры", "other/ir_tv_home"))
+        add(Triple(Icons.Default.Tv, "TVs", "other/ir_tv_home"))
         categories!!.forEach { catId ->
             add(
                 Triple(
@@ -1247,16 +667,15 @@ fun IRFlipperHome(navController: NavController) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(title = flipperTitle, onBack = { navController.popBackStack() }, transparent = true)
+    BlurHeaderBox(
+        title = flipperTitle,
+        onBack = { navController.popBackStack() }
+    ) { headerPadding ->
         LazyColumn(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            contentPadding = PaddingValues(bottom = bottomScrollPadding),
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = headerPadding + 8.dp, bottom = bottomScrollPadding),
             verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
         ) {
             item {
@@ -1719,17 +1138,15 @@ fun UniversalRemotesHomeScreen(navController: NavController) {
     val context = LocalContext.current
     val categories = remember { UniversalRemotesRepository.getCategories(context) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(title = stringResource(R.string.ir_universal_remotes), onBack = { navController.popBackStack() }, transparent = true)
-
+    BlurHeaderBox(
+        title = stringResource(R.string.ir_universal_remotes),
+        onBack = { navController.popBackStack() }
+    ) { headerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            contentPadding = PaddingValues(bottom = irListsBottomPadding),
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = headerPadding + 8.dp, bottom = irListsBottomPadding),
             verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
         ) {
             m3SegmentedItems(categories) { index, count, category ->
@@ -1756,16 +1173,15 @@ fun IrFavoritesScreen(navController: NavController) {
         storeReady = true
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        SectionTopBar(
-            title = stringResource(R.string.ir_favorites),
-            onBack = { navController.popBackStack() },
-            transparent = true
-        )
-
+    BlurHeaderBox(
+        title = stringResource(R.string.ir_favorites),
+        onBack = { navController.popBackStack() }
+    ) { headerPadding ->
         if (!storeReady) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = headerPadding),
                 contentAlignment = Alignment.Center
             ) {
                 DolphyCircularProgressIndicator()
@@ -1774,6 +1190,7 @@ fun IrFavoritesScreen(navController: NavController) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(top = headerPadding)
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -1787,8 +1204,8 @@ fun IrFavoritesScreen(navController: NavController) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                contentPadding = PaddingValues(bottom = irListsBottomPadding),
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(top = headerPadding + 8.dp, bottom = irListsBottomPadding),
                 verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
             ) {
                 m3SegmentedItems(favorites, key = { it.key }) { index, count, favorite ->
@@ -2078,30 +1495,25 @@ fun UniversalRemoteCategoryScreen(navController: NavController, categoryIdEnc: S
     val remainingActions = category.actions.filter { it.signalName.lowercase() !in pairedSignals }
     val brightAccent = brightenAccent(MaterialTheme.colorScheme.primary)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(
-            title = stringResource(R.string.ir_universal_remotes) + ": ${category.title}",
-            onBack = { navController.popBackStack() },
-            transparent = true,
-            actions = {
-                FavoriteRemoteButton(
-                    IrFavoriteRemote(
-                        key = "universal:${category.id}",
-                        title = category.title,
-                        subtitle = stringResource(R.string.ir_universal_remotes),
-                        route = "other/universal_remote/${Uri.encode(category.id)}"
-                    )
+    BlurHeaderBox(
+        title = stringResource(R.string.ir_universal_remotes) + ": ${category.title}",
+        onBack = { navController.popBackStack() },
+        actions = {
+            FavoriteRemoteButton(
+                IrFavoriteRemote(
+                    key = "universal:${category.id}",
+                    title = category.title,
+                    subtitle = stringResource(R.string.ir_universal_remotes),
+                    route = "other/universal_remote/${Uri.encode(category.id)}"
                 )
-            }
-        )
-
+            )
+        }
+    ) { headerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(top = headerPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (baseInfoMessage.isNotBlank()) {
@@ -2307,58 +1719,53 @@ fun UserIrRemotesScreen(navController: NavController) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            SectionTopBar(
-                title = stringResource(R.string.ir_user_remotes),
-                onBack = { navController.popBackStack() },
-                transparent = true,
-                actions = {
-                    DolphyIconButton(onClick = {
-                        editMode = !editMode
-                        selectedIds = emptySet()
-                    }) {
+        BlurHeaderBox(
+            title = stringResource(R.string.ir_user_remotes),
+            onBack = { navController.popBackStack() },
+            actions = {
+                DolphyIconButton(onClick = {
+                    editMode = !editMode
+                    selectedIds = emptySet()
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.ir_edit_mode),
+                        tint = Color.White
+                    )
+                }
+                if (editMode) {
+                    DolphyIconButton(
+                        onClick = { UserIrRemoteStore.removeByIds(context = context, ids = selectedIds); selectedIds = emptySet() },
+                        enabled = selectedIds.isNotEmpty()
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.ir_edit_mode),
-                            tint = Color.White
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.cd_delete),
+                            tint = if (selectedIds.isNotEmpty()) Color.White else Color.Gray
                         )
                     }
-                    if (editMode) {
-                        DolphyIconButton(
-                            onClick = { UserIrRemoteStore.removeByIds(context = context, ids = selectedIds); selectedIds = emptySet() },
-                            enabled = selectedIds.isNotEmpty()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.cd_delete),
-                                tint = if (selectedIds.isNotEmpty()) Color.White else Color.Gray
-                            )
-                        }
-                        DolphyIconButton(
-                            onClick = {
-                                val id = selectedSingle ?: return@DolphyIconButton
-                                renameText = UserIrRemoteStore.getRemote(id)?.fileName ?: ""
-                                renameDialogVisible = true
-                            },
-                            enabled = selectedSingle != null
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = stringResource(R.string.ir_rename),
-                                tint = if (selectedSingle != null) Color.White else Color.Gray
-                            )
-                        }
+                    DolphyIconButton(
+                        onClick = {
+                            val id = selectedSingle ?: return@DolphyIconButton
+                            renameText = UserIrRemoteStore.getRemote(id)?.fileName ?: ""
+                            renameDialogVisible = true
+                        },
+                        enabled = selectedSingle != null
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = stringResource(R.string.ir_rename),
+                            tint = if (selectedSingle != null) Color.White else Color.Gray
+                        )
                     }
                 }
-            )
-
+            }
+        ) { headerPadding ->
             if (remotes.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .padding(top = headerPadding)
                         .padding(horizontal = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2375,7 +1782,8 @@ fun UserIrRemotesScreen(navController: NavController) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(top = headerPadding + 8.dp, bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(remotes, key = { it.id }) { remote ->
@@ -2510,31 +1918,27 @@ fun UserIrRemoteScreen(navController: NavController, remoteIdArg: String) {
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(
-            title = remote.fileName,
-            onBack = { navController.popBackStack() },
-            transparent = true,
-            actions = {
-                FavoriteRemoteButton(
-                    IrFavoriteRemote(
-                        key = "user:${remote.id}",
-                        title = remote.fileName,
-                        subtitle = stringResource(R.string.ir_user_remotes),
-                        route = "other/user_ir_remote/${remote.id}"
-                    )
+    BlurHeaderBox(
+        title = remote.fileName,
+        onBack = { navController.popBackStack() },
+        actions = {
+            FavoriteRemoteButton(
+                IrFavoriteRemote(
+                    key = "user:${remote.id}",
+                    title = remote.fileName,
+                    subtitle = stringResource(R.string.ir_user_remotes),
+                    route = "other/user_ir_remote/${remote.id}"
                 )
-            }
-        )
+            )
+        }
+    ) { headerPadding ->
         IrRemoteControlLayout(
             buttons = remote.commands,
             metaLines = emptyList(),
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            topContentPadding = headerPadding + 4.dp
         )
     }
 }
@@ -2561,12 +1965,11 @@ fun TVBrandScreen(navController: NavController, brandEnc: String) {
         SimpleMessageScreen(stringResource(R.string.ir_remotes_for_brand_not_found, brand))
         return
     }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(title = brand, onBack = { navController.popBackStack() }, transparent = true)
-        SimpleListScreen(items = models!!) { model ->
+    BlurHeaderBox(
+        title = brand,
+        onBack = { navController.popBackStack() }
+    ) { headerPadding ->
+        SimpleListScreen(items = models!!, topContentPadding = headerPadding) { model ->
                         navController.navigate("other/tv_remote/${Uri.encode(brand)}/${Uri.encode(model)}")
         }
     }
@@ -2623,29 +2026,27 @@ fun TVRemoteScreen(navController: NavController, brandEnc: String, remoteEnc: St
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        SectionTopBar(
-            title = displayName,
-            onBack = { navController.popBackStack() },
-            transparent = true,
-            actions = {
-                FavoriteRemoteButton(
-                    IrFavoriteRemote(
-                        key = "tv:$brand:$model",
-                        title = displayName,
-                        subtitle = brand,
-                        route = "other/tv_remote/${Uri.encode(brand)}/${Uri.encode(model)}"
-                    )
+    BlurHeaderBox(
+        title = displayName,
+        onBack = { navController.popBackStack() },
+        actions = {
+            FavoriteRemoteButton(
+                IrFavoriteRemote(
+                    key = "tv:$brand:$model",
+                    title = displayName,
+                    subtitle = brand,
+                    route = "other/tv_remote/${Uri.encode(brand)}/${Uri.encode(model)}"
                 )
-            }
-        )
-
+            )
+        }
+    ) { headerPadding ->
         IrRemoteControlLayout(
             buttons = buttons!!,
             metaLines = listOf(stringResource(R.string.ir_meta_brand, brand)),
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            topContentPadding = headerPadding + 4.dp
         )
     }
 }
@@ -2677,12 +2078,11 @@ fun FlipperCategoryScreen(navController: NavController, catEnc: String) {
         SimpleMessageScreen(stringResource(R.string.ir_brands_not_found_category, localizeFlipperCategory(res, cat)))
         return
     }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(title = localizeFlipperCategory(res, cat), onBack = { navController.popBackStack() }, transparent = true)
-        SimpleListScreen(items = brands!!) { brand ->
+    BlurHeaderBox(
+        title = localizeFlipperCategory(res, cat),
+        onBack = { navController.popBackStack() }
+    ) { headerPadding ->
+        SimpleListScreen(items = brands!!, topContentPadding = headerPadding) { brand ->
                         navController.navigate("other/flipper_brand/${Uri.encode(cat)}/${Uri.encode(brand)}")
         }
     }
@@ -2712,12 +2112,11 @@ fun FlipperBrandScreen(navController: NavController, catEnc: String, brandEnc: S
         SimpleMessageScreen(stringResource(R.string.ir_remotes_for_brand_not_found, brand))
         return
     }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        SectionTopBar(title = brand, onBack = { navController.popBackStack() }, transparent = true)
-        SimpleListScreen(items = remotes!!) { model ->
+    BlurHeaderBox(
+        title = brand,
+        onBack = { navController.popBackStack() }
+    ) { headerPadding ->
+        SimpleListScreen(items = remotes!!, topContentPadding = headerPadding) { model ->
                         navController.navigate("other/flipper_remote/${Uri.encode(cat)}/${Uri.encode(brand)}/${Uri.encode(model)}")
         }
     }
@@ -2752,23 +2151,20 @@ fun FlipperRemoteScreen(navController: NavController, catEnc: String, brandEnc: 
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        SectionTopBar(
-            title = displayName,
-            onBack = { navController.popBackStack() },
-            transparent = true,
-            actions = {
-                FavoriteRemoteButton(
-                    IrFavoriteRemote(
-                        key = "flipper:$cat:$brand:$model",
-                        title = displayName,
-                        subtitle = "$brand · ${localizeFlipperCategory(context.resources, cat)}",
-                        route = "other/flipper_remote/${Uri.encode(cat)}/${Uri.encode(brand)}/${Uri.encode(model)}"
-                    )
+    BlurHeaderBox(
+        title = displayName,
+        onBack = { navController.popBackStack() },
+        actions = {
+            FavoriteRemoteButton(
+                IrFavoriteRemote(
+                    key = "flipper:$cat:$brand:$model",
+                    title = displayName,
+                    subtitle = "$brand · ${localizeFlipperCategory(context.resources, cat)}",
+                    route = "other/flipper_remote/${Uri.encode(cat)}/${Uri.encode(brand)}/${Uri.encode(model)}"
                 )
-            }
-        )
-
+            )
+        }
+    ) { headerPadding ->
         IrRemoteControlLayout(
             buttons = buttons!!,
             metaLines = listOf(
@@ -2777,7 +2173,8 @@ fun FlipperRemoteScreen(navController: NavController, catEnc: String, brandEnc: 
             ),
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            topContentPadding = headerPadding + 4.dp
         )
     }
 }
@@ -2805,7 +2202,8 @@ private data class IrRemoteGroups(
 private fun IrRemoteControlLayout(
     buttons: List<IrButton>,
     metaLines: List<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    topContentPadding: Dp = 0.dp
 ) {
     val bottomScrollPadding = 160.dp
     val context = LocalContext.current
@@ -2823,7 +2221,7 @@ private fun IrRemoteControlLayout(
 
     LazyColumn(
         modifier = modifier.padding(bottom = 16.dp),
-        contentPadding = PaddingValues(bottom = bottomScrollPadding),
+        contentPadding = PaddingValues(top = topContentPadding, bottom = bottomScrollPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (metaLines.isNotEmpty()) {
@@ -3060,6 +2458,21 @@ private fun DpadSection(groups: IrRemoteGroups, onPress: (IrButton) -> Unit) {
 }
 
 @Composable
+private fun rememberRemotePress(pressedScale: Float = 0.90f): Pair<MutableInteractionSource, Float> {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) pressedScale else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "remotePressScale"
+    )
+    return interaction to scale
+}
+
+@Composable
 private fun RemoteAdaptiveButton(
     button: IrButton,
     onPress: (IrButton) -> Unit,
@@ -3103,10 +2516,12 @@ private fun RemoteDpadButton(
         }
         return
     }
+    val (interaction, scale) = rememberRemotePress()
     AccentButton(
         onClick = { onPress(button) },
-        modifier = modifier.size(54.dp),
+        modifier = modifier.size(54.dp).scale(scale),
         shape = CircleShape,
+        interactionSource = interaction,
         colors = ButtonDefaults.buttonColors(
             containerColor = accent,
             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -3148,10 +2563,12 @@ private fun RemoteIconButton(
         }
         return
     }
+    val (interaction, scale) = rememberRemotePress()
     AccentButton(
         onClick = { onPress(button) },
-        modifier = modifier,
+        modifier = modifier.scale(scale),
         shape = CircleShape,
+        interactionSource = interaction,
         colors = ButtonDefaults.buttonColors(
             containerColor = accent,
             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -3201,10 +2618,22 @@ private fun RemoteTextButton(
         }
         return
     }
+    val (interaction, scale) = rememberRemotePress(pressedScale = 0.93f)
+    val pressed by interaction.collectIsPressedAsState()
+    val corner by animateDpAsState(
+        targetValue = if (pressed) 26.dp else 16.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "remoteCorner"
+    )
+    val buttonShape: Shape = if (rounded) CircleShape else RoundedCornerShape(corner)
     AccentButton(
         onClick = { onPress(button) },
-        modifier = modifier.heightIn(min = if (small) 38.dp else 50.dp),
-        shape = if (rounded) CircleShape else RoundedCornerShape(16.dp),
+        modifier = modifier.heightIn(min = if (small) 38.dp else 50.dp).scale(scale),
+        shape = buttonShape,
+        interactionSource = interaction,
         colors = ButtonDefaults.buttonColors(
             containerColor = accent,
             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -3406,34 +2835,31 @@ private fun vibrateRemoteButton(context: Context) {
 @Composable
 private fun SimpleListScreen(
     items: List<String>,
+    topContentPadding: Dp = 0.dp,
     bottomPadding: Dp = irListsBottomPadding,
     onItemClick: (String) -> Unit
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = topContentPadding + 8.dp, bottom = bottomPadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = bottomPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(items) { value ->
-                MaterialCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onItemClick(value) },
-                    accentColor = accent,
-                    cornerRadius = 12.dp
-                ) {
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+        items(items) { value ->
+            MaterialCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onItemClick(value) },
+                accentColor = accent,
+                cornerRadius = 12.dp
+            ) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
@@ -3557,9 +2983,6 @@ object IrStormRepository {
         return allButtons
     }
 
-
-
-
     fun countTargetsForCategory(context: Context, categoryKey: String): Int {
         val flIndex = IrRepository.getFlipperIndex(context)
         if (categoryKey == IR_STORM_TV_ALL_KEY) {
@@ -3568,9 +2991,6 @@ object IrStormRepository {
         val root = categoryKey.substringBefore('/')
         return flIndex.filterKeys { it.substringBefore('/') == root }.values.sumOf { it.size }
     }
-
-
-
 
     fun forEachTarget(
         context: Context,
@@ -3919,91 +3339,88 @@ fun IRJammerScreen(navController: NavController? = null) {
     var sentCommands by remember { mutableStateOf(0) }
     var jammerJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        SectionTopBar(
-            title = stringResource(R.string.ir_jammer),
-            onBack = if (navController != null) ({ navController.popBackStack() }) else null,
-            transparent = true,
-            alwaysCollapsed = true,
-        )
+    BlurHeaderBox(
+        title = stringResource(R.string.ir_jammer),
+        onBack = if (navController != null) ({ navController.popBackStack() }) else null
+    ) { headerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = headerPadding)
+        ) {
+            when {
+                buttons == null -> LoadingScreen()
+                buttons!!.isEmpty() -> Text(
+                    text = stringResource(R.string.ir_file_not_found, sourceLabel),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                )
+                else -> {
+                    IrExpressivePowerButton(
+                        active = isSending,
+                        enabled = true,
+                        onClick = {
+                            if (isSending) {
+                                jammerJob?.cancel()
+                                jammerJob = null
+                                isSending = false
+                                statusMessage = context.getString(R.string.ir_storm_stopped)
+                            } else {
+                                isSending = true
+                                statusMessage = context.getString(R.string.ir_jammer_sending_signals)
+                                sentCommands = 0
+                                jammerJob = scope.launch(Dispatchers.Default) {
+                                    try {
+                                        val list = buttons!!
+                                        var cycle = 0
 
-        when {
-            buttons == null -> LoadingScreen()
-            buttons!!.isEmpty() -> Text(
-                text = stringResource(R.string.ir_file_not_found, sourceLabel),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(24.dp),
-            )
-            else -> {
-                IrExpressivePowerButton(
-                    active = isSending,
-                    enabled = true,
-                    onClick = {
-                        if (isSending) {
-                            jammerJob?.cancel()
-                            jammerJob = null
-                            isSending = false
-                            statusMessage = context.getString(R.string.ir_storm_stopped)
-                        } else {
-                            isSending = true
-                            statusMessage = context.getString(R.string.ir_jammer_sending_signals)
-                            sentCommands = 0
-                            jammerJob = scope.launch(Dispatchers.Default) {
-                                try {
-                                    val list = buttons!!
-                                    var cycle = 0
-
-                                    while (kotlinx.coroutines.currentCoroutineContext().isActive && isSending) {
-                                        cycle++
-                                        for ((index, btn) in list.withIndex()) {
-                                            if (!kotlinx.coroutines.currentCoroutineContext().isActive || !isSending) break
-                                            withContext(Dispatchers.IO) {
-                                                transmitIr(context, btn)
+                                        while (kotlinx.coroutines.currentCoroutineContext().isActive && isSending) {
+                                            cycle++
+                                            for ((index, btn) in list.withIndex()) {
+                                                if (!kotlinx.coroutines.currentCoroutineContext().isActive || !isSending) break
+                                                withContext(Dispatchers.IO) {
+                                                    transmitIr(context, btn)
+                                                }
+                                                withContext(Dispatchers.Main) {
+                                                    sentCommands = index + 1
+                                                    statusMessage = context.getString(R.string.ir_jammer_sending_signals) +
+                                                        " · cycle $cycle"
+                                                }
+                                                delay(8)
                                             }
-                                            withContext(Dispatchers.Main) {
-                                                sentCommands = index + 1
-                                                statusMessage = context.getString(R.string.ir_jammer_sending_signals) +
-                                                    " · цикл $cycle"
-                                            }
-                                            delay(8)
                                         }
-                                    }
-                                } catch (_: kotlinx.coroutines.CancellationException) {
-                                } finally {
-                                    withContext(Dispatchers.Main) {
-                                        isSending = false
-                                        jammerJob = null
-                                        statusMessage = context.getString(R.string.ir_storm_stopped)
+                                    } catch (_: kotlinx.coroutines.CancellationException) {
+                                    } finally {
+                                        withContext(Dispatchers.Main) {
+                                            isSending = false
+                                            jammerJob = null
+                                            statusMessage = context.getString(R.string.ir_storm_stopped)
+                                        }
                                     }
                                 }
                             }
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.Center),
-                )
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .offset(y = 164.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "$sentCommands / ${buttons!!.size}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        },
+                        modifier = Modifier.align(Alignment.Center),
                     )
+
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(y = 164.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "$sentCommands / ${buttons!!.size}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
     }
 }
-
-
-
-
-

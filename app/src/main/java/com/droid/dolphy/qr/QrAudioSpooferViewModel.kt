@@ -1,4 +1,7 @@
 package com.droid.dolphy.qr
+import com.droid.dolphy.AppLocale
+
+import com.droid.dolphy.R
 
 import android.app.Application
 import android.content.*
@@ -11,6 +14,9 @@ import com.droid.dolphy.qr.server.QrSpooferService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.net.InetAddress
@@ -22,6 +28,7 @@ import java.io.FileOutputStream
 
 class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(application) {
     private var startJob: Job? = null
+    private var observeJob: Job? = null
 
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
@@ -65,7 +72,7 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
 
         QrSpooferService.serverManager?.let { sm ->
             observeServer(sm)
-            _isStarted.value = true
+            _isStarted.value = sm.isRunning
             _serverIp.value = sm.getServerUrl()?.removePrefix("https://")?.removePrefix("http://")
         }
     }
@@ -87,8 +94,8 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
                     ?: "imported.html"
                 val text = context.contentResolver.openInputStream(uri)?.use {
                     it.bufferedReader(Charsets.UTF_8).readText()
-                } ?: throw IllegalStateException("Не удалось прочитать файл")
-                if (text.isBlank()) throw IllegalStateException("Пустой HTML")
+                } ?: throw IllegalStateException(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_1))
+                if (text.isBlank()) throw IllegalStateException(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_2))
 
                 val dir = File(context.filesDir, "qr_spoofer")
                 if (!dir.exists()) dir.mkdirs()
@@ -104,11 +111,11 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
                     _customHtmlName.value = name
                     _pageType.value = KtorServerManager.PAGE_CUSTOM_HTML
                     applyCustomHtmlToServer(QrSpooferService.serverManager)
-                    _logs.value = (listOf("Импортирован HTML: $name (${text.length} символов)") + _logs.value).take(80)
+                    _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_3, name, text.length)) + _logs.value).take(80)
                 }
             } catch (e: Exception) {
                 launch(Dispatchers.Main) {
-                    _logs.value = (listOf("Ошибка импорта HTML: ${e.message}") + _logs.value).take(80)
+                    _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_4, e.message.orEmpty())) + _logs.value).take(80)
                 }
             }
         }
@@ -138,26 +145,32 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
 
                 launch(Dispatchers.Main) {
                     loadCustomAudioList()
-                    _logs.value = (listOf("Добавлено аудио: $fileName") + _logs.value).take(50)
+                    _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_5, fileName)) + _logs.value).take(50)
                 }
             } catch (e: Exception) {
                 launch(Dispatchers.Main) {
-                    _logs.value = (listOf("Ошибка добавления аудио: ${e.message}") + _logs.value).take(50)
+                    _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_6, e.message.orEmpty())) + _logs.value).take(50)
                 }
             }
         }
     }
 
     private fun observeServer(sm: KtorServerManager) {
-        viewModelScope.launch {
-            sm.logs.collect { message ->
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
+            launch { sm.logs.collect { message ->
                 _logs.value = (listOf(message) + _logs.value).take(80)
             }
         }
-        viewModelScope.launch {
+        launch {
             sm.deviceCount.collect { count ->
                 _deviceCount.value = count
             }
+        }
+        launch { sm.running.collect { running ->
+            _isStarted.value = running
+            if (!running) _serverIp.value = null
+        } }
         }
     }
 
@@ -171,7 +184,7 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
         if (type == KtorServerManager.PAGE_CUSTOM_HTML) {
             val f = customHtmlFile()
             if (!f.exists()) {
-                _logs.value = (listOf("Сначала импортируйте HTML-файл") + _logs.value).take(80)
+                _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_7)) + _logs.value).take(80)
                 return
             }
         }
@@ -185,85 +198,82 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun startServer() {
-        if (_isStarted.value && QrSpooferService.serverManager != null) {
-            _logs.value = (listOf("Локальный сервер уже работает") + _logs.value).take(80)
+        if (startJob?.isActive == true || QrSpooferService.serverManager?.isRunning == true) {
+            _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_8)) + _logs.value).take(80)
             return
         }
 
         val localIp = getLocalIpAddress()
         if (localIp == null) {
             _logs.value = listOf(
-                "Локальная сеть не найдена",
-                "Подключитесь к Wi-Fi, Ethernet или точке доступа и повторите запуск",
-                "Интернет и внешние серверы не используются",
+                AppLocale.getString(getApplication<Application>(), R.string.qr_notice_9),
+                AppLocale.getString(getApplication<Application>(), R.string.qr_notice_10),
+                AppLocale.getString(getApplication<Application>(), R.string.qr_notice_11),
             )
             return
         }
 
-        _isStarted.value = true
+        _isStarted.value = false
         _serverIp.value = null
         _logs.value = listOf(
-            "Запуск локального сервера…",
-            "Режим: только локальная сеть",
-            "Внешние серверы и туннели отключены",
+            AppLocale.getString(getApplication<Application>(), R.string.qr_notice_12),
+            AppLocale.getString(getApplication<Application>(), R.string.qr_notice_13),
+            AppLocale.getString(getApplication<Application>(), R.string.qr_notice_14),
         )
 
         startJob?.cancel()
         startJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val sm = QrSpooferService.serverManager ?: KtorServerManager(getApplication()).also {
-                    QrSpooferService.serverManager = it
-                }
+                val intent = Intent(getApplication(), QrSpooferService::class.java)
+                getApplication<Application>().startForegroundService(intent)
+                var attempts = 0
+                while (!QrSpooferService.foregroundReady && attempts++ < 40) delay(50)
+                check(QrSpooferService.foregroundReady) { "Foreground service did not start" }
+                val sm = QrSpooferService.serverManager ?: error("Server service is unavailable")
                 applyCustomHtmlToServer(sm)
 
                 launch(Dispatchers.Main) {
                     observeServer(sm)
                 }
 
-                val startedPort = sm.start(8080)
+                val startupContext = coroutineContext
+                val startedPort = sm.start(8080) { startupContext.isActive && !sm.isClosed }
+                ensureActive()
                 if (startedPort == -1) {
                     launch(Dispatchers.Main) {
                         _logs.value = (
                             listOf(
-                                "ОШИБКА: локальный сервер не стартовал",
-                                "Порты 8080–8110 заняты или health не ответил",
+                                AppLocale.getString(getApplication<Application>(), R.string.qr_notice_15),
+                                AppLocale.getString(getApplication<Application>(), R.string.qr_notice_16),
                             ) + _logs.value
                             ).take(80)
                         _isStarted.value = false
                     }
+                    getApplication<Application>().stopService(intent)
                     return@launch
                 }
                 val localUrl = "http://$localIp:$startedPort"
                 sm.setServerUrl(localUrl)
-                NfcAudioSpoofState.startSpoofing(localUrl)
                 launch(Dispatchers.Main) {
+                    if (!sm.isRunning || sm.isClosed || QrSpooferService.serverManager !== sm) return@launch
+                    NfcAudioSpoofState.startSpoofing(localUrl)
                     _serverIp.value = "$localIp:$startedPort"
                     _logs.value = (
                         listOf(
-                            "Локальный сервер готов: $localUrl",
-                            "QR доступен только устройствам в этой локальной сети",
+                            AppLocale.getString(getApplication<Application>(), R.string.qr_notice_17, localUrl),
+                            AppLocale.getString(getApplication<Application>(), R.string.qr_notice_18),
                         ) + _logs.value
                         ).take(80)
                 }
 
 
-                try {
-                    val intent = Intent(getApplication(), QrSpooferService::class.java)
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        getApplication<Application>().startForegroundService(intent)
-                    } else {
-                        getApplication<Application>().startService(intent)
-                    }
-                } catch (e: Exception) {
-                    launch(Dispatchers.Main) {
-                        _logs.value = (listOf("FGS: ${e.message}") + _logs.value).take(80)
-                    }
-                }
             } catch (e: CancellationException) {
+                QrSpooferService.serverManager?.close()
                 throw e
             } catch (e: Exception) {
+                getApplication<Application>().stopService(Intent(getApplication(), QrSpooferService::class.java))
                 launch(Dispatchers.Main) {
-                    _logs.value = (listOf("ОШИБКА: ${e.message}") + _logs.value).take(80)
+                    _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_19, e.message.orEmpty())) + _logs.value).take(80)
                     _isStarted.value = false
                 }
             }
@@ -273,6 +283,9 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
     fun stopServer() {
         startJob?.cancel()
         startJob = null
+        observeJob?.cancel()
+        observeJob = null
+        _deviceCount.value = 0
         _isStarted.value = false
         _serverIp.value = null
         try {
@@ -280,14 +293,13 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
             QrSpooferService.serverManager?.setServerUrl(null)
         } catch (_: Exception) {
         }
-        QrSpooferService.serverManager = null
         NfcAudioSpoofState.stopSpoofing()
         try {
             val intent = Intent(getApplication(), QrSpooferService::class.java)
             getApplication<Application>().stopService(intent)
         } catch (_: Exception) {
         }
-        _logs.value = (listOf("Сервер остановлен") + _logs.value).take(80)
+        _logs.value = (listOf(AppLocale.getString(getApplication<Application>(), R.string.qr_notice_20)) + _logs.value).take(80)
     }
 
     fun sendCommand(command: String) {
@@ -328,4 +340,3 @@ class QrAudioSpooferViewModel(application: Application) : AndroidViewModel(appli
     }
 
 }
-

@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -59,11 +58,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.M3SegmentedListItemContainer
 import com.droid.dolphy.M3SegmentedListItemSpacing
-import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.WavyCircularProgressIndicator
 
 @Composable
@@ -121,20 +119,18 @@ fun ScooterHackScreen(
         }
     }
 
-    MaterialBackground(accentColor = accent) {
+    BlurHeaderBox(
+        title = stringResource(R.string.scooter_hack_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
                 .navigationBarsPadding()
+                .padding(top = headerPadding)
                 .padding(horizontal = 16.dp),
         ) {
-            SectionTopBar(
-                title = stringResource(R.string.scooter_hack_title),
-                onBack = { navController.popBackStack() },
-                accentColor = accent,
-            )
-
             Spacer(Modifier.height(8.dp))
 
             if (devices.isEmpty()) {

@@ -74,10 +74,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import com.droid.dolphy.MaterialBackground
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.TextGray
 import com.droid.dolphy.TintedFrameAnimation
 import com.droid.dolphy.nfc.NfcNdefPayloads
@@ -146,36 +145,33 @@ private fun NfcTagOperationScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accent) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-            ) {
-                SectionTopBar(
-                    transparent = true,
-                    title = title,
-                    onBack = { navController.popBackStack() },
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    when (val o = outcome) {
-                        is NfcWriteOutcome.Success -> SuccessBlock()
-                        is NfcWriteOutcome.Failure -> FailureBlock(
-                            message = o.message.ifBlank { stringResource(R.string.nfc_write_failed) },
-                            accent = accent,
-                            onRetry = {
-                                viewModel.clearWriteFailure()
-                                viewModel.retryLastWrite()
-                            },
-                        )
-                        NfcWriteOutcome.Idle ->                         WaitingBlock(
-                            nfcReady = nfcReady,
-                            accent = accent,
-                            waitMessage = waitMessage,
-                        )
-                    }
+    BlurHeaderBox(
+        title = title,
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = headerPadding + 24.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                when (val o = outcome) {
+                    is NfcWriteOutcome.Success -> SuccessBlock()
+                    is NfcWriteOutcome.Failure -> FailureBlock(
+                        message = o.message.ifBlank { stringResource(R.string.nfc_write_failed) },
+                        accent = accent,
+                        onRetry = {
+                            viewModel.clearWriteFailure()
+                            viewModel.retryLastWrite()
+                        },
+                    )
+                    NfcWriteOutcome.Idle ->                         WaitingBlock(
+                        nfcReady = nfcReady,
+                        accent = accent,
+                        waitMessage = waitMessage,
+                    )
                 }
             }
         }
@@ -273,64 +269,62 @@ fun NfcWriteMenuScreen(navController: NavController, viewModel: NfcViewModel) {
     DisposableEffect(Unit) {
         onDispose { viewModel.disarmWrite() }
     }
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accent) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .navigationBarsPadding()
-                    .padding(bottom = NfcWriteBottomScrollPadding),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                SectionTopBar(
-                    transparent = true,
-                    title = stringResource(R.string.nfc_write_menu_title),
-                    onBack = { navController.popBackStack() },
-                )
-                Text(
-                    text = stringResource(R.string.nfc_write_pick_type),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                WriteTypeCard(
-                    title = stringResource(R.string.nfc_write_type_contact),
-                    description = stringResource(R.string.nfc_write_type_contact_desc),
-                    icon = Icons.Outlined.ContactPage,
-                    accent = accent,
-                onClick = { navController.navigate("other/nfc_write_contact") },
-                )
-                WriteTypeCard(
-                    title = stringResource(R.string.nfc_write_type_wifi),
-                    description = stringResource(R.string.nfc_write_type_wifi_desc),
-                    icon = Icons.Outlined.Wifi,
-                    accent = accent,
-                onClick = { navController.navigate("other/nfc_write_form/wifi") },
-                )
-                WriteTypeCard(
-                    title = stringResource(R.string.nfc_write_type_url),
-                    description = stringResource(R.string.nfc_write_type_url_desc),
-                    icon = Icons.Outlined.Link,
-                    accent = accent,
-                onClick = { navController.navigate("other/nfc_write_form/url") },
-                )
-                WriteTypeCard(
-                    title = stringResource(R.string.nfc_write_type_email),
-                    description = stringResource(R.string.nfc_write_type_email_desc),
-                    icon = Icons.Outlined.Email,
-                    accent = accent,
-                onClick = { navController.navigate("other/nfc_write_form/email") },
-                )
-                WriteTypeCard(
-                    title = stringResource(R.string.nfc_write_type_text),
-                    description = stringResource(R.string.nfc_write_type_text_desc),
-                    icon = Icons.Outlined.TextFields,
-                    accent = accent,
-                onClick = { navController.navigate("other/nfc_write_form/text") },
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+    BlurHeaderBox(
+        title = stringResource(R.string.nfc_write_menu_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(top = headerPadding + 16.dp)
+                .padding(horizontal = 16.dp)
+                .navigationBarsPadding()
+                .padding(bottom = NfcWriteBottomScrollPadding),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.nfc_write_pick_type),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            WriteTypeCard(
+                title = stringResource(R.string.nfc_write_type_contact),
+                description = stringResource(R.string.nfc_write_type_contact_desc),
+                icon = Icons.Outlined.ContactPage,
+                accent = accent,
+            onClick = { navController.navigate("other/nfc_write_contact") },
+            )
+            WriteTypeCard(
+                title = stringResource(R.string.nfc_write_type_wifi),
+                description = stringResource(R.string.nfc_write_type_wifi_desc),
+                icon = Icons.Outlined.Wifi,
+                accent = accent,
+            onClick = { navController.navigate("other/nfc_write_form/wifi") },
+            )
+            WriteTypeCard(
+                title = stringResource(R.string.nfc_write_type_url),
+                description = stringResource(R.string.nfc_write_type_url_desc),
+                icon = Icons.Outlined.Link,
+                accent = accent,
+            onClick = { navController.navigate("other/nfc_write_form/url") },
+            )
+            WriteTypeCard(
+                title = stringResource(R.string.nfc_write_type_email),
+                description = stringResource(R.string.nfc_write_type_email_desc),
+                icon = Icons.Outlined.Email,
+                accent = accent,
+            onClick = { navController.navigate("other/nfc_write_form/email") },
+            )
+            WriteTypeCard(
+                title = stringResource(R.string.nfc_write_type_text),
+                description = stringResource(R.string.nfc_write_type_text_desc),
+                icon = Icons.Outlined.TextFields,
+                accent = accent,
+            onClick = { navController.navigate("other/nfc_write_form/text") },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -382,7 +376,7 @@ fun NfcWriteContactScreen(navController: NavController, viewModel: NfcViewModel)
         val (name, phone) = pair
         try {
             viewModel.armWrite(NfcNdefPayloads.vCard(name, phone))
-                            navController.navigate("other/nfc_write_wait")
+                        navController.navigate("other/nfc_write_wait")
         } catch (e: Exception) {
             Toast.makeText(context, e.message ?: "", Toast.LENGTH_SHORT).show()
         }
@@ -402,53 +396,51 @@ fun NfcWriteContactScreen(navController: NavController, viewModel: NfcViewModel)
         onDispose { viewModel.disarmWrite() }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accent) {
-            Column(
+    BlurHeaderBox(
+        title = stringResource(R.string.nfc_write_contact_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = headerPadding + 16.dp)
+                .padding(horizontal = 16.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MaterialCard(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .fillMaxWidth()
+                    .clickable { showPhoneDialog = true },
+                accentColor = accent,
+                cornerRadius = 14.dp,
             ) {
-                SectionTopBar(
-                    transparent = true,
-                    title = stringResource(R.string.nfc_write_contact_title),
-                    onBack = { navController.popBackStack() },
-                )
-                MaterialCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showPhoneDialog = true },
-                    accentColor = accent,
-                    cornerRadius = 14.dp,
-                ) {
-                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Outlined.Nfc, null, tint = accent)
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.nfc_write_add_phone), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.nfc_write_add_phone_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Outlined.Nfc, null, tint = accent)
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.nfc_write_add_phone), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.nfc_write_add_phone_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                MaterialCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            when (ContextCompat.checkSelfPermission(context, permission)) {
-                                android.content.pm.PackageManager.PERMISSION_GRANTED -> pickContact.launch(null)
-                                else -> permissionLauncher.launch(permission)
-                            }
-                        },
-                    accentColor = accent,
-                    cornerRadius = 14.dp,
-                ) {
-                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Outlined.ContactPage, null, tint = accent)
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.nfc_write_add_from_contacts), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.nfc_write_add_from_contacts_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            MaterialCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        when (ContextCompat.checkSelfPermission(context, permission)) {
+                            android.content.pm.PackageManager.PERMISSION_GRANTED -> pickContact.launch(null)
+                            else -> permissionLauncher.launch(permission)
                         }
+                    },
+                accentColor = accent,
+                cornerRadius = 14.dp,
+            ) {
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Outlined.ContactPage, null, tint = accent)
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.nfc_write_add_from_contacts), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.nfc_write_add_from_contacts_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -477,7 +469,7 @@ fun NfcWriteContactScreen(navController: NavController, viewModel: NfcViewModel)
                         viewModel.armWrite(NfcNdefPayloads.telephone(raw))
                         showPhoneDialog = false
                         phoneInput = ""
-                            navController.navigate("other/nfc_write_wait")
+                        navController.navigate("other/nfc_write_wait")
                     } catch (e: Exception) {
                         Toast.makeText(context, e.message ?: "", Toast.LENGTH_SHORT).show()
                     }
@@ -521,89 +513,91 @@ fun NfcWriteFormScreen(kind: String, navController: NavController, viewModel: Nf
                 else -> NfcNdefPayloads.plainText(plainText)
             }
             viewModel.armWrite(msg)
-                            navController.navigate("other/nfc_write_wait")
+                        navController.navigate("other/nfc_write_wait")
         } catch (e: Exception) {
             Toast.makeText(context, e.message ?: context.getString(R.string.nfc_write_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accent) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .navigationBarsPadding()
-                    .imePadding()
-                    .padding(bottom = NfcWriteBottomScrollPadding),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                SectionTopBar(transparent = true, title = title, onBack = { navController.popBackStack() })
+    BlurHeaderBox(
+        title = title,
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(top = headerPadding + 16.dp)
+                .padding(horizontal = 16.dp)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(bottom = NfcWriteBottomScrollPadding),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
 
-                when (kind) {
-                    "wifi" -> {
-                        OutlinedTextField(
-                            value = ssid,
-                            onValueChange = { ssid = it },
-                            label = { Text(stringResource(R.string.nfc_label_ssid)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = wifiPass,
-                            onValueChange = { wifiPass = it },
-                            label = { Text(stringResource(R.string.nfc_label_wifi_password)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    "url" -> {
-                        OutlinedTextField(
-                            value = url,
-                            onValueChange = { url = it },
-                            label = { Text(stringResource(R.string.nfc_label_url)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    "email" -> {
-                        OutlinedTextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text(stringResource(R.string.nfc_label_email)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = subject,
-                            onValueChange = { subject = it },
-                            label = { Text(stringResource(R.string.nfc_label_email_subject)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    else -> {
-                        OutlinedTextField(
-                            value = plainText,
-                            onValueChange = { plainText = it },
-                            label = { Text(stringResource(R.string.nfc_label_plain_text)) },
-                            minLines = 3,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+            when (kind) {
+                "wifi" -> {
+                    OutlinedTextField(
+                        value = ssid,
+                        onValueChange = { ssid = it },
+                        label = { Text(stringResource(R.string.nfc_label_ssid)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = wifiPass,
+                        onValueChange = { wifiPass = it },
+                        label = { Text(stringResource(R.string.nfc_label_wifi_password)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-
-                com.droid.dolphy.AccentButton(
-                    onClick = { go() },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = accent),
-                ) {
-                    Text(stringResource(R.string.nfc_next))
+                "url" -> {
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        label = { Text(stringResource(R.string.nfc_label_url)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                "email" -> {
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text(stringResource(R.string.nfc_label_email)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = subject,
+                        onValueChange = { subject = it },
+                        label = { Text(stringResource(R.string.nfc_label_email_subject)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                else -> {
+                    OutlinedTextField(
+                        value = plainText,
+                        onValueChange = { plainText = it },
+                        label = { Text(stringResource(R.string.nfc_label_plain_text)) },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
+
+            com.droid.dolphy.AccentButton(
+                onClick = { go() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = accent),
+            ) {
+                Text(stringResource(R.string.nfc_next))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -635,4 +629,3 @@ private fun readContactNameAndPhone(context: Context, contactUri: Uri): Pair<Str
         }
     return null
 }
-

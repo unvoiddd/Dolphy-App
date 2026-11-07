@@ -8,12 +8,14 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.droid.dolphy.MainActivity
+import com.droid.dolphy.nfc.NfcAudioSpoofState
 
 class QrSpooferService : Service() {
     private val binder = LocalBinder()
 
     companion object {
-        var serverManager: KtorServerManager? = null
+        @Volatile var serverManager: KtorServerManager? = null
+        @Volatile var foregroundReady = false
         const val ACTION_STOP = "com.droid.dolphy.qr.STOP_SERVICE"
     }
 
@@ -37,12 +39,19 @@ class QrSpooferService : Service() {
         createNotificationChannel()
         try {
             startForeground(1001, createNotification())
-        } catch (_: Exception) {
+            foregroundReady = true
+        } catch (error: Exception) {
+            android.util.Log.e("QrSpooferService", "Cannot start foreground service", error)
+            serverManager?.close()
+            serverManager = null
+            foregroundReady = false
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         if (intent?.action == ACTION_STOP) {
             try {
-                serverManager?.stop()
+                serverManager?.close()
             } catch (_: Exception) {
             }
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -50,12 +59,14 @@ class QrSpooferService : Service() {
             return START_NOT_STICKY
         }
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
-
-
+        foregroundReady = false
+        serverManager?.close()
+        serverManager = null
+        NfcAudioSpoofState.stopSpoofing()
         super.onDestroy()
     }
 
@@ -67,11 +78,13 @@ class QrSpooferService : Service() {
 
         return NotificationCompat.Builder(this, "qr_spoofer_channel")
             .setContentTitle("Dolphy Spoofer")
-            .setContentText("Сервер активен в фоновом режиме")
+            .setContentText(getString(com.droid.dolphy.R.string.qr_service_active))
             .setSmallIcon(android.R.drawable.stat_sys_headset)
             .setOngoing(true)
             .setContentIntent(mainPendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .addAction(android.R.drawable.ic_media_pause, getString(com.droid.dolphy.R.string.stop),
+                PendingIntent.getService(this, 1, Intent(this, QrSpooferService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE))
             .build()
     }
 
@@ -88,4 +101,3 @@ class QrSpooferService : Service() {
     }
 
 }
-

@@ -101,7 +101,7 @@ object CameraNetworkScanner {
             }
         }
 
-        onProgress(ScanProgress(0.02f, "Подготовка сети…", 0))
+        onProgress(ScanProgress(0.02f, "Preparing network…", 0))
         val subnet = localSubnetPrefix()
         val self = localIp()
         val multicastLock = try {
@@ -132,7 +132,7 @@ object CameraNetworkScanner {
                 onProgress(ScanProgress(0.2f, "ONVIF: ${found.size}", found.size))
             }
 
-            onProgress(ScanProgress(0.28f, "Поиск RTSP / NVR портов…", found.size))
+            onProgress(ScanProgress(0.28f, "Scanning RTSP / NVR ports…", found.size))
 
             if (subnet != null && coroutineContext.isActive) {
                 val hosts = (1..254).map { "$subnet.$it" }
@@ -177,7 +177,7 @@ object CameraNetworkScanner {
                         onProgress(
                             ScanProgress(
                                 frac.coerceIn(0f, 0.92f),
-                                "Проверено $done / ${hosts.size}…",
+                                "Checked $done / ${hosts.size}…",
                                 found.size,
                             )
                         )
@@ -185,7 +185,7 @@ object CameraNetworkScanner {
                 }
             }
 
-            onProgress(ScanProgress(0.95f, "Уточнение MAC…", found.size))
+            onProgress(ScanProgress(0.95f, "Resolving MAC…", found.size))
             delay(300)
             found.values.toList().forEach { cam ->
                 val mac = cam.mac ?: getMacFromArp(cam.ip)
@@ -203,7 +203,7 @@ object CameraNetworkScanner {
                 .sortedBy { it.ip }
             found.clear()
             cleaned.forEach { found[it.ip] = it }
-            onProgress(ScanProgress(1f, "Готово", found.size))
+            onProgress(ScanProgress(1f, "Done", found.size))
         } finally {
             try {
                 if (multicastLock?.isHeld == true) multicastLock.release()

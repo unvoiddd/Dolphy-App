@@ -36,14 +36,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.ConnectedButtonGroup
 import com.droid.dolphy.DolphyLinearProgressIndicator
 import com.droid.dolphy.DolphySlider
 import com.droid.dolphy.DolphySwitch
 import com.droid.dolphy.ExpressiveBounceButton
 import com.droid.dolphy.ExpressiveSplitButton
+import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.MaterialButton
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.MaterialTabRow
@@ -52,6 +55,11 @@ import com.droid.dolphy.WavyCircularProgressIndicator
 import com.droid.dolphy.getSegmentedShape
 import com.droid.dolphy.plugin.PluginIcons
 import com.droid.dolphy.plugin.model.UiNode
+import com.droid.dolphy.plugin.store.rememberTranslated
+
+@Composable
+private fun tr(text: String): String =
+    if (text.contains("{{")) text else rememberTranslated(text)
 
 @Composable
 fun PluginUiRenderer(
@@ -62,81 +70,91 @@ fun PluginUiRenderer(
 ) {
     when (node) {
         is UiNode.Scaffold -> {
-            Column(Modifier.fillMaxSize()) {
-                val bar = node.topBar
-                if (bar != null) {
-                    SectionTopBar(
-                        title = bar.title,
-                        onBack = if (bar.showBack) onBack else null,
-                        accentColor = accent,
-                        actions = {
-                            bar.actions.forEach { action ->
-                                DolphyIconButton(onClick = { onCallback(action.onClickId, null) }) {
-                                    Icon(
-                                        PluginIcons.resolve(action.icon),
-                                        contentDescription = null,
-                                        tint = accent,
-                                    )
-                                }
-                            }
-                        },
-                    )
-                }
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                    when (val c = node.content) {
-                        is UiNode.LazyColumn -> {
+            val bar = node.topBar
+            val scaffoldBody: @Composable (Dp) -> Unit = { headerPadding ->
+                Column(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        when (val c = node.content) {
+                            is UiNode.LazyColumn -> {
 
-                            LazyColumn(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(c.padding.dp),
-                                verticalArrangement = Arrangement.spacedBy(c.spacing.dp),
-                                contentPadding = PaddingValues(bottom = 120.dp),
-                            ) {
-                                itemsIndexed(
-                                    items = c.children,
-                                    key = { index, _ -> index },
-                                ) { _, child ->
-                                    PluginUiRenderer(child, accent, onBack, onCallback)
+                                LazyColumn(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(c.padding.dp),
+                                    verticalArrangement = Arrangement.spacedBy(c.spacing.dp),
+                                    contentPadding = PaddingValues(top = headerPadding, bottom = 120.dp),
+                                ) {
+                                    itemsIndexed(
+                                        items = c.children,
+                                        key = { index, _ -> index },
+                                    ) { _, child ->
+                                        PluginUiRenderer(child, accent, onBack, onCallback)
+                                    }
+                                }
+                            }
+                            is UiNode.Column -> {
+                                val scroll = rememberScrollState()
+                                Column(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(scroll)
+                                        .padding(top = headerPadding)
+                                        .padding(bottom = 120.dp)
+                                        .padding(c.padding.dp),
+                                    verticalArrangement = Arrangement.spacedBy(c.spacing.dp),
+                                ) {
+                                    c.children.forEach { child ->
+                                        PluginUiRenderer(child, accent, onBack, onCallback)
+                                    }
+                                }
+                            }
+                            else -> {
+                                val scroll = rememberScrollState()
+                                Column(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(scroll)
+                                        .padding(top = headerPadding)
+                                        .padding(bottom = 120.dp),
+                                ) {
+                                    PluginUiRenderer(c, accent, onBack, onCallback)
                                 }
                             }
                         }
-                        is UiNode.Column -> {
-                            val scroll = rememberScrollState()
-                            Column(
-                                Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(scroll)
-                                    .padding(bottom = 120.dp)
-                                    .padding(c.padding.dp),
-                                verticalArrangement = Arrangement.spacedBy(c.spacing.dp),
-                            ) {
-                                c.children.forEach { child ->
-                                    PluginUiRenderer(child, accent, onBack, onCallback)
-                                }
-                            }
-                        }
-                        else -> {
-                            val scroll = rememberScrollState()
-                            Column(
-                                Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(scroll)
-                                    .padding(bottom = 120.dp),
-                            ) {
-                                PluginUiRenderer(c, accent, onBack, onCallback)
-                            }
+                    }
+                    node.fab?.let { fab ->
+                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.CenterEnd) {
+                            PluginUiRenderer(fab, accent, onBack, onCallback)
                         }
                     }
                 }
-                node.fab?.let { fab ->
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.CenterEnd) {
-                        PluginUiRenderer(fab, accent, onBack, onCallback)
-                    }
+            }
+            if (bar == null) {
+                MaterialBackground(accentColor = accent) {
+                    scaffoldBody(0.dp)
+                }
+            } else {
+                BlurHeaderBox(
+                    title = tr(bar.title),
+                    onBack = if (bar.showBack) onBack else null,
+                    accentColor = accent,
+                    actions = {
+                        bar.actions.forEach { action ->
+                            DolphyIconButton(onClick = { onCallback(action.onClickId, null) }) {
+                                Icon(
+                                    PluginIcons.resolve(action.icon),
+                                    contentDescription = null,
+                                    tint = accent,
+                                )
+                            }
+                        }
+                    },
+                ) { headerPadding ->
+                    scaffoldBody(headerPadding)
                 }
             }
         }
@@ -198,7 +216,7 @@ fun PluginUiRenderer(
 
         is UiNode.Text -> {
             Text(
-                text = node.text,
+                text = tr(node.text),
                 style = textStyle(node.style),
                 color = parseColor(node.color) ?: textColor(node.style),
                 maxLines = node.maxLines,
@@ -213,19 +231,19 @@ fun PluginUiRenderer(
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
-                ) { Text(node.text) }
+                ) { Text(tr(node.text)) }
                 "text" -> com.droid.dolphy.AccentButton(
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
-                ) { Text(node.text) }
+                ) { Text(tr(node.text)) }
                 "tonal" -> com.droid.dolphy.AccentButton(
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
-                ) { Text(node.text) }
+                ) { Text(tr(node.text)) }
                 "material" -> MaterialButton(
-                    text = node.text,
+                    text = tr(node.text),
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
@@ -235,7 +253,7 @@ fun PluginUiRenderer(
                     onClick = { onCallback(node.onClickId, null) },
                     enabled = node.enabled,
                     modifier = mod,
-                ) { Text(node.text) }
+                ) { Text(tr(node.text)) }
             }
         }
 
@@ -262,7 +280,7 @@ fun PluginUiRenderer(
                     text = new
                     onCallback(node.onChangeId, new)
                 },
-                label = if (node.label.isNotBlank()) ({ Text(node.label) }) else null,
+                label = if (node.label.isNotBlank()) ({ Text(tr(node.label)) }) else null,
                 singleLine = node.singleLine,
                 modifier = if (node.fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             )
@@ -276,9 +294,9 @@ fun PluginUiRenderer(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(node.title, style = MaterialTheme.typography.bodyLarge)
+                        Text(tr(node.title), style = MaterialTheme.typography.bodyLarge)
                         if (node.subtitle.isNotBlank()) {
-                            Text(node.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr(node.subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     DolphySwitch(
@@ -299,7 +317,7 @@ fun PluginUiRenderer(
         is UiNode.Slider -> {
             Column(Modifier.fillMaxWidth()) {
                 if (node.title.isNotBlank()) {
-                    Text(node.title, style = MaterialTheme.typography.bodyMedium)
+                    Text(tr(node.title), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(4.dp))
                 }
                 DolphySlider(
@@ -339,13 +357,13 @@ fun PluginUiRenderer(
             FilterChip(
                 selected = node.selected,
                 onClick = { onCallback(node.onClickId, null) },
-                label = { Text(node.text) },
+                label = { Text(tr(node.text)) },
             )
         }
 
         is UiNode.ConnectedButtonGroup -> {
             ConnectedButtonGroup(
-                options = node.options,
+                options = node.options.map { tr(it.first) to it.second },
                 selectedValue = node.selectedValue,
                 onValueSelected = { value -> onCallback(node.onSelectId, value) },
                 accentColor = accent,
@@ -356,7 +374,7 @@ fun PluginUiRenderer(
         is UiNode.TabRow -> {
             MaterialTabRow(
                 selectedTabIndex = node.selectedIndex.coerceIn(0, (node.tabs.size - 1).coerceAtLeast(0)),
-                tabs = node.tabs,
+                tabs = node.tabs.map { tr(it) },
                 onTabSelected = { index -> onCallback(node.onSelectId, index) },
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = accent,
@@ -378,7 +396,7 @@ fun PluginUiRenderer(
         is UiNode.SplitButton -> {
             val mod = if (node.fillMaxWidth) Modifier.fillMaxWidth() else Modifier
             ExpressiveSplitButton(
-                primaryText = node.primaryText,
+                primaryText = tr(node.primaryText),
                 onPrimaryClick = { onCallback(node.onPrimaryId, null) },
                 onSecondaryClick = { onCallback(node.onSecondaryId, null) },
                 modifier = mod,
@@ -419,11 +437,11 @@ fun PluginUiRenderer(
                 )
                 Column(Modifier.weight(1f).padding(start = 4.dp)) {
                     if (node.title.isNotBlank()) {
-                        Text(node.title, style = MaterialTheme.typography.bodyLarge)
+                        Text(tr(node.title), style = MaterialTheme.typography.bodyLarge)
                     }
                     if (node.subtitle.isNotBlank()) {
                         Text(
-                            node.subtitle,
+                            tr(node.subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -435,7 +453,7 @@ fun PluginUiRenderer(
         is UiNode.RadioGroup -> {
             Column(Modifier.fillMaxWidth()) {
                 if (node.title.isNotBlank()) {
-                    Text(node.title, style = MaterialTheme.typography.titleSmall)
+                    Text(tr(node.title), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(6.dp))
                 }
                 node.options.forEach { (label, value) ->
@@ -450,7 +468,7 @@ fun PluginUiRenderer(
                             selected = node.selectedValue == value,
                             onClick = { onCallback(node.onSelectId, value) },
                         )
-                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                        Text(tr(label), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
@@ -458,9 +476,9 @@ fun PluginUiRenderer(
 
         is UiNode.Dropdown -> {
             PluginDropdown(
-                options = node.options,
+                options = node.options.map { tr(it.first) to it.second },
                 selectedValue = node.selectedValue,
-                label = node.label,
+                label = tr(node.label),
                 enabled = node.enabled,
                 onSelect = { onCallback(node.onSelectId, it) },
             )
@@ -521,9 +539,9 @@ fun PluginUiRenderer(
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(node.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(tr(node.title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     if (node.description.isNotBlank()) {
-                        Text(node.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr(node.description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -549,8 +567,8 @@ fun PluginUiRenderer(
                             com.droid.dolphy.M3SegmentedListItem(
                                 index = index,
                                 count = count,
-                                headline = child.title,
-                                supporting = child.description.takeIf { it.isNotBlank() },
+                                headline = tr(child.title),
+                                supporting = tr(child.description).takeIf { it.isNotBlank() },
                                 leadingIcon = PluginIcons.resolve(child.icon).let {
                                     null
                                 },
@@ -580,8 +598,8 @@ fun PluginUiRenderer(
                             com.droid.dolphy.M3SegmentedListItem(
                                 index = index,
                                 count = count,
-                                headline = child.title,
-                                supporting = child.subtitle.takeIf { it.isNotBlank() },
+                                headline = tr(child.title),
+                                supporting = tr(child.subtitle).takeIf { it.isNotBlank() },
                                 leadingContent = if (child.icon != null) {
                                     {
                                         Icon(
@@ -628,9 +646,9 @@ fun PluginUiRenderer(
                     Spacer(Modifier.width(12.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(node.title, style = MaterialTheme.typography.bodyLarge)
+                    Text(tr(node.title), style = MaterialTheme.typography.bodyLarge)
                     if (node.subtitle.isNotBlank()) {
-                        Text(node.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr(node.subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 node.trailing?.let { PluginUiRenderer(it, accent, onBack, onCallback) }
@@ -685,7 +703,7 @@ fun PluginUiRenderer(
         is UiNode.Empty -> {}
         is UiNode.TopBar -> {
 
-            SectionTopBar(title = node.title, onBack = if (node.showBack) onBack else null, accentColor = accent)
+            SectionTopBar(title = tr(node.title), onBack = if (node.showBack) onBack else null, accentColor = accent)
         }
     }
 }
@@ -806,15 +824,17 @@ fun PluginAlertDialogContent(
     onDismiss: () -> Unit,
     onButton: (String?) -> Unit,
 ) {
+    val translatedTitle = tr(title)
+    val translatedMessage = tr(message)
     AlertDialog(
         onDismissRequest = {
             if (cancelable) onDismiss()
         },
-        title = if (title.isNotBlank()) {
-            { Text(title, fontWeight = FontWeight.SemiBold) }
+        title = if (translatedTitle.isNotBlank()) {
+            { Text(translatedTitle, fontWeight = FontWeight.SemiBold) }
         } else null,
-        text = if (message.isNotBlank()) {
-            { Text(message) }
+        text = if (translatedMessage.isNotBlank()) {
+            { Text(translatedMessage) }
         } else null,
         confirmButton = {
             val primary = buttons.firstOrNull()
@@ -838,21 +858,21 @@ fun PluginAlertDialogContent(
 private fun DialogActionButton(btn: UiNode.DialogButton, onClick: () -> Unit) {
     when (btn.style.lowercase()) {
         "filled", "material" -> {
-            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(tr(btn.text)) }
         }
         "tonal" -> {
-            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(tr(btn.text)) }
         }
         "outlined" -> {
-            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(tr(btn.text)) }
         }
         "destructive" -> {
             com.droid.dolphy.AccentButton(onClick = onClick) {
-                Text(btn.text, color = MaterialTheme.colorScheme.error)
+                Text(tr(btn.text), color = MaterialTheme.colorScheme.error)
             }
         }
         else -> {
-            com.droid.dolphy.AccentButton(onClick = onClick) { Text(btn.text) }
+            com.droid.dolphy.AccentButton(onClick = onClick) { Text(tr(btn.text)) }
         }
     }
 }

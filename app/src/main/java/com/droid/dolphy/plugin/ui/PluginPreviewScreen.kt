@@ -357,10 +357,14 @@ private fun PluginPreviewError(message: String, modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
 private fun formatFileSize(bytes: Long): String {
+    val mb = stringResource(R.string.ppreview_size_mb)
+    val kb = stringResource(R.string.ppreview_size_kb)
+    val bytesUnit = stringResource(R.string.ppreview_size_bytes)
     return when {
-        bytes >= 1024 * 1024 -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
-        bytes >= 1024 -> "%.1f KB".format(bytes / 1024.0)
-        else -> "$bytes B"
+        bytes >= 1024 * 1024 -> mb.format(bytes / (1024.0 * 1024.0))
+        bytes >= 1024 -> kb.format(bytes / 1024.0)
+        else -> bytesUnit.format(bytes)
     }
 }

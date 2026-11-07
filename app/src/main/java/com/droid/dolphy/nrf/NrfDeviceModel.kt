@@ -12,13 +12,6 @@ enum class DeviceType {
     DUAL_MODE
 }
 
-enum class VulnerabilityType {
-    FAST_PAIR_KBP,
-    WHISPER_PAIR,
-    STANDARD_PAIRING,
-    NONE
-}
-
 data class GattServiceInfo(
     val uuid: String,
     val name: String,
@@ -42,11 +35,12 @@ data class NrfDevice(
     val manufacturerData: ByteArray? = null,
     val serviceUuids: List<String> = emptyList(),
     val deviceClass: Int? = null,
-    val isVulnerable: Boolean = false,
-    val vulnerabilityType: VulnerabilityType? = null,
+    val isProfiling: Boolean = false,
     val lastSeen: Long = System.currentTimeMillis(),
     val scanCount: Int = 1,
     val manufacturerName: String? = null,
+    val vendor: String? = null,
+    val isConnectable: Boolean? = null,
     val deviceTypeClass: String? = null,
     val gattServices: List<GattServiceInfo> = emptyList(),
     val batteryLevel: Int? = null,
@@ -101,12 +95,13 @@ fun classifyDeviceType(
     val isFastPair = serviceUuids.contains("0000fe2c-0000-1000-8000-00805f9b34fb")
     val isBeacon = manufacturerId == 0x004C || manufacturerId == 0x0075 || manufacturerId == 0x0006
 
+    val bluetoothType = try { bluetoothDevice?.type } catch (_: SecurityException) { null }
     return when {
         isFastPair -> DeviceType.FAST_PAIR
         isBeacon -> DeviceType.BEACON
-        bluetoothDevice?.type == BluetoothDevice.DEVICE_TYPE_DUAL -> DeviceType.DUAL_MODE
-        bluetoothDevice?.type == BluetoothDevice.DEVICE_TYPE_LE -> DeviceType.BLE_DEVICE
-        bluetoothDevice?.type == BluetoothDevice.DEVICE_TYPE_CLASSIC -> DeviceType.CLASSIC_DEVICE
+        bluetoothType == BluetoothDevice.DEVICE_TYPE_DUAL -> DeviceType.DUAL_MODE
+        bluetoothType == BluetoothDevice.DEVICE_TYPE_LE -> DeviceType.BLE_DEVICE
+        bluetoothType == BluetoothDevice.DEVICE_TYPE_CLASSIC -> DeviceType.CLASSIC_DEVICE
         else -> DeviceType.BLE_DEVICE
     }
 }
@@ -189,4 +184,3 @@ fun getCharacteristicProperties(characteristic: BluetoothGattCharacteristic): Li
 
     return properties
 }
-

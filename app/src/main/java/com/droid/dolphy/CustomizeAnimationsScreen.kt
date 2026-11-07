@@ -338,159 +338,150 @@ fun CustomizeAnimationsScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accentColor) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
+    BlurHeaderBox(
+        title = stringResource(R.string.customize_animations_title),
+        onBack = onBack,
+        accentColor = accentColor,
+        actions = {
+            TextButton(
+                onClick = {
+                    prefs.edit()
+                        .remove("pinned_dolphin_animation_name")
+                        .remove("pinned_dolphin_animation_root")
+                        .apply()
+                    pinnedAnimName = null
+                    sessionExternalDolphinAnimationName = null
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.customize_animations_reset_success),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             ) {
-                SectionTopBar(
-                    title = stringResource(R.string.customize_animations_title),
-                    onBack = onBack,
-                    actions = {
-                        TextButton(
-                            onClick = {
-                                prefs.edit()
-                                    .remove("pinned_dolphin_animation_name")
-                                    .remove("pinned_dolphin_animation_root")
-                                    .apply()
-                                pinnedAnimName = null
-                                sessionExternalDolphinAnimationName = null
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.customize_animations_reset_success),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        ) {
-                            Text(
-                                text = stringResource(R.string.customize_animations_reset),
-                                color = accentColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
-                    }
+                Text(
+                    text = stringResource(R.string.customize_animations_reset),
+                    color = accentColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
                 )
+            }
+        }
+    ) { headerPadding ->
+        if (allAnimations.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(top = headerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = accentColor)
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = headerPadding + 8.dp, bottom = 48.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(allAnimations, key = { "${it.root}/${it.name}" }) { anim ->
+                    val isPinned = anim.name == pinnedAnimName
 
-                if (allAnimations.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { selectedAnimForDialog = anim },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isPinned) {
+                                accentColor.copy(alpha = 0.14f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            }
+                        ),
+                        border = if (isPinned) {
+                            BorderStroke(2.dp, accentColor)
+                        } else {
+                            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                        }
                     ) {
-                        CircularProgressIndicator(color = accentColor)
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 48.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(allAnimations, key = { "${it.root}/${it.name}" }) { anim ->
-                            val isPinned = anim.name == pinnedAnimName
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                DolphinAnimationPreview(
+                                    meta = anim,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    accent = accentColor
+                                )
 
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { selectedAnimForDialog = anim },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isPinned) {
-                                        accentColor.copy(alpha = 0.14f)
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    }
-                                ),
-                                border = if (isPinned) {
-                                    BorderStroke(2.dp, accentColor)
-                                } else {
-                                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-                                }
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Box(modifier = Modifier.fillMaxWidth()) {
-                                        DolphinAnimationPreview(
-                                            meta = anim,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            accent = accentColor
-                                        )
-
-                                        if (isPinned) {
-                                            Surface(
-                                                modifier = Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .padding(4.dp),
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = accentColor,
-                                                contentColor = Color.White
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                                ) {
-                                                    Icon(
-                                                        Icons.Filled.Star,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(11.dp)
-                                                    )
-                                                    Text(
-                                                        text = stringResource(R.string.customize_animations_permanent_badge),
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                if (isPinned) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(4.dp),
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = accentColor,
+                                        contentColor = Color.White
                                     ) {
-                                        Text(
-                                            text = anim.displayName,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = if (isPinned) FontWeight.Bold else FontWeight.SemiBold,
-                                            color = if (isPinned) accentColor else MaterialTheme.colorScheme.onSurface,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            textAlign = TextAlign.Center
-                                        )
-
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = if (anim.isWatchDogs) {
-                                                accentColor.copy(alpha = 0.16f)
-                                            } else {
-                                                MaterialTheme.colorScheme.surfaceVariant
-                                            },
-                                            contentColor = if (anim.isWatchDogs) {
-                                                accentColor
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            }
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                                         ) {
+                                            Icon(
+                                                Icons.Filled.Star,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(11.dp)
+                                            )
                                             Text(
-                                                text = if (anim.isWatchDogs) "WatchDogs" else "Classic",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                                text = stringResource(R.string.customize_animations_permanent_badge),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
                                     }
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = anim.displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isPinned) FontWeight.Bold else FontWeight.SemiBold,
+                                    color = if (isPinned) accentColor else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (anim.isWatchDogs) {
+                                        accentColor.copy(alpha = 0.16f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                    contentColor = if (anim.isWatchDogs) {
+                                        accentColor
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                ) {
+                                    Text(
+                                        text = if (anim.isWatchDogs) "WatchDogs" else "Classic",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                    )
                                 }
                             }
                         }

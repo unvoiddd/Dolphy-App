@@ -1,0 +1,56 @@
+import json
+
+__id__ = "test_healthy"
+__name__ = "Test 1 — Healthy"
+__version__ = "1.0.0"
+__author__ = "Dolphy Test Suite"
+__description__ = "Checks installation, UI, callbacks, persistent settings and clean unload"
+__icon__ = "rounded:check_circle"
+__permissions__ = ["files"]
+
+
+class HealthyPlugin(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.clicks = 0
+
+    def on_plugin_load(self):
+        self.add_module(
+            "Healthy plugin",
+            "Installation and UI boundary test",
+            "check_circle",
+            "main",
+            "PLUGINS",
+            1,
+        )
+        self.api.registerSettings(
+            "Healthy test",
+            json.dumps([
+                {
+                    "type": "switch",
+                    "key": "enabled_option",
+                    "title": "Test switch",
+                    "subtitle": "Checks persistent plugin settings",
+                    "default": True,
+                }
+            ]),
+            1,
+        )
+
+    def add_click(self):
+        self.clicks += 1
+        self.set_setting("clicks", self.clicks)
+        self.refresh()
+
+    def screen_main(self, ui, api, state):
+        return ui.scaffold(
+            title="Healthy plugin",
+            content=ui.column([
+                ui.card([
+                    ui.icon("check_circle", 44),
+                    ui.text("Plugin is running normally", "titleLarge"),
+                    ui.text("Button presses: " + str(self.clicks), "bodyLarge"),
+                ]),
+                ui.button("Test callback", self.add_click, fill_max_width=True),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )

@@ -10,6 +10,10 @@ class NfcType4HostApduService : HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray?, extras: Bundle?): ByteArray {
         if (commandApdu == null) return SW_UNKNOWN
+        if (NfcTagEmulationStore.getActiveTag(this) == null && !NfcAudioSpoofState.isActive.value) {
+            selectedFile = null
+            return byteArrayOf(0x6A.toByte(), 0x82.toByte())
+        }
 
         return when {
             commandApdu.startsWith(SELECT_NDEF_APP) -> {
@@ -148,4 +152,3 @@ class NfcType4HostApduService : HostApduService() {
         private val SW_WRONG_P1P2 = byteArrayOf(0x6B.toByte(), 0x00.toByte())
     }
 }
-

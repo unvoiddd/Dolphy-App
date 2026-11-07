@@ -218,7 +218,7 @@ class VivoSpam(private val type: VivoDevice.Type) : Spammer {
     private fun saveOriginalBtName() {
         if (btNameSaved) return
         try {
-            originalBtName = BluetoothHelper.bluetoothAdapter?.name
+            originalBtName = try { BluetoothHelper.bluetoothAdapter?.name } catch (_: SecurityException) { null }
             btNameSaved = true
         } catch (_: Exception) { }
     }
@@ -235,7 +235,7 @@ class VivoSpam(private val type: VivoDevice.Type) : Spammer {
         try {
             val orig = originalBtName
             if (!orig.isNullOrEmpty()) {
-                BluetoothHelper.bluetoothAdapter?.name = orig
+                try { BluetoothHelper.bluetoothAdapter?.name = orig } catch (_: SecurityException) { }
             }
         } catch (_: Exception) { } finally {
             btNameSaved = false

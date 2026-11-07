@@ -65,14 +65,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.DolphyCircularProgressIndicator
 import com.droid.dolphy.DolphySlider
 import com.droid.dolphy.M3SegmentedList
 import com.droid.dolphy.M3SegmentedListItem
-import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import kotlinx.coroutines.delay
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -130,7 +129,7 @@ fun BleSmartHomeScanScreen(navController: NavController) {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val device = result.device ?: return
                 val addr = device.address ?: return
-                val name = result.scanRecord?.deviceName ?: device.name ?: "BLE device"
+                val name = result.scanRecord?.deviceName ?: (try { device.name } catch (_: SecurityException) { null }) ?: "BLE device"
                 val vendor = BleVendorDb.getVendorLabel(context, addr)
                 val rssi = result.rssi
                 items = (items.filterNot { it.address == addr } + SmartHomeScanItem(addr, name, vendor, rssi))
@@ -172,103 +171,100 @@ fun BleSmartHomeScanScreen(navController: NavController) {
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accent) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                SectionTopBar(
-                    title = stringResource(R.string.ble_smart_home),
-                    onBack = { navController.popBackStack() },
-                    transparent = true,
-                    actions = {
-                        DolphyIconButton(onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (isScanning) stopScan() else startScan()
-                        }) {
-                            if (isScanning) DolphyCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            else Icon(Icons.Default.Lightbulb, contentDescription = "Scan")
-                        }
-                    }
-                )
+    BlurHeaderBox(
+        title = stringResource(R.string.ble_smart_home),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+        actions = {
+            DolphyIconButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (isScanning) stopScan() else startScan()
+            }) {
+                if (isScanning) DolphyCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Default.Lightbulb, contentDescription = "Scan")
+            }
+        },
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = headerPadding)
+                .padding(16.dp)
+        ) {
+            Spacer(Modifier.height(12.dp))
 
+            if (!hasPerm) {
+                Text(stringResource(R.string.ble_smarthome_need_perms), color = MaterialTheme.colorScheme.onBackground)
                 Spacer(Modifier.height(12.dp))
+                com.droid.dolphy.AccentButton(onClick = { ensurePerms() }) { Text(stringResource(R.string.ble_allow)) }
+                return@Column
+            }
+            if (bluetoothAdapter.isEnabled != true) {
+                Text("Bluetooth is off. Enable Bluetooth.", color = MaterialTheme.colorScheme.onBackground)
+                return@Column
+            }
 
-                if (!hasPerm) {
-                    Text(stringResource(R.string.ble_smarthome_need_perms), color = MaterialTheme.colorScheme.onBackground)
-                    Spacer(Modifier.height(12.dp))
-                    com.droid.dolphy.AccentButton(onClick = { ensurePerms() }) { Text(stringResource(R.string.ble_allow)) }
-                    return@Column
-                }
-                if (bluetoothAdapter.isEnabled != true) {
-                    Text("Bluetooth выключен. Включите Bluetooth.", color = MaterialTheme.colorScheme.onBackground)
-                    return@Column
-                }
-
-                if (items.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        if (isScanning) {
-                            val pulse = rememberInfiniteTransition(label = "scanPulse")
-                            val scale by pulse.animateFloat(
-                                initialValue = 1f,
-                                targetValue = 1.2f,
-                                animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-                                label = "scanPulseScale"
-                            )
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Box(
-                                    modifier = Modifier
-                                        .size((34f * scale).dp)
-                                        .background(accent.copy(alpha = 0.16f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lightbulb,
-                                        contentDescription = null,
-                                        tint = accent,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Text(stringResource(R.string.us_scanning), color = MaterialTheme.colorScheme.onBackground)
-                            }
-                        } else if (noDevicesFound) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(stringResource(R.string.ir_not_found), color = MaterialTheme.colorScheme.onBackground)
-                                DolphyIconButton(
-                                    onClick = { startScan() },
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .background(accent.copy(alpha = 0.18f), CircleShape)
-                                ) {
-                                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.ble_rescan), tint = accent)
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    M3SegmentedList(
-                        items = items,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { index, count, item ->
-                        M3SegmentedListItem(
-                            index = index,
-                            count = count,
-                            headline = item.vendor.takeIf { it != "Unknown" } ?: "Smart Light",
-                            supporting = "${item.address} • ${item.rssi} dBm",
-                            leadingIcon = Icons.Default.Lightbulb,
-                            leadingIconTint = accent,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                navController.navigate("ble_smart_home_device/${item.address}")
-                            },
-                        )
-                    }
+            if (items.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     if (isScanning) {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            DolphyCircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp)
+                        val pulse = rememberInfiniteTransition(label = "scanPulse")
+                        val scale by pulse.animateFloat(
+                            initialValue = 1f,
+                            targetValue = 1.2f,
+                            animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+                            label = "scanPulseScale"
+                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size((34f * scale).dp)
+                                    .background(accent.copy(alpha = 0.16f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = accent,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(stringResource(R.string.us_scanning), color = MaterialTheme.colorScheme.onBackground)
                         }
+                    } else if (noDevicesFound) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(stringResource(R.string.ir_not_found), color = MaterialTheme.colorScheme.onBackground)
+                            DolphyIconButton(
+                                onClick = { startScan() },
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .background(accent.copy(alpha = 0.18f), CircleShape)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.ble_rescan), tint = accent)
+                            }
+                        }
+                    }
+                }
+            } else {
+                M3SegmentedList(
+                    items = items,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { index, count, item ->
+                    M3SegmentedListItem(
+                        index = index,
+                        count = count,
+                        headline = item.vendor.takeIf { it != "Unknown" } ?: "Smart Light",
+                        supporting = "${item.address} • ${item.rssi} dBm",
+                        leadingIcon = Icons.Default.Lightbulb,
+                        leadingIconTint = accent,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            navController.navigate("ble_smart_home_device/${item.address}")
+                        },
+                    )
+                }
+                if (isScanning) {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        DolphyCircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp)
                     }
                 }
             }
@@ -330,19 +326,22 @@ fun BleSmartHomeDeviceScreen(navController: NavController, address: String) {
         manager.setBrightness((brightness * 255f).toInt())
     }
 
-    MaterialBackground(accentColor = accent) {
-        Column(Modifier.fillMaxSize().padding(16.dp)) {
-            SectionTopBar(
-                title = stringResource(R.string.ble_smart_light),
-                onBack = { navController.popBackStack() },
-                transparent = true
-            )
-
+    BlurHeaderBox(
+        title = stringResource(R.string.ble_smart_light),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(top = headerPadding)
+                .padding(16.dp)
+        ) {
             Spacer(Modifier.height(12.dp))
 
             MaterialCard(Modifier.fillMaxWidth(), accentColor = accent, cornerRadius = 18.dp) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(device?.name ?: address, fontWeight = FontWeight.SemiBold)
+                    Text((try { device?.name } catch (_: SecurityException) { null }) ?: address, fontWeight = FontWeight.SemiBold)
                     Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (connecting) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -477,5 +476,3 @@ private fun ColorWheel(
         drawCircle(Color.White, radius = 6f, center = androidx.compose.ui.geometry.Offset(px, py))
     }
 }
-
-

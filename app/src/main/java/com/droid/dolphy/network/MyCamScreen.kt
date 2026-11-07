@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 @file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package com.droid.dolphy.network
@@ -53,11 +55,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
-import com.droid.dolphy.MaterialBackground
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.MaterialButton
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import kotlinx.coroutines.flow.catch
 
 private enum class MyCamPhase { SCANNING, LIVE_MJPEG, LIVE_SNAPSHOT, LIVE_RTSP, NO_CAMERAS, ERROR }
@@ -121,60 +122,63 @@ fun MyCamScreen(navController: NavController) {
         }
     }
 
-    MaterialBackground(accentColor = accent) {
+    BlurHeaderBox(
+        title = stringResource(R.string.my_cam_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
         Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize()) {
-                SectionTopBar(
-                    title = stringResource(R.string.my_cam_title),
-                    onBack = { navController.popBackStack() },
-                    accentColor = accent,
-                    alwaysCollapsed = true,
-                )
-                when (phase) {
-                    MyCamPhase.SCANNING -> Unit
-                    MyCamPhase.LIVE_MJPEG -> mjpegTarget?.let {
-                        MjpegView(it.url, it.authHeader) { msg ->
-                            logLines = logLines + msg
-                            phase = MyCamPhase.ERROR
-                        }
+            when (phase) {
+                MyCamPhase.SCANNING -> Unit
+                MyCamPhase.LIVE_MJPEG -> mjpegTarget?.let {
+                    MjpegView(it.url, it.authHeader) { msg ->
+                        logLines = logLines + msg
+                        phase = MyCamPhase.ERROR
                     }
-                    MyCamPhase.LIVE_SNAPSHOT -> snapshotTarget?.let {
-                        SnapshotView(it.url, it.authHeader) { msg ->
-                            logLines = logLines + msg
-                            phase = MyCamPhase.ERROR
-                        }
-                    }
-                    MyCamPhase.LIVE_RTSP -> rtspUrl?.let { url ->
-                        RtspView(url) { msg ->
-                            logLines = logLines + msg
-                            phase = MyCamPhase.ERROR
-                        }
-                    }
-                    MyCamPhase.NO_CAMERAS -> FailureCenter(
-                        icon = Icons.Default.WarningAmber,
-                        title = stringResource(R.string.my_cam_no_cameras),
-                        logLines = logLines,
-                        onRetry = { forcedMode = false; attempt++ },
-                        onRetryAllDevices = { forcedMode = true; attempt++ },
-                    )
-                    MyCamPhase.ERROR -> FailureCenter(
-                        icon = Icons.Default.ErrorOutline,
-                        title = stringResource(R.string.my_cam_error_title),
-                        logLines = logLines,
-                        onRetry = { forcedMode = false; attempt++ },
-                    )
                 }
+                MyCamPhase.LIVE_SNAPSHOT -> snapshotTarget?.let {
+                    SnapshotView(it.url, it.authHeader) { msg ->
+                        logLines = logLines + msg
+                        phase = MyCamPhase.ERROR
+                    }
+                }
+                MyCamPhase.LIVE_RTSP -> rtspUrl?.let { url ->
+                    RtspView(url) { msg ->
+                        logLines = logLines + msg
+                        phase = MyCamPhase.ERROR
+                    }
+                }
+                MyCamPhase.NO_CAMERAS -> FailureCenter(
+                    icon = Icons.Default.WarningAmber,
+                    title = stringResource(R.string.my_cam_no_cameras),
+                    logLines = logLines,
+                    onRetry = { forcedMode = false; attempt++ },
+                    onRetryAllDevices = { forcedMode = true; attempt++ },
+                    modifier = Modifier.padding(top = headerPadding),
+                )
+                MyCamPhase.ERROR -> FailureCenter(
+                    icon = Icons.Default.ErrorOutline,
+                    title = stringResource(R.string.my_cam_error_title),
+                    logLines = logLines,
+                    onRetry = { forcedMode = false; attempt++ },
+                    modifier = Modifier.padding(top = headerPadding),
+                )
             }
             if (phase == MyCamPhase.SCANNING) {
-                ScanningCenter(statusText)
+                ScanningCenter(statusText, Modifier.padding(top = headerPadding))
             }
         }
     }
 }
 
 @Composable
-private fun ScanningCenter(status: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun ScanningCenter(status: String, modifier: Modifier = Modifier) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .then(modifier),
+        contentAlignment = Alignment.Center,
+    ) {
         LoadingIndicator(modifier = Modifier.size(280.dp))
         Text(
             text = status,
@@ -192,7 +196,7 @@ private fun MjpegView(url: String, authHeader: String?, onInterrupted: (String) 
     var frame by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(url, authHeader) {
         MyCamEngine.mjpegFrames(url, authHeader)
-            .catch { e -> onInterrupted("Поток прерван: ${e.message ?: "нет ответа"}") }
+            .catch { e -> onInterrupted("Stream interrupted: ${e.message ?: "no response"}") }
             .collect { frame = it }
     }
     Box(
@@ -220,7 +224,7 @@ private fun SnapshotView(url: String, authHeader: String?, onInterrupted: (Strin
     var frame by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(url, authHeader) {
         MyCamEngine.snapshotFrames(url, authHeader)
-            .catch { e -> onInterrupted("Поток снимков прерван: ${e.message ?: "нет ответа"}") }
+            .catch { e -> onInterrupted("Snapshot stream interrupted: ${e.message ?: "no response"}") }
             .collect { frame = it }
     }
     Box(
@@ -254,7 +258,7 @@ private fun RtspView(url: String, onError: (String) -> Unit) {
             setMediaSource(source)
             addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    onError("Ошибка воспроизведения RTSP: ${error.errorCodeName}")
+                    onError("RTSP playback error: ${error.errorCodeName}")
                 }
             })
             playWhenReady = true
@@ -289,12 +293,14 @@ private fun FailureCenter(
     logLines: List<String>,
     onRetry: () -> Unit,
     onRetryAllDevices: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     Box(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .then(modifier),
         contentAlignment = Alignment.Center,
     ) {
         Column(

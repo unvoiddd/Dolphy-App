@@ -63,11 +63,11 @@ class BluetoothJammerEngine(private val context: Context) {
                 return@launch
             }
 
-            runCatching { adapter.cancelDiscovery() }
+            try { adapter.cancelDiscovery() } catch (_: SecurityException) { }
             val device = adapter.getRemoteDevice(targetAddress)
             targetDevice = device
 
-            val name = runCatching { device.name }.getOrNull() ?: "unknown"
+            val name = (try { device.name } catch (_: SecurityException) { null }) ?: "unknown"
             post(onLog, "Target: $targetAddress ($name)")
             post(onLog, "Vectors: RFCOMM x$RFCOMM_THREADS · bond spam · SDP flood · inquiry cycling · GATT churn")
 

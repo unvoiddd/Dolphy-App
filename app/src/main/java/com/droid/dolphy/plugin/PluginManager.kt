@@ -49,6 +49,9 @@ object PluginManager {
     private val _safeModeNotice = MutableStateFlow(false)
     val safeModeNotice: StateFlow<Boolean> = _safeModeNotice.asStateFlow()
 
+    private val _autoSafeMode = MutableStateFlow(true)
+    val autoSafeModeOnCrash: StateFlow<Boolean> = _autoSafeMode.asStateFlow()
+
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Volatile private var initialized = false
@@ -62,6 +65,7 @@ object PluginManager {
         val safety = appContext.getSharedPreferences(SAFE_MODE_PREFS, Context.MODE_PRIVATE)
         _safeMode.value = safety.getBoolean(KEY_SAFE_MODE, false)
         _safeModeNotice.value = safety.getBoolean(KEY_SAFE_MODE_NOTICE, false)
+        _autoSafeMode.value = safety.getBoolean(KEY_AUTO_SAFE_MODE, true)
 
         try {
             loadDeletedIds()
@@ -137,6 +141,12 @@ object PluginManager {
             .apply()
     }
 
+    fun setAutoSafeModeOnCrash(enabled: Boolean) {
+        _autoSafeMode.value = enabled
+        appContext.getSharedPreferences(SAFE_MODE_PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_AUTO_SAFE_MODE, enabled).apply()
+    }
+
     fun togglePinned(pluginId: String) {
         val entry = loaded[pluginId] ?: return
         val pinned = !entry.pinned
@@ -147,7 +157,7 @@ object PluginManager {
 
     fun sharePlugin(context: Context, pluginId: String): Result<Unit> {
         return runCatching {
-            val entry = loaded[pluginId] ?: error("Плагин не найден")
+            val entry = loaded[pluginId] ?: error("Plugin not found")
             val shareDir = File(appContext.cacheDir, "shared_plugins").apply { mkdirs() }
             val file = File(shareDir, "${entry.manifest.id}.dolphyplugin")
             file.writeText(entry.sourceCode, Charsets.UTF_8)
@@ -168,10 +178,32 @@ object PluginManager {
                 ?: uri.lastPathSegment?.substringAfterLast('/')
                 ?: "plugin.dolphyplugin"
             val mime = appContext.contentResolver.getType(uri).orEmpty()
-            val accepted = fileName.endsWith(".dolphyplugin", true) ||
+            val acceptedByHints = fileName.endsWith(".dolphyplugin", true) ||
+                fileName.endsWith(".js", true) ||
                 uri.path?.endsWith(".dolphyplugin", true) == true ||
-                mime.equals("application/x-dolphy-plugin", true)
-            if (!accepted) return Result.failure(IllegalArgumentException("Поддерживаются только файлы .dolphyplugin"))
+                uri.path?.endsWith(".js", true) == true ||
+                mime.equals("application/x-dolphy-plugin", true) ||
+                mime.contains("javascript", true) ||
+                mime.contains("python", true)
+            if (!acceptedByHints) {
+                val sniff = runCatching {
+                    appContext.contentResolver.openInputStream(uri)?.use { input ->
+                        val buffer = ByteArray(8192)
+                        val read = input.read(buffer)
+                        if (read <= 0) null else String(buffer, 0, read, Charsets.UTF_8)
+                    }
+                }.getOrNull()
+                val looksLikeSource = sniff != null && !sniff.contains('\u0000') && (
+                    sniff.contains("manifest") ||
+                        sniff.contains("def ") ||
+                        sniff.contains("import ") ||
+                        sniff.contains("function") ||
+                        sniff.contains("const ")
+                    )
+                if (!looksLikeSource) {
+                    return Result.failure(IllegalArgumentException("Only .dolphyplugin files are supported"))
+                }
+            }
             val bytes = appContext.contentResolver.openInputStream(uri)?.use { input ->
                 val output = ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
@@ -181,25 +213,26 @@ object PluginManager {
                     if (read < 0) break
                     total += read
                     if (total > MAX_PLUGIN_SOURCE_BYTES) {
-                        return Result.failure(IllegalArgumentException("Файл плагина слишком большой"))
+                        return Result.failure(IllegalArgumentException("Plugin file is too large"))
                     }
                     output.write(buffer, 0, read)
                 }
                 output.toByteArray()
-            } ?: return Result.failure(IllegalStateException("Не удалось прочитать файл"))
+            } ?: return Result.failure(IllegalStateException("Failed to read file"))
             val raw = bytes.toString(Charsets.UTF_8)
-            if (raw.isBlank()) return Result.failure(IllegalArgumentException("Пустой файл"))
+            if (raw.isBlank()) return Result.failure(IllegalArgumentException("File is empty"))
             val fallbackId = fileName.substringBeforeLast('.')
                 .replace(Regex("[^A-Za-z0-9_-]"), "_")
                 .lowercase()
                 .ifBlank { "plugin" }
-            val manifest = parseManifest("python", raw, fallbackId, fileName.substringBeforeLast('.'))
+            val runtime = if (fileName.endsWith(".dolphyplugin", true) || looksLikePython(raw)) "python" else "javascript"
+            val manifest = parseManifest(runtime, raw, fallbackId, fileName.substringBeforeLast('.'))
             Result.success(
                 PluginPreview(
                     manifest = manifest,
                     fileName = fileName,
                     sizeBytes = bytes.size.toLong(),
-                    runtime = "python",
+                    runtime = runtime,
                     installed = loaded.containsKey(manifest.id),
                     capabilities = inferCapabilities(raw),
                 ),
@@ -255,9 +288,9 @@ object PluginManager {
         return sessions[pluginId]?.renderScreen(screenId)
             ?: UiNode.Column(
                 listOf(
-                    UiNode.Text("Плагин не установлен", "headlineSmall"),
+                    UiNode.Text("Plugin not installed", "headlineSmall"),
                     UiNode.Spacer(8f),
-                    UiNode.Text("id=$pluginId — импортируйте .dolphyplugin через Управление плагинами", "bodyMedium"),
+                    UiNode.Text("id=$pluginId — import a .dolphyplugin via Plugin Manager", "bodyMedium"),
                 ),
                 padding = 16f,
                 spacing = 8f,
@@ -280,11 +313,11 @@ object PluginManager {
                         val read = input.read(buffer)
                         if (read < 0) break
                         total += read
-                        if (total > MAX_PLUGIN_SOURCE_BYTES) throw IllegalArgumentException("Файл плагина слишком большой")
+                        if (total > MAX_PLUGIN_SOURCE_BYTES) throw IllegalArgumentException("Plugin file is too large")
                         output.write(buffer, 0, read)
                     }
                 }
-            } ?: return Result.failure(IllegalStateException("Не удалось прочитать файл"))
+            } ?: return Result.failure(IllegalStateException("Failed to read file"))
             val result = installFromFile(tmp)
             tmp.delete()
             result
@@ -295,10 +328,10 @@ object PluginManager {
     }
 
     fun installFromFile(sourceFile: File): Result<PluginManifest> {
-        if (!sourceFile.exists()) return Result.failure(IllegalArgumentException("Файл не найден"))
+        if (!sourceFile.exists()) return Result.failure(IllegalArgumentException("File not found"))
         return try {
             val raw = sourceFile.readText(Charsets.UTF_8)
-            if (raw.isBlank()) return Result.failure(IllegalArgumentException("Пустой файл"))
+            if (raw.isBlank()) return Result.failure(IllegalArgumentException("File is empty"))
             val fallbackId = sourceFile.nameWithoutExtension
                 .replace(Regex("[^A-Za-z0-9_-]"), "_")
                 .lowercase()
@@ -335,7 +368,7 @@ object PluginManager {
         saveMeta(manifest, enabled = shouldEnable, runtime = runtime, pinned = wasPinned)
 
         if (!saved.exists() || saved.length() == 0L) {
-            return Result.failure(IllegalStateException("Не удалось сохранить плагин на диск"))
+            return Result.failure(IllegalStateException("Failed to save plugin to disk"))
         }
 
         if (!shouldEnable) {
@@ -349,7 +382,7 @@ object PluginManager {
             updateMetaEnabled(manifest.id, false)
             loaded[manifest.id] = LoadedPlugin(manifest, saved, raw, enabled = false, runtime = runtime, pinned = wasPinned)
             publish()
-            return Result.failure(IllegalStateException("Не установлены или отключены библиотеки: ${missingDependencies.joinToString()}"))
+            return Result.failure(IllegalStateException("Libraries not installed or disabled: ${missingDependencies.joinToString()}"))
         }
 
         val session = try {
@@ -365,7 +398,7 @@ object PluginManager {
             publish()
             return Result.failure(
                 IllegalStateException(
-                    "Плагин сохранён, но не запустился: ${t.javaClass.simpleName}: ${t.message}",
+                    "Plugin saved but failed to start: ${t.javaClass.simpleName}: ${t.message}",
                     t,
                 ),
             )
@@ -858,6 +891,7 @@ object PluginManager {
     private const val SAFE_MODE_PREFS = "plugin_safe_mode"
     private const val KEY_SAFE_MODE = "active"
     private const val KEY_SAFE_MODE_NOTICE = "notice"
+    private const val KEY_AUTO_SAFE_MODE = "auto_on_crash"
     private const val SAFE_MODE_LOG_FILE = "plugin_safe_mode_crash.log"
 }
 

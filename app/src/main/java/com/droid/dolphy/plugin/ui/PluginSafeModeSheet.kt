@@ -43,6 +43,7 @@ fun PluginSafeModeSheet() {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val copiedMessage = stringResource(R.string.plugin_safe_mode_log_copied)
+    val clipboardLabel = stringResource(R.string.psafe_clipboard_label)
     ModalBottomSheet(
         onDismissRequest = { PluginManager.dismissSafeModeNotice() },
         sheetState = sheetState,
@@ -80,7 +81,7 @@ fun PluginSafeModeSheet() {
             AccentButton(
                 onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Dolphy plugin crash log", PluginManager.safeModeCrashLog()))
+                    clipboard.setPrimaryClip(ClipData.newPlainText(clipboardLabel, PluginManager.safeModeCrashLog()))
                     Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),

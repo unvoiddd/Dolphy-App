@@ -13,7 +13,7 @@ data class EmulatedNfcTag(
 object NfcTagEmulationStore {
     private const val PREFS = "nfc_emulation_prefs"
     private const val KEY_TAGS = "tags"
-    private const val KEY_ACTIVE = "active_tag"
+    @Volatile private var activeTag: EmulatedNfcTag? = null
 
     fun loadTags(context: Context): List<EmulatedNfcTag> {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_TAGS, null)
@@ -52,33 +52,8 @@ object NfcTagEmulationStore {
     }
 
     fun setActiveTag(context: Context, tag: EmulatedNfcTag?) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (tag == null) {
-            prefs.edit().remove(KEY_ACTIVE).apply()
-            return
-        }
-        val json = JSONObject().apply {
-            put("id", tag.id)
-            put("name", tag.name)
-            put("url", tag.url)
-        }
-        prefs.edit().putString(KEY_ACTIVE, json.toString()).apply()
+        activeTag = tag
     }
 
-    fun getActiveTag(context: Context): EmulatedNfcTag? {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_ACTIVE, null)
-            ?: return null
-        return runCatching {
-            val json = JSONObject(raw)
-            val id = json.optLong("id", 0L)
-            val name = json.optString("name")
-            val url = json.optString("url")
-            if (id > 0L && name.isNotBlank() && url.isNotBlank()) {
-                EmulatedNfcTag(id = id, name = name, url = url)
-            } else {
-                null
-            }
-        }.getOrNull()
-    }
+    fun getActiveTag(context: Context): EmulatedNfcTag? = activeTag
 }
-

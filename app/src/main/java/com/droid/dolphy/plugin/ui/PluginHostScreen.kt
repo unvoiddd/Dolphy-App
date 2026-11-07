@@ -23,9 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.droid.dolphy.MaterialBackground
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.plugin.PluginManager
 import com.droid.dolphy.plugin.model.PluginBottomSheetSpec
 import com.droid.dolphy.plugin.model.PluginDialogSpec
@@ -34,6 +33,7 @@ import com.droid.dolphy.plugin.model.PluginMediaRequest
 import com.droid.dolphy.plugin.model.PluginPermissionRequest
 import com.droid.dolphy.plugin.model.PluginSnackbarSpec
 import com.droid.dolphy.plugin.model.UiNode
+import com.droid.dolphy.plugin.store.rememberTranslated
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
@@ -358,11 +358,14 @@ fun PluginHostScreen(
     val snack by (session?.snackbar ?: emptySnackFlow).collectAsState()
     val sheet by (session?.bottomSheet ?: emptySheetFlow).collectAsState()
 
+    val snackText = rememberTranslated(snack?.message.orEmpty())
+    val snackAction = rememberTranslated(snack?.actionLabel.orEmpty())
+
     LaunchedEffect(snack) {
         val s = snack ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
-            message = s.message,
-            actionLabel = s.actionLabel,
+            message = snackText,
+            actionLabel = snackAction.ifBlank { null },
             withDismissAction = true,
             duration = androidx.compose.material3.SnackbarDuration.Short,
         )
@@ -372,113 +375,113 @@ fun PluginHostScreen(
         }
     }
 
-    MaterialBackground(accentColor = accent) {
-        when {
-            session == null -> {
-                Column(Modifier.fillMaxSize()) {
-                    SectionTopBar(
-                        title = stringResource(R.string.plugin_host_title),
-                        onBack = { navController.popBackStack() },
-                        accentColor = accent,
+    when {
+        session == null -> {
+            BlurHeaderBox(
+                title = stringResource(R.string.plugin_host_title),
+                onBack = { navController.popBackStack() },
+                accentColor = accent,
+            ) { headerPadding ->
+                Box(
+                    Modifier.fillMaxSize().padding(top = headerPadding + 24.dp, start = 24.dp, end = 24.dp, bottom = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.plugin_host_not_installed, pluginId),
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
-                    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            stringResource(R.string.plugin_host_not_installed, pluginId),
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
                 }
             }
-            else -> {
-                val emptyTitle = stringResource(R.string.plugin_host_empty_screen)
-                val node = when (tree) {
-                    is UiNode.Scaffold -> tree
-                    is UiNode.Empty -> UiNode.Scaffold(
-                        topBar = UiNode.TopBar(session.manifest.name, true),
-                        content = UiNode.Column(
-                            listOf(
-                                UiNode.Text(emptyTitle, "titleMedium"),
-                                UiNode.Text(
-                                    session.lastError ?: "screen_$screenId returned empty UI",
-                                    "bodyMedium",
-                                    color = "error",
-                                ),
+        }
+        else -> {
+            val emptyTitle = stringResource(R.string.plugin_host_empty_screen)
+            val node = when (tree) {
+                is UiNode.Scaffold -> tree
+                is UiNode.Empty -> UiNode.Scaffold(
+                    topBar = UiNode.TopBar(session.manifest.name, true),
+                    content = UiNode.Column(
+                        listOf(
+                            UiNode.Text(emptyTitle, "titleMedium"),
+                            UiNode.Text(
+                                session.lastError ?: "screen_$screenId returned empty UI",
+                                "bodyMedium",
+                                color = "error",
                             ),
-                            padding = 16f,
-                            spacing = 8f,
                         ),
-                    )
-                    else -> UiNode.Scaffold(
-                        topBar = UiNode.TopBar(
-                            title = session.manifest.name,
-                            showBack = true,
-                        ),
-                        content = tree,
+                        padding = 16f,
+                        spacing = 8f,
+                    ),
+                )
+                else -> UiNode.Scaffold(
+                    topBar = UiNode.TopBar(
+                        title = session.manifest.name,
+                        showBack = true,
+                    ),
+                    content = tree,
+                )
+            }
+            Box(Modifier.fillMaxSize()) {
+                PluginUiRenderer(
+                    node = node,
+                    accent = accent,
+                    onBack = { navController.popBackStack() },
+                    onCallback = { id, value -> session.onCallback(id, value) },
+                )
+
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp),
+                )
+
+                val dlg = dialog
+                if (dlg != null) {
+                    PluginAlertDialogContent(
+                        title = dlg.title,
+                        message = dlg.message,
+                        buttons = dlg.buttons.ifEmpty {
+                            listOf(UiNode.DialogButton("OK", "filled", null))
+                        },
+                        cancelable = dlg.cancelable,
+                        onDismiss = { session.dismissDialog() },
+                        onButton = { id -> session.onDialogButton(id) },
                     )
                 }
-                Box(Modifier.fillMaxSize()) {
-                    PluginUiRenderer(
-                        node = node,
-                        accent = accent,
-                        onBack = { navController.popBackStack() },
-                        onCallback = { id, value -> session.onCallback(id, value) },
-                    )
 
-                    SnackbarHost(
-                        hostState = snackbarHostState,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 16.dp),
-                    )
-
-                    val dlg = dialog
-                    if (dlg != null) {
-                        PluginAlertDialogContent(
-                            title = dlg.title,
-                            message = dlg.message,
-                            buttons = dlg.buttons.ifEmpty {
-                                listOf(UiNode.DialogButton("OK", "filled", null))
-                            },
-                            cancelable = dlg.cancelable,
-                            onDismiss = { session.dismissDialog() },
-                            onButton = { id -> session.onDialogButton(id) },
-                        )
-                    }
-
-                    val sh = sheet
-                    if (sh != null) {
-                        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                        ModalBottomSheet(
-                            onDismissRequest = {
-                                if (sh.cancelable) session.dismissBottomSheet()
-                            },
-                            sheetState = sheetState,
+                val sh = sheet
+                if (sh != null) {
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    ModalBottomSheet(
+                        onDismissRequest = {
+                            if (sh.cancelable) session.dismissBottomSheet()
+                        },
+                        sheetState = sheetState,
+                    ) {
+                        Column(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 20.dp, vertical = 8.dp),
                         ) {
-                            Column(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                            ) {
-                                if (sh.title.isNotBlank()) {
-                                    Text(
-                                        sh.title,
-                                        style = MaterialTheme.typography.titleLarge,
-                                    )
-                                }
-                                if (sh.message.isNotBlank()) {
-                                    Text(
-                                        sh.message,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(top = 8.dp),
-                                    )
-                                }
-                                sh.buttons.forEach { btn ->
-                                    com.droid.dolphy.AccentButton(
-                                        onClick = { session.onBottomSheetButton(btn.onClickId) },
-                                        modifier = Modifier.padding(top = 4.dp),
-                                    ) {
-                                        Text(btn.text)
-                                    }
+                            if (sh.title.isNotBlank()) {
+                                Text(
+                                    rememberTranslated(sh.title),
+                                    style = MaterialTheme.typography.titleLarge,
+                                )
+                            }
+                            if (sh.message.isNotBlank()) {
+                                Text(
+                                    rememberTranslated(sh.message),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                            }
+                            sh.buttons.forEach { btn ->
+                                com.droid.dolphy.AccentButton(
+                                    onClick = { session.onBottomSheetButton(btn.onClickId) },
+                                    modifier = Modifier.padding(top = 4.dp),
+                                ) {
+                                    Text(rememberTranslated(btn.text))
                                 }
                             }
                         }

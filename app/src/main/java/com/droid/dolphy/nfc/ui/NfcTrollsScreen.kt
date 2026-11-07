@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,9 +34,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.droid.dolphy.MaterialBackground
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.MaterialCard
-import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.TextGray
 import com.droid.dolphy.nfc.EmulatedNfcTag
 import com.droid.dolphy.nfc.NFC_TROLLS
@@ -54,40 +52,33 @@ fun NfcTrollsScreen(navController: NavController) {
     val haptics = LocalHapticFeedback.current
     val accentColor = MaterialTheme.colorScheme.primary
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accentColor) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .systemBarsPadding()
-                    .padding(horizontal = 16.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = bottomScrollPadding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    SectionTopBar(
-                        transparent = true,
-                        title = stringResource(R.string.nfc_trolls),
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-
-                items(NFC_TROLLS) { troll ->
-                    TrollCard(
-                        troll = troll,
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            val emulatedTag = EmulatedNfcTag(
-                                id = System.currentTimeMillis(),
-                                name = troll.name,
-                                url = troll.url
-                            )
-                            NfcTagEmulationStore.setActiveTag(context, emulatedTag)
-                            navController.navigate("other/nfc_emulator_run/${emulatedTag.id}")
-                        }
-                    )
-                }
+    BlurHeaderBox(
+        title = stringResource(R.string.nfc_trolls),
+        onBack = { navController.popBackStack() },
+        accentColor = accentColor,
+    ) { headerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(top = headerPadding + 16.dp, bottom = bottomScrollPadding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(NFC_TROLLS) { troll ->
+                TrollCard(
+                    troll = troll,
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val emulatedTag = EmulatedNfcTag(
+                            id = System.currentTimeMillis(),
+                            name = troll.name,
+                            url = troll.url
+                        )
+                        NfcTagEmulationStore.setActiveTag(context, emulatedTag)
+                        navController.navigate("other/nfc_emulator_run/${emulatedTag.id}")
+                    }
+                )
             }
         }
     }

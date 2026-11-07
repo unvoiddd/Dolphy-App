@@ -12,9 +12,9 @@ object HexUtils {
             .removePrefix("0X")
             .replace("\\s+".toRegex(), "")
 
-        require(clean.isNotEmpty()) { "Hex payload пустой" }
-        require(clean.length % 2 == 0) { "Hex payload должен содержать чётное число символов" }
-        require(clean.matches(Regex("^[0-9a-fA-F]+$"))) { "Hex payload содержит недопустимые символы" }
+        require(clean.isNotEmpty()) { "Hex payload is empty" }
+        require(clean.length % 2 == 0) { "Hex payload must contain an even number of characters" }
+        require(clean.matches(Regex("^[0-9a-fA-F]+$"))) { "Hex payload contains invalid characters" }
 
         return ByteArray(clean.length / 2) { index ->
             clean.substring(index * 2, index * 2 + 2).toInt(16).toByte()
@@ -30,8 +30,8 @@ object HexUtils {
             .removePrefix("0x")
             .removePrefix("0X")
 
-        require(clean.isNotEmpty()) { "Код бренда обязателен" }
-        require(clean.matches(Regex("^[0-9a-fA-F]+$"))) { "Код бренда должен быть hex" }
+        require(clean.isNotEmpty()) { "Brand code is required" }
+        require(clean.matches(Regex("^[0-9a-fA-F]+$"))) { "Brand code must be hex" }
 
         return clean.toInt(16)
     }

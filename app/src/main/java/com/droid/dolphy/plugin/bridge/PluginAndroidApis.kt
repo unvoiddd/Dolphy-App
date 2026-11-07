@@ -65,13 +65,6 @@ import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothSocket
 import android.os.ParcelUuid
 
-
-
-
-
-
-
-
 class PluginAndroidApis(
     private val context: Context,
     private val pluginId: String,
@@ -589,10 +582,10 @@ class PluginAndroidApis(
 
     fun cryptoUuid(): String = UUID.randomUUID().toString()
 
-    
+
     fun pluginFilesDir(): File = filesDir
 
-    
+
     fun importUriToSandbox(
         uri: Uri,
         destRelative: String? = null,
@@ -661,7 +654,7 @@ class PluginAndroidApis(
         }
     }
 
-    
+
     fun createCameraCaptureTarget(fileName: String? = null): Pair<File, Uri>? {
         return try {
             val name = (fileName ?: "camera_${System.currentTimeMillis()}.jpg")
@@ -682,7 +675,7 @@ class PluginAndroidApis(
         }
     }
 
-    
+
     fun importCameraFile(
         captureFile: File,
         destRelative: String? = null,
@@ -724,8 +717,6 @@ class PluginAndroidApis(
     fun hasCamera(): Boolean = hasFeature(PackageManager.FEATURE_CAMERA_ANY)
         || hasFeature(PackageManager.FEATURE_CAMERA)
 
-
-    
     private fun sanitizeAssetPath(path: String): String {
         return path.trim()
             .replace('\\', '/')
@@ -806,7 +797,7 @@ class PluginAndroidApis(
         }
     }
 
-    
+
     fun assetsDataUri(path: String, maxBytes: Int = 5_000_000): String? {
         val clean = sanitizeAssetPath(path)
         if (clean.isEmpty()) return null
@@ -1598,8 +1589,6 @@ class PluginAndroidApis(
         }
     }
 
-
-
     @SuppressLint("MissingPermission")
     fun btSetName(name: String): Boolean = try {
         btAdapter?.name = name; true
@@ -1634,7 +1623,7 @@ class PluginAndroidApis(
 
     fun btGetBondState(address: String): Int {
         val device = try { btAdapter?.getRemoteDevice(address) } catch (_: Exception) { null } ?: return -1
-        return try { device.bondState } catch (_: Exception) { -1 }
+        return try { device.bondState } catch (_: SecurityException) { -1 }
     }
 
     @SuppressLint("MissingPermission")
@@ -2119,4 +2108,3 @@ class PluginAndroidApis(
             bytes.joinToString("") { "%02X".format(it) }
     }
 }
-

@@ -42,11 +42,10 @@ import kotlinx.serialization.json.Json
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.border
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.M3SegmentedListItem
 import com.droid.dolphy.M3SegmentedListItemSpacing
-import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.OrangeAccent
-import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.m3SegmentedItems
 import androidx.activity.result.contract.ActivityResultContracts
 
@@ -107,46 +106,42 @@ fun QrToolsScreen(navController: NavController) {
     val viewModel: QrToolsViewModel = viewModel { QrToolsViewModel(context) }
     val accentColor = MaterialTheme.colorScheme.primary
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accentColor) {
-            Column(
-                modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+    BlurHeaderBox(
+        title = stringResource(R.string.qr_tools),
+        onBack = { navController.popBackStack() },
+        accentColor = accentColor,
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
+        ) {
+            val tools = listOf(
+                Triple(
+                    Icons.Default.Audiotrack,
+                    stringResource(R.string.qr_audio_spoofer),
+                    stringResource(R.string.qr_audio_spoofer_desc),
+                ) to "other/qr_audio_spoofer",
+                Triple(
+                    Icons.Default.QrCode,
+                    stringResource(R.string.qr_generator_title),
+                    stringResource(R.string.qr_generator_desc),
+                ) to "other/qr_generator_main",
+            )
+            LazyColumn(
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = headerPadding + 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
+                modifier = Modifier.fillMaxSize()
             ) {
-                SectionTopBar(
-                    title = stringResource(R.string.qr_tools),
-                    onBack = { navController.popBackStack() }
-                )
-
-                val tools = listOf(
-                    Triple(
-                        Icons.Default.Audiotrack,
-                        stringResource(R.string.qr_audio_spoofer),
-                        stringResource(R.string.qr_audio_spoofer_desc),
-                    ) to "other/qr_audio_spoofer",
-                    Triple(
-                        Icons.Default.QrCode,
-                        stringResource(R.string.qr_generator_title),
-                        stringResource(R.string.qr_generator_desc),
-                    ) to "other/qr_generator_main",
-                )
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    m3SegmentedItems(tools) { index, count, entry ->
-                        val (meta, route) = entry
-                        M3SegmentedListItem(
-                            index = index,
-                            count = count,
-                            headline = meta.second,
-                            supporting = meta.third,
-                            leadingIcon = meta.first,
-                            leadingIconTint = accentColor,
-                            onClick = { navController.navigate(route) },
-                        )
-                    }
+                m3SegmentedItems(tools) { index, count, entry ->
+                    val (meta, route) = entry
+                    M3SegmentedListItem(
+                        index = index,
+                        count = count,
+                        headline = meta.second,
+                        supporting = meta.third,
+                        leadingIcon = meta.first,
+                        leadingIconTint = accentColor,
+                        onClick = { navController.navigate(route) },
+                    )
                 }
             }
         }
@@ -161,50 +156,46 @@ fun QrGeneratorMainScreen(navController: NavController) {
     var showAddDialog by remember { mutableStateOf(false) }
     val accentColor = MaterialTheme.colorScheme.primary
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accentColor) {
-            Column(
-                modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+    BlurHeaderBox(
+        title = stringResource(R.string.qr_generator_main_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accentColor,
+        actions = {
+            DolphyIconButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add QR", tint = accentColor)
+            }
+        },
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
+        ) {
+            LazyColumn(
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = headerPadding + 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
+                modifier = Modifier.fillMaxSize()
             ) {
-                SectionTopBar(
-                    title = stringResource(R.string.qr_generator_main_title),
-                    onBack = { navController.popBackStack() },
-                    actions = {
-                        DolphyIconButton(onClick = { showAddDialog = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add QR", tint = accentColor)
+                if (savedQrs.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(stringResource(R.string.qr_no_saved_qrs), color = Color.Gray)
                         }
                     }
-                )
-
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    if (savedQrs.isEmpty()) {
-                        item {
-                            Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(stringResource(R.string.qr_no_saved_qrs), color = Color.Gray)
-                            }
-                        }
-                    } else {
-                        m3SegmentedItems(savedQrs, key = { it.id }) { index, count, qr ->
-                            M3SegmentedListItem(
-                                index = index,
-                                count = count,
-                                headline = qr.name,
-                                supporting = qr.content,
-                                leadingIcon = Icons.Default.QrCode,
-                                leadingIconTint = accentColor,
-                                trailingContent = {
-                                    DolphyIconButton(onClick = { viewModel.deleteQr(qr.id) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF5252))
-                                    }
-                                },
-                                onClick = { navController.navigate("other/qr_detail/${qr.id}") },
-                            )
-                        }
+                } else {
+                    m3SegmentedItems(savedQrs, key = { it.id }) { index, count, qr ->
+                        M3SegmentedListItem(
+                            index = index,
+                            count = count,
+                            headline = qr.name,
+                            supporting = qr.content,
+                            leadingIcon = Icons.Default.QrCode,
+                            leadingIconTint = accentColor,
+                            trailingContent = {
+                                DolphyIconButton(onClick = { viewModel.deleteQr(qr.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF5252))
+                                }
+                            },
+                            onClick = { navController.navigate("other/qr_detail/${qr.id}") },
+                        )
                     }
                 }
             }
@@ -363,77 +354,74 @@ fun QrDetailScreen(qrId: String, navController: NavController) {
     val qr = viewModel.savedQrs.value.find { it.id == qrId }
     val accentColor = MaterialTheme.colorScheme.primary
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accentColor) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                SectionTopBar(
-                    title = qr?.name ?: "QR Code",
-                    onBack = { navController.popBackStack() }
-                )
-
-                qr?.let {
-                    Column(
+    BlurHeaderBox(
+        title = qr?.name ?: "QR Code",
+        onBack = { navController.popBackStack() },
+        accentColor = accentColor,
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            qr?.let {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = headerPadding)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .padding(16.dp)
-                                .clip(RoundedCornerShape(32.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val bitmap = remember(qr.content) {
-                                QrGenerator.generateQrCode(qr.content, 512)
-                            }
-                            bitmap?.let {
-                                Image(
-                                    bitmap = it.asImageBitmap(),
-                                    contentDescription = "QR Code",
-                                    modifier = Modifier
-                                        .fillMaxSize(0.8f)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(MaterialTheme.colorScheme.surface),
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
+                        val bitmap = remember(qr.content) {
+                            QrGenerator.generateQrCode(qr.content, 512)
                         }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Text(
-                            text = qr.content,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 18.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        val clipboardManager = LocalClipboardManager.current
-                        com.droid.dolphy.AccentButton(
-                            onClick = {
-                                clipboardManager.setText(AnnotatedString(qr.content))
-                                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.ContentCopy, null, tint = MaterialTheme.colorScheme.onPrimary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Copy Content", color = MaterialTheme.colorScheme.onPrimary)
+                        bitmap?.let {
+                            Image(
+                                bitmap = it.asImageBitmap(),
+                                contentDescription = "QR Code",
+                                modifier = Modifier
+                                    .fillMaxSize(0.8f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(MaterialTheme.colorScheme.surface),
+                                contentScale = ContentScale.Fit
+                            )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = qr.content,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    val clipboardManager = LocalClipboardManager.current
+                    com.droid.dolphy.AccentButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(qr.content))
+                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, null, tint = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Copy Content", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }
@@ -467,7 +455,7 @@ fun QrAudioSpooferScreen(
         val s = serverIp!!
         if (s.startsWith("http://")) s else "http://$s"
     } else if (isStarted) {
-        "Запуск локального сервера…"
+        "Starting local server…"
     } else {
         "Waiting..."
     }
@@ -485,7 +473,7 @@ fun QrAudioSpooferScreen(
         "wifi" to "Free WiFi",
         "error" to "Error (Chrome style)",
         "vpn" to "VPN Service",
-        "custom_html" to if (customHtmlName != null) "Импорт html ($customHtmlName)" else "Импорт html",
+        "custom_html" to if (customHtmlName != null) "Import HTML ($customHtmlName)" else "Import HTML",
     )
     val isCustomHtml = pageType == "custom_html"
 
@@ -649,8 +637,8 @@ fun QrAudioSpooferScreen(
             if (isCustomHtml) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "Импортированный стиль: только логи. Аудио-управление скрыто. " +
-                        "В логах: заходы на сайт и весь текст, введённый на странице.",
+                    "Imported style: logs only. Audio controls are hidden. " +
+                        "Logs show site visits and all text entered on the page.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     modifier = Modifier.fillMaxWidth()
@@ -660,7 +648,7 @@ fun QrAudioSpooferScreen(
                     onClick = { htmlPickerLauncher.launch("*/*") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Заменить HTML")
+                    Text("Replace HTML")
                 }
             }
 
@@ -670,7 +658,7 @@ fun QrAudioSpooferScreen(
 
             val deviceCount by viewModel.deviceCount.collectAsState()
             Text("SOUNDBOARD", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
-            Text("Подключено: $deviceCount устройств", color = accentColor, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
+            Text("Connected: $deviceCount devices", color = accentColor, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SoundButton("", Icons.Default.Message, accentColor) { viewModel.sendCommand("PLAY:iphone_message.mp3") }
@@ -745,7 +733,7 @@ fun QrAudioSpooferScreen(
 
 
             Text(
-                if (isCustomHtml) "ЛОГИ САЙТА" else "TERMINAL LOGS",
+                if (isCustomHtml) "SITE LOGS" else "TERMINAL LOGS",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,

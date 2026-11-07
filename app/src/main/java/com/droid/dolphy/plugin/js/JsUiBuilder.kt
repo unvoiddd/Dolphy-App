@@ -11,10 +11,6 @@ import org.mozilla.javascript.ScriptableObject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-
-
-
-
 class JsUiBuilder {
     private val callbacks = ConcurrentHashMap<String, org.mozilla.javascript.Function>()
 
@@ -70,8 +66,6 @@ class JsUiBuilder {
         }
 
         put("scaffold") { _, _, args ->
-
-
 
             val props = anyObjectMap(args, 0)
             val nestedTop = props["topBar"]
@@ -310,7 +304,7 @@ class JsUiBuilder {
                     title = strProp(props, "title", ""),
                     message = strProp(props, "message", strProp(props, "text", "")),
                     confirmText = strProp(props, "confirmText", "OK"),
-                    dismissText = strProp(props, "dismissText", "Отмена"),
+                    dismissText = strProp(props, "dismissText", "Cancel"),
                     onConfirmId = reg(props["onConfirm"]),
                     onDismissId = reg(props["onDismiss"]),
                     buttons = buttons,
@@ -395,7 +389,7 @@ class JsUiBuilder {
         return ui
     }
 
-    
+
     private fun buildMaterial3Pack(cx: Context, scope: Scriptable, ui: Scriptable): Scriptable {
         val m3 = cx.newObject(scope)
 
@@ -854,99 +848,5 @@ class JsUiBuilder {
     private fun props(args: Array<Any?>, index: Int): Map<String, Any?> = anyObjectMap(args, index)
 
 
-    private fun anyObjectMap(args: Array<Any?>, index: Int): Map<String, Any?> {
-        if (index >= args.size) return emptyMap()
-        val v = args[index]
-        if (v is Scriptable && isPlainObject(v)) return scriptableToMap(v)
-        return emptyMap()
-    }
-
-
-
-
-
-    private fun isPlainObject(s: Scriptable): Boolean {
-        if (s is org.mozilla.javascript.Function) return false
-        if (s is NativeArray) return false
-
-        val nodeId = ScriptableObject.getProperty(s, "__nodeId")
-        if (nodeId != null && nodeId != Scriptable.NOT_FOUND && nodeId != Context.getUndefinedValue()) {
-            return false
-        }
-        val uiNode = ScriptableObject.getProperty(s, "__uiNode")
-        if (uiNode is UiNode) return false
-
-        return ScriptableObject.getPropertyIds(s).isNotEmpty()
-    }
-
-    private fun isProps(s: Scriptable): Boolean = isPlainObject(s)
-
-    private fun scriptableToMap(s: Scriptable): Map<String, Any?> {
-        val map = mutableMapOf<String, Any?>()
-        for (id in ScriptableObject.getPropertyIds(s)) {
-            val key = id.toString()
-            map[key] = ScriptableObject.getProperty(s, key)
-        }
-        return map
-    }
-
-    private fun f(args: Array<Any?>, key: String, def: Float): Float {
-        val p = props(args, 0)
-        return floatProp(p, key, def)
-    }
-
-    private fun b(args: Array<Any?>, key: String, def: Boolean): Boolean {
-        val p = props(args, 0)
-        return boolProp(p, key, def)
-    }
-
-    private fun str(args: Array<Any?>, i: Int, def: String): String {
-        if (i >= args.size || args[i] == null || args[i] == Context.getUndefinedValue()) return def
-        return Context.toString(args[i])
-    }
-
-    private fun strPropOrNull(p: Map<String, Any?>, k: String, def: String?): String? {
-        val v = p[k] ?: return def
-        if (v == Context.getUndefinedValue()) return def
-        return Context.toString(v)
-    }
-
-    private fun strProp(p: Map<String, Any?>, k: String, def: String): String = strPropOrNull(p, k, def) ?: def
-
-    private fun boolProp(p: Map<String, Any?>, k: String, def: Boolean): Boolean {
-        val v = p[k] ?: return def
-        if (v == Context.getUndefinedValue()) return def
-        return Context.toBoolean(v)
-    }
-
-    private fun floatProp(p: Map<String, Any?>, k: String, def: Float): Float {
-        val v = p[k] ?: return def
-        if (v == Context.getUndefinedValue()) return def
-        return toFloat(v)
-    }
-
-    private fun optionalFloat(p: Map<String, Any?>, k: String): Float? {
-        val v = p[k] ?: return null
-        if (v == Context.getUndefinedValue() || v == null) return null
-        return toFloat(v)
-    }
-
-    private fun intProp(p: Map<String, Any?>, k: String, def: Int): Int {
-        val v = p[k] ?: return def
-        if (v == Context.getUndefinedValue()) return def
-        return toInt(v)
-    }
-
-    private fun toFloat(v: Any): Float = when (v) {
-        is Number -> v.toFloat()
-        else -> Context.toNumber(v).toFloat()
-    }
-
-    private fun toInt(v: Any): Int = when (v) {
-        is Number -> v.toInt()
-        else -> Context.toNumber(v).toInt()
-    }
-
     private class UiNodeHolder(val node: UiNode)
 }
-

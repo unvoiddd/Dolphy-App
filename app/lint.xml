@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- AppLocale recreates activities when language changes. Event callbacks intentionally use their activity context. -->
+    <issue id="LocalContextGetResourceValueCall" severity="warning" />
+</lint>

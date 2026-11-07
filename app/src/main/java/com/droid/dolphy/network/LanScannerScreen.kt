@@ -34,10 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.droid.dolphy.MaterialBackground
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.TextGray
 import kotlinx.coroutines.*
 import java.io.BufferedReader
@@ -472,89 +471,86 @@ fun LanScannerScreen(navController: NavController) {
         startScan()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accent) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+    BlurHeaderBox(
+        title = stringResource(R.string.lan_scanner_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Spacer(modifier = Modifier.height(headerPadding))
+
+            MaterialCard(
+                modifier = Modifier.fillMaxWidth(),
+                accentColor = accent,
+                cornerRadius = 16.dp
             ) {
-                SectionTopBar(
-                    transparent = true,
-                    title = stringResource(R.string.lan_scanner_title),
-                    onBack = { navController.popBackStack() }
-                )
-
-                MaterialCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    accentColor = accent,
-                    cornerRadius = 16.dp
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = if (isScanning) stringResource(R.string.lan_scanner_scanning) else stringResource(R.string.lan_scanner_complete),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = stringResource(R.string.lan_scanner_subnet, currentSubnet),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            if (isScanning) {
-                                CircularProgressIndicator(
-                                    progress = { progress },
-                                    modifier = Modifier.size(32.dp),
-                                    strokeWidth = 3.dp,
-                                    color = accent
-                                )
-                            } else {
-                                DolphyIconButton(onClick = { startScan() }) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "Rescan", tint = accent)
-                                }
-                            }
-                        }
-
-                        if (isScanning) {
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
-                                color = accent,
-                                trackColor = accent.copy(alpha = 0.12f)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (isScanning) stringResource(R.string.lan_scanner_scanning) else stringResource(R.string.lan_scanner_complete),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = stringResource(R.string.lan_scanner_subnet, currentSubnet),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
-                        Text(
-                            text = stringResource(R.string.lan_scanner_found_devices, devices.size),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = accent
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 3.dp,
+                                color = accent
+                            )
+                        } else {
+                            DolphyIconButton(onClick = { startScan() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Rescan", tint = accent)
+                            }
+                        }
+                    }
+
+                    if (isScanning) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
+                            color = accent,
+                            trackColor = accent.copy(alpha = 0.12f)
                         )
                     }
+
+                    Text(
+                        text = stringResource(R.string.lan_scanner_found_devices, devices.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = accent
+                    )
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
+                items(devices, key = { it.ip }) { device ->
+                    DeviceCard(device, accent)
                 }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp)
-                ) {
-                    items(devices, key = { it.ip }) { device ->
-                        DeviceCard(device, accent)
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
+                item {
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
         }

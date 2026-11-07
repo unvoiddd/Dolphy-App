@@ -14,20 +14,23 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -127,63 +130,138 @@ fun BluetoothJammerScanScreen(onBack: () -> Unit, accentColor: Color) {
         }
     }
 
-    MaterialBackground(accentColor = accentColor) {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            topBar = {
-                SectionTopBar(
-                    title = stringResource(R.string.bt_jammer_title),
-                    onBack = onBack,
+    BlurHeaderBox(
+        title = stringResource(R.string.bt_jammer_title),
+        onBack = onBack,
+        accentColor = accentColor
+    ) { headerPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = headerPadding + 12.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item(key = "scan_hero") {
+                JammerScanHeader(
+                    isScanning = isScanning,
+                    deviceCount = devices.size,
                     accentColor = accentColor
                 )
             }
-        ) { padding ->
-            Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-                Spacer(Modifier.height(16.dp))
 
-                Text(
-                    text = stringResource(R.string.bt_jammer_select_device),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
-                )
-
-                if (devices.isEmpty() && !isScanning) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.bt_jammer_no_devices), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+            if (devices.isNotEmpty()) {
+                item(key = "section_header") {
+                    M3SegmentedListSectionHeader(
+                        title = stringResource(R.string.bt_jammer_select_device)
+                    )
                 }
+                m3SegmentedItems(devices, key = { it.address }) { index, count, device ->
+                    M3SegmentedListItem(
+                        index = index,
+                        count = count,
+                        headline = device.name,
+                        supporting = device.address,
+                        leadingIcon = Icons.Default.Bluetooth,
+                        onClick = { selectedDevice = device }
+                    )
+                }
+            }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 32.dp)
-                ) {
-                    items(devices, key = { it.address }) { device ->
-                        MaterialCard(
-                            modifier = Modifier.fillMaxWidth().clickable { selectedDevice = device },
-                            accentColor = accentColor,
-                            cornerRadius = 24.dp,
-                            contentPadding = 16.dp
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier.size(48.dp).background(accentColor.copy(alpha = 0.1f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Default.Bluetooth, null, tint = accentColor)
-                                }
-                                Spacer(Modifier.width(16.dp))
-                                Column {
-                                    Text(device.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text(device.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
+            if (devices.isEmpty() && !isScanning) {
+                item(key = "empty") {
+                    JammerEmptyState()
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun JammerScanHeader(
+    isScanning: Boolean,
+    deviceCount: Int,
+    accentColor: Color
+) {
+    MaterialCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerType = "primary",
+        cornerRadius = 28.dp,
+        contentPadding = 20.dp
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(56.dp)) {
+                if (isScanning) {
+                    WavyCircularProgressIndicator(
+                        modifier = Modifier.fillMaxSize(),
+                        color = accentColor,
+                        trackColor = Color.Transparent
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(accentColor.copy(alpha = 0.18f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (isScanning) Icons.Default.BluetoothSearching else Icons.Default.Bluetooth,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isScanning) {
+                        stringResource(R.string.bt_jammer_scanning)
+                    } else {
+                        stringResource(R.string.bt_jammer_title)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = if (deviceCount > 0) {
+                        stringResource(R.string.bt_jammer_found, deviceCount)
+                    } else {
+                        stringResource(R.string.bt_jammer_tap_hint)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun JammerEmptyState() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.BluetoothDisabled,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.bt_jammer_no_devices),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -225,96 +303,171 @@ fun BluetoothJammerAttackScreen(
         }
     }
 
-    MaterialBackground(accentColor = accentColor) {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            topBar = {
-                SectionTopBar(
-                    title = stringResource(R.string.bt_jammer_jamming),
-                    onBack = {
-                        if (isAttacking) engine.stopJamming()
-                        onBack()
-                    },
-                    accentColor = accentColor
-                )
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+    BlurHeaderBox(
+        title = stringResource(R.string.bt_jammer_jamming),
+        onBack = {
+            if (isAttacking) engine.stopJamming()
+            onBack()
+        },
+        accentColor = accentColor
+    ) { headerPadding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(top = headerPadding + 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            MaterialCard(
+                modifier = Modifier.fillMaxWidth(),
+                accentColor = accentColor,
+                cornerRadius = 32.dp,
+                contentPadding = 28.dp
             ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    JammerStatusPill(active = isAttacking, accentColor = accentColor)
 
-                MaterialCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    accentColor = accentColor,
-                    cornerRadius = 28.dp,
-                    contentPadding = 24.dp
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.bt_jammer_target), style = MaterialTheme.typography.labelSmall, color = accentColor.copy(alpha = 0.7f), fontWeight = FontWeight.Bold)
-                        Text(device.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-                        Text(device.address, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(20.dp))
 
-                        Spacer(Modifier.height(24.dp))
-
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(120.dp)) {
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(accentColor.copy(alpha = 0.15f), CircleShape)
-                            )
-
-                            WavyCircularProgressIndicator(
-                                modifier = Modifier.fillMaxSize(),
-                                color = accentColor,
-                                trackColor = Color.Transparent,
-                                fillColor = accentColor.copy(alpha = 0.3f)
-                            )
-
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(140.dp)) {
+                        if (isAttacking) {
+                            JammerPulseRings(accentColor = accentColor)
+                        }
+                        WavyCircularProgressIndicator(
+                            modifier = Modifier.size(132.dp),
+                            color = accentColor,
+                            trackColor = Color.Transparent,
+                            fillColor = accentColor.copy(alpha = 0.25f)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(84.dp)
+                                .background(accentColor.copy(alpha = 0.18f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
                                 Icons.Default.BluetoothDisabled,
                                 null,
-                                modifier = Modifier.size(48.dp),
+                                modifier = Modifier.size(42.dp),
                                 tint = accentColor
                             )
                         }
                     }
-                }
 
-                Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.bt_jammer_activity_log), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.weight(1f))
-                    if (isAttacking) {
-                        ExpressiveCircularProgressIndicator(modifier = Modifier.size(16.dp), color = accentColor)
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.Black.copy(alpha = 0.3f))
-                        .verticalScroll(scrollState)
-                        .padding(16.dp)
-                ) {
                     Text(
-                        text = logText.ifEmpty { stringResource(R.string.bt_jammer_ready) },
-                        color = if (isAttacking) accentColor else Color.Gray,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp
+                        stringResource(R.string.bt_jammer_target),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        device.name,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        device.address,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.bt_jammer_activity_log), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.weight(1f))
+                if (isAttacking) {
+                    ExpressiveCircularProgressIndicator(modifier = Modifier.size(16.dp), color = accentColor)
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                    .verticalScroll(scrollState)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = logText.ifEmpty { stringResource(R.string.bt_jammer_ready) },
+                    color = if (isAttacking) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
             }
         }
     }
 }
+
+@Composable
+private fun JammerStatusPill(active: Boolean, accentColor: Color) {
+    val containerColor = if (active) accentColor.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceContainerHighest
+    val dotColor = if (active) accentColor else MaterialTheme.colorScheme.onSurfaceVariant
+    val infinite = rememberInfiniteTransition(label = "pill")
+    val dotAlpha by infinite.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(700, easing = EaseInOutSine), RepeatMode.Reverse),
+        label = "dotAlpha"
+    )
+    Surface(
+        shape = CircleShape,
+        color = containerColor
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .graphicsLayerAlpha(if (active) dotAlpha else 1f)
+                    .background(dotColor, CircleShape)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(if (active) R.string.bt_jammer_jamming else R.string.bt_jammer_ready),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = dotColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun JammerPulseRings(accentColor: Color) {
+    val infinite = rememberInfiniteTransition(label = "rings")
+    for (i in 0 until 2) {
+        val progress by infinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                tween(1800, delayMillis = i * 900, easing = LinearEasing),
+                RepeatMode.Restart
+            ),
+            label = "ring$i"
+        )
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .scale(0.6f + progress * 0.4f)
+                .graphicsLayerAlpha(1f - progress)
+                .background(accentColor.copy(alpha = 0.12f), CircleShape)
+        )
+    }
+}
+
+private fun Modifier.graphicsLayerAlpha(value: Float): Modifier =
+    this.then(Modifier.alpha(value))
 

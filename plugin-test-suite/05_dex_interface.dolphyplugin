@@ -1,0 +1,54 @@
+DEX_DATA = "ZGV4CjAzOAAuqzXK/PFXMUhFPlWz7WWJpsi0jJGjQw2YAwAAcAAAAHhWNBIAAAAAAAAAABADAAAMAAAAcAAAAAQAAACgAAAAAgAAALAAAAAAAAAAAAAAAAQAAADIAAAAAQAAAOgAAACQAgAACAEAAFwBAABkAQAAegEAAJEBAACUAQAAuwEAAM8BAADjAQAASwIAAE4CAABXAgAAXgIAAAQAAAAFAAAABgAAAAgAAAADAAAAAgAAAAAAAAAIAAAAAwAAAAAAAAAAAAEAAAAAAAAAAAAJAAAAAAAAAAoAAAABAAEAAAAAAAAAAAARAAAAAQAAAAAAAAACAAAAAAAAAP0CAAAAAAAAAgABAAAAAABQAQAAAwAAABoABwARAAAAAgABAAAAAABUAQAAAwAAABoAAQARAAAAAQABAAEAAABYAQAABAAAAHAQAwAAAA4ACQAOAAUADgADAA4ABjxpbml0PgAUREVYIGludGVyZmFjZSBhY3RpdmUAFURleEludGVyZmFjZVRleHQuamF2YQABTAAlTGNvbS9kb2xwaHkvdGVzdGRleC9EZXhJbnRlcmZhY2VUZXh0OwASTGphdmEvbGFuZy9PYmplY3Q7ABJMamF2YS9sYW5nL1N0cmluZzsAZlRoaXMgYmFubmVyIGlzIHJlbmRlcmVkIGJ5IFB5dGhvbiwgYnV0IGl0cyB0ZXh0IGFuZCBiZWhhdmlvciBjYW1lIGZyb20gYSBkeW5hbWljYWxseSBsb2FkZWQgREVYIGNsYXNzLgABVgAHbWVzc2FnZQAFdGl0bGUAnAF+fkQ4eyJiYWNrZW5kIjoiZGV4IiwiY29tcGlsYXRpb24tbW9kZSI6ImRlYnVnIiwiaGFzLWNoZWNrc3VtcyI6ZmFsc2UsIm1pbi1hcGkiOjI2LCJzaGEtMSI6IjA4NGE4OTEyNmFlMDU5NmM1OTkxNDNkZjU3YTY1NDY0NmFmMjgzMTMiLCJ2ZXJzaW9uIjoiOS4yLjQtZGV2In0AAAABAgCBgAS4AgEBiAIBAaACAAsAAAAAAAAAAQAAAAAAAAABAAAADAAAAHAAAAACAAAABAAAAKAAAAADAAAAAgAAALAAAAAFAAAABAAAAMgAAAAGAAAAAQAAAOgAAAABIAAAAwAAAAgBAAADIAAAAwAAAFABAAACIAAADAAAAFwBAAAAIAAAAQAAAP0CAAAAEAAAAQAAABADAAA="
+DEX_SHA256 = "50b1e4b00fc678279a803515c4845aa6d22fa0cdfc008e08856d8b92d63632a9"
+
+__id__ = "test_dex_interface"
+__name__ = "Test 5 — DEX Interface"
+__version__ = "1.0.0"
+__author__ = "Dolphy Test Suite"
+__description__ = "Loads an embedded DEX and injects DEX-provided text into the Settings interface"
+__icon__ = "rounded:deployed_code"
+__permissions__ = ["dex", "hooks"]
+
+
+class DexInterfacePlugin(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self.title = "DEX loading"
+        self.message = "Waiting for the embedded class"
+
+    def on_plugin_load(self):
+        self.load_dex_base64("interface", DEX_DATA, DEX_SHA256)
+        instance = self.new_dex_instance("interface", "com.dolphy.testdex.DexInterfaceText")
+        self.title = str(self.invoke_java(instance, "title"))
+        self.message = str(self.invoke_java(instance, "message"))
+        self.add_module(
+            "DEX Interface Test",
+            "Embedded DEX loading and host UI hook",
+            "deployed_code",
+            "main",
+            "PLUGINS",
+            5,
+        )
+        self.hook_screen("settings", "settings_banner", "top", 100)
+
+    def screen_settings_banner(self, ui, api, state):
+        return ui.row([
+            ui.icon("deployed_code", 28),
+            ui.column([
+                ui.text(self.title, "titleMedium"),
+                ui.text("Loaded dynamically from the plugin DEX", "bodySmall"),
+            ], spacing=2),
+        ], padding=12, spacing=12)
+
+    def screen_main(self, ui, api, state):
+        return ui.scaffold(
+            title="DEX Interface Test",
+            content=ui.column([
+                ui.card([
+                    ui.icon("deployed_code", 48),
+                    ui.text(self.title, "headlineSmall"),
+                    ui.text(self.message, "bodyLarge"),
+                ]),
+                ui.text("Open Settings to see the DEX-powered banner injected into an existing screen.", "bodyMedium"),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )

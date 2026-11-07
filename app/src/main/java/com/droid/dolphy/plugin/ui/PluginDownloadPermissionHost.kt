@@ -13,14 +13,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import com.droid.dolphy.R
 import com.droid.dolphy.plugin.PluginDownloadPolicy
-import java.util.Locale
+import androidx.compose.ui.platform.LocalConfiguration
 
 @Composable
 fun PluginDownloadPermissionHost() {
     val request by PluginDownloadPolicy.pending.collectAsState()
     val current = request ?: return
     val size = if (current.totalBytes > 0L) {
-        String.format(Locale.getDefault(), "%.1f MB", current.totalBytes / 1_048_576.0)
+        String.format(
+            LocalConfiguration.current.locales[0],
+            stringResource(R.string.psafe_size_mb),
+            current.totalBytes / 1_048_576.0,
+        )
     } else {
         stringResource(R.string.plugin_download_unknown_size)
     }

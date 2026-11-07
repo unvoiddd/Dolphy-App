@@ -5,12 +5,9 @@ import android.content.res.Configuration
 import android.os.Build
 import java.util.Locale
 
-
-
-
-
-
 object AppLocale {
+    fun getString(context: Context, id: Int, vararg args: Any): String = wrap(context).getString(id, *args)
+
     fun wrap(context: Context): Context {
         val prefs = context.getSharedPreferences("DolphyPrefs", Context.MODE_PRIVATE)
         val language = prefs.getString("app_language", "ru") ?: "ru"
@@ -29,4 +26,3 @@ object AppLocale {
         }
     }
 }
-

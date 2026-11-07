@@ -1,6 +1,7 @@
 package com.droid.dolphy.hid
 
-import com.droid.dolphy.DolphyIconButton
+import com.droid.dolphy.MaterialCard
+import com.droid.dolphy.rememberPressShrink
 
 import android.Manifest
 import android.content.Context
@@ -11,6 +12,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresPermission
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -24,7 +30,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
@@ -43,6 +51,7 @@ import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -57,7 +66,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +86,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -104,11 +113,6 @@ import kotlin.random.Random
 import com.droid.dolphy.R
 import org.json.JSONArray
 import org.json.JSONObject
-
-
-
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun Combo(
     hidConnection: Connection?,
@@ -153,6 +157,22 @@ private data class MobileDuckyScriptItem(
 )
 
 @Composable
+internal fun HidSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 2.dp),
+    )
+}
+
+@Composable
 fun EviStatusIcon(
     isActive: Boolean,
     modifier: Modifier = Modifier,
@@ -180,11 +200,6 @@ fun EviStatusIcon(
         colorFilter = ColorFilter.tint(tint.copy(alpha = 0.65f), BlendMode.Modulate)
     )
 }
-
-
-
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun HidMainScreen(
     hidConnection: Connection?,
@@ -221,30 +236,40 @@ fun HidMainScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Button(
+                onClick = { onModeChange(true) },
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(50),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
             ) {
-                val accentColor = MaterialTheme.colorScheme.primary
-                com.droid.dolphy.AccentButton(
-                    onClick = { onModeChange(true) },
-                    modifier = Modifier.height(40.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
-                ) {
-                    Text("BH", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("BAD HID", style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(stringResource(R.string.hid_android_ios_mode), style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    Icons.Default.Terminal,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("BAD HID", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
+            Text(
+                stringResource(R.string.hid_android_ios_mode),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Box(
             modifier = Modifier.fillMaxSize()
@@ -257,8 +282,6 @@ fun HidMainScreen(
         }
     }
 }
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 private fun MobileProfileScreen(
     hidConnection: Connection,
@@ -287,7 +310,9 @@ private fun MobileProfileScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
         ) {
             ControlIconButton(
@@ -353,8 +378,6 @@ private fun MobileProfileScreen(
         Spacer(modifier = Modifier.height(12.dp))
     }
 }
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScreenshotSpamScreen(
@@ -595,7 +618,8 @@ private fun ScreenshotSpamScreen(
                         ),
                     shape = RoundedCornerShape(28.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
                 ) {
                     Column(
@@ -604,24 +628,23 @@ private fun ScreenshotSpamScreen(
                     ) {
                         EviStatusIcon(
                             isActive = anyActive,
-                            modifier = Modifier.size(64.dp)
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "ATTACK IN PROGRESS",
+                            text = stringResource(R.string.hid_attack_in_progress),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                 }
             }
 
-            Text(
-                "Payloads",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp, top = if (anyActive) 0.dp else 16.dp)
+            HidSectionHeader(
+                title = stringResource(R.string.hid_payloads),
+                modifier = Modifier.padding(top = if (anyActive) 0.dp else 16.dp)
             )
 
             Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
@@ -664,31 +687,26 @@ private fun ScreenshotSpamScreen(
 
             BadHidActionCard(
                 modifier = Modifier.fillMaxWidth(),
-                title = "Phantom Clicks",
+                title = stringResource(R.string.hid_phantom_clicks),
                 icon = Icons.Default.Mouse,
                 isActive = phantomClicksActive,
                 onClick = { phantomClicksActive = !phantomClicksActive },
                 accentColor = currentAccent
             )
 
-            Text(
-                "Quick Actions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp, top = 8.dp)
-            )
+            HidSectionHeader(title = stringResource(R.string.hid_quick_actions))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     OutlinedTextField(
                         value = targetUrl,
                         onValueChange = { targetUrl = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("URL to open") },
+                        label = { Text(stringResource(R.string.hid_url_to_open)) },
                         placeholder = { Text("https://...") },
                         leadingIcon = { Icon(Icons.Default.Language, contentDescription = null) },
                         shape = RoundedCornerShape(16.dp),
@@ -728,34 +746,30 @@ private fun ScreenshotSpamScreen(
                     ) {
                         Icon(Icons.Default.Link, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Open Link")
+                        Text(stringResource(R.string.hid_open_link))
                     }
                 }
             }
 
-            com.droid.dolphy.AccentButton(
+            Button(
                 onClick = { centerCursor() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp),
-                shape = RoundedCornerShape(28.dp),
+                    .height(56.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
             ) {
                 Icon(Icons.Default.Mouse, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Center Cursor")
+                Text(stringResource(R.string.hid_center_cursor))
             }
 
             if (scripts.isNotEmpty()) {
-                Text(
-                    "Ducky Scripts",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 8.dp, top = 8.dp)
-                )
+                HidSectionHeader(title = stringResource(R.string.hid_ducky_scripts))
                 scripts.forEach { script ->
                     BadHidActionCard(
                         modifier = Modifier.fillMaxWidth(),
@@ -847,16 +861,22 @@ private fun RowScope.ControlIconButton(
     contentDescription: String,
     onClick: () -> Unit
 ) {
-    DolphyIconButton(
+    Button(
         onClick = onClick,
         modifier = Modifier
             .weight(1f)
-            .height(48.dp)
+            .height(56.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.primary
+            modifier = Modifier.size(24.dp)
         )
     }
 }
@@ -1053,12 +1073,6 @@ private fun PcTouchpadScreen(
 }
 
 enum class Layer { DEFAULT, FUNCTION }
-
-
-
-
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun Keyboard(
     hidConnection: Connection?,
@@ -1178,10 +1192,6 @@ fun Keyboard(
         }
     }
 }
-
-
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun Touchpad(
     hidConnection: Connection?,
@@ -1499,8 +1509,6 @@ fun Plum(
         }
     }
 }
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun PlumSymbol(
     hidConnection: Connection?,
@@ -1534,8 +1542,6 @@ fun PlumSymbol(
         content = content
     )
 }
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun PlumModifier(
     hidConnection: Connection?,
@@ -1565,8 +1571,6 @@ fun PlumModifier(
         content = content
     )
 }
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun PlumMedia(
     hidConnection: Connection?,
@@ -1590,5 +1594,3 @@ fun PlumMedia(
         content = content
     )
 }
-
-

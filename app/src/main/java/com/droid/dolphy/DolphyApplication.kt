@@ -26,7 +26,7 @@ class DolphyApplication : Application() {
                 append(android.util.Log.getStackTraceString(throwable))
             }
             runCatching { java.io.File(filesDir, "crash_stack.txt").writeText(log) }
-            if (PluginManager.hasRunningPlugins()) {
+            if (PluginManager.autoSafeModeOnCrash.value && PluginManager.hasRunningPlugins()) {
                 PluginManager.activateSafeModeFromCrash(this, log)
             }
             previousHandler?.uncaughtException(thread, throwable)

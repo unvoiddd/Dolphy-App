@@ -1,6 +1,7 @@
 package com.droid.dolphy.printer
 
 import android.app.Application
+import com.droid.dolphy.R
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -64,14 +65,14 @@ class WifiPrintViewModel(application: Application) : AndroidViewModel(applicatio
     fun addManual(host: String, port: Int, path: String, secure: Boolean) {
         val cleanHost = host.trim().removePrefix("ipp://").removePrefix("ipps://").trimEnd('/')
         if (cleanHost.isBlank() || port !in 1..65535) {
-            _state.value = _state.value.copy(error = "Invalid printer address")
+            _state.value = _state.value.copy(error = getApplication<Application>().getString(R.string.print_invalid_address))
             return
         }
         val cleanPath = path.trim().trim('/').ifBlank { "ipp/print" }
         val scheme = if (secure) "ipps" else "ipp"
         val uri = "$scheme://$cleanHost:$port/$cleanPath"
         if (runCatching { URI.create(uri) }.isFailure) {
-            _state.value = _state.value.copy(error = "Invalid printer address")
+            _state.value = _state.value.copy(error = getApplication<Application>().getString(R.string.print_invalid_address))
             return
         }
         val printer = IppPrinter(name = cleanHost, uri = uri, discovered = false)
@@ -170,7 +171,7 @@ class WifiPrintViewModel(application: Application) : AndroidViewModel(applicatio
                 val job = result.jobId?.let { " #$it" }.orEmpty()
                 _state.value = _state.value.copy(
                     printing = false,
-                    message = "Print job$job accepted by printer",
+                    message = getApplication<Application>().getString(R.string.print_accepted, job),
                 )
             }.onFailure { error ->
                 _state.value = _state.value.copy(
@@ -211,9 +212,9 @@ class WifiPrintViewModel(application: Application) : AndroidViewModel(applicatio
     private fun readableError(error: Throwable): String {
         val root = generateSequence(error) { it.cause }.last()
         return when {
-            root is javax.net.ssl.SSLException -> "Printer certificate is not trusted"
-            root is java.net.SocketTimeoutException -> "Printer response timed out"
-            root is java.net.ConnectException -> "Cannot connect to printer"
+            root is javax.net.ssl.SSLException -> getApplication<Application>().getString(R.string.print_certificate_error)
+            root is java.net.SocketTimeoutException -> getApplication<Application>().getString(R.string.print_timeout)
+            root is java.net.ConnectException -> getApplication<Application>().getString(R.string.print_connection_error)
             else -> root.message ?: root.javaClass.simpleName
         }
     }
@@ -223,4 +224,3 @@ class WifiPrintViewModel(application: Application) : AndroidViewModel(applicatio
         super.onCleared()
     }
 }
-

@@ -32,8 +32,8 @@ data class PluginPreview(
 object OtherSections {
     const val INFRARED = "INFRARED"
     const val BLUETOOTH = "BLUETOOTH"
-    const val OTHER = "ПРОЧЕЕ"
-    const val PLUGINS = "ПЛАГИНЫ"
+    const val OTHER = "OTHER"
+    const val PLUGINS = "PLUGINS"
 
     val BUILTIN: Set<String> = setOf(INFRARED, BLUETOOTH, OTHER, PLUGINS)
 

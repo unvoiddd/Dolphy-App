@@ -11,4 +11,5 @@
 *.pem
 .cxx/
 **/app/.cxx/
-/plugin-test-suite/
+/.kotlin/
+/plugin-test-suite/dex-build/

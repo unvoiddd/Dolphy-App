@@ -14,7 +14,7 @@ fun summarizeNdef(message: NdefMessage): NdefSummary {
     val rawHex = message.toByteArray().toHexString(sep = " ")
     val records = message.records?.toList().orEmpty()
     if (records.isEmpty()) {
-        return NdefSummary(recordType = "Empty", content = "Пустое NDEF-сообщение", rawHex = rawHex)
+        return NdefSummary(recordType = "Empty", content = "Empty NDEF message", rawHex = rawHex)
     }
 
     val parts = mutableListOf<Pair<String, String>>()
@@ -61,7 +61,7 @@ private fun decodeRecord(record: NdefRecord): Pair<String, String> {
             }
         }
     } catch (e: Exception) {
-        "Unknown" to ("Ошибка декодирования: ${e.message ?: e.javaClass.simpleName}\npayload=${record.payload.toHexString(sep = " ")}")
+        "Unknown" to ("Decoding error: ${e.message ?: e.javaClass.simpleName}\npayload=${record.payload.toHexString(sep = " ")}")
     }
 }
 

@@ -166,7 +166,7 @@ class BluetoothAudioManager(private val context: Context) {
             }
 
             if (device.bondState != BluetoothDevice.BOND_BONDED) {
-                onStateChange(AudioState.Error("Устройство не сопряжено"))
+                onStateChange(AudioState.Error("Device not bonded"))
                 return
             }
 

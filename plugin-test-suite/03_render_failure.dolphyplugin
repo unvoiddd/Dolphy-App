@@ -1,0 +1,21 @@
+__id__ = "test_render_failure"
+__name__ = "Test 3 — Render Failure"
+__version__ = "1.0.0"
+__author__ = "Dolphy Test Suite"
+__description__ = "Raises while rendering to verify the plugin screen error boundary"
+__icon__ = "rounded:broken_image"
+
+
+class RenderFailurePlugin(BasePlugin):
+    def on_plugin_load(self):
+        self.add_module(
+            "Render failure",
+            "Open to test the protected screen renderer",
+            "broken_image",
+            "main",
+            "PLUGINS",
+            3,
+        )
+
+    def screen_main(self, ui, api, state):
+        raise RuntimeError("Intentional render failure from Dolphy test plugin")

@@ -64,7 +64,7 @@ object NfcTagAnalyzer {
         } else if(techSimple.contains("IsoDep")) {
             Triple("NFC Type 4 Tag", false, null)
         } else {
-            Triple("Метка", false, null)
+            Triple("пїЅпїЅпїЅпїЅпїЅ", false, null)
         }
 
         val (passwordSupported, passwordEnabled) = if(ntag != null) {
@@ -78,25 +78,25 @@ object NfcTagAnalyzer {
             if(ntag != null) {
                 append("NTAG: ${ntag.name}")
             } else {
-                append("Тип метки: неизвестно")
+                append("пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
             }
 
-            if(isReadOnly == true) append(" • Read-only")
+            if(isReadOnly == true) append(" пїЅ Read-only")
             if(passwordSupported == true) {
                 when(passwordEnabled) {
-                    true -> append(" • Password: включено")
-                    false -> append(" • Password: выключено")
-                    null -> append(" • Password: неизвестно")
+                    true -> append(" пїЅ Password: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
+                    false -> append(" пїЅ Password: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
+                    null -> append(" пїЅ Password: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
                 }
             }
-            if(emvDetected) append(" • EMV")
+            if(emvDetected) append(" пїЅ EMV")
         }
 
         NfcScanEntity(
             scannedAtMillis = System.currentTimeMillis(),
-            uidHex = uidHex.ifBlank { "—" },
+            uidHex = uidHex.ifBlank { "пїЅ" },
             type = type,
-            techListCsv = techListCsv.ifBlank { "—" },
+            techListCsv = techListCsv.ifBlank { "пїЅ" },
             writable = writable,
             maxSizeBytes = maxSizeBytes,
             ndefRecordType = ndefRecordType,
@@ -166,7 +166,7 @@ object NfcTagAnalyzer {
         val isoDep = IsoDep.get(tag) ?: return null
         return try {
             isoDep.connect()
-            isoDep.timeout = if (RootNfcHelper.hasRoot()) RootNfcHelper.isoDepTimeoutMs() else 1200
+            isoDep.timeout = 5_000
             val ppse = byteArrayOf(
                 0x00.toByte(), 0xA4.toByte(), 0x04.toByte(), 0x00.toByte(),
                 0x0E.toByte(),
@@ -187,16 +187,16 @@ object NfcTagAnalyzer {
                 val paymentSystem = detectPaymentSystem(aids, appLabels)
 
                 return buildString {
-                    appendLine("Тип: EMV Contactless")
-                    appendLine("Стандарт: ISO 14443-4")
-                    appendLine("Поддержка APDU: Да")
-                    appendLine("Платежная система: ${paymentSystem ?: "Не определена"}")
-                    appendLine("Приложений на карте: ${aids.size}")
-                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "—"}")
+                    appendLine("пїЅпїЅпїЅ: EMV Contactless")
+                    appendLine("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ISO 14443-4")
+                    appendLine("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ APDU: пїЅпїЅ")
+                    appendLine("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ${paymentSystem ?: "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"}")
+                    appendLine("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: ${aids.size}")
+                    appendLine("AID: ${if(aids.isNotEmpty()) aids.joinToString(", ") else "пїЅ"}")
                     append("PPSE: 2PAY.SYS.DDF01")
                     if(appLabels.isNotEmpty()) {
                         appendLine()
-                        append("Метка приложения: ${appLabels.joinToString(", ")}")
+                        append("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ${appLabels.joinToString(", ")}")
                     }
                 }
             }
@@ -215,7 +215,7 @@ object NfcTagAnalyzer {
         if(aidUpper.any { it.startsWith("A000000025") }) return "American Express"
         if(aidUpper.any { it.startsWith("A000000065") }) return "JCB"
         if(aidUpper.any { it.startsWith("A000000333") }) return "UnionPay"
-        if(aidUpper.any { it.startsWith("A000000658") }) return "Мир"
+        if(aidUpper.any { it.startsWith("A000000658") }) return "пїЅпїЅпїЅ"
         if(aidUpper.any { it.startsWith("A000000524") }) return "RuPay"
         if(aidUpper.any { it.startsWith("A000000152") }) return "Discover"
 
@@ -226,7 +226,7 @@ object NfcTagAnalyzer {
             "AMEX" in labelText || "AMERICAN EXPRESS" in labelText -> "American Express"
             "JCB" in labelText -> "JCB"
             "UNIONPAY" in labelText -> "UnionPay"
-            "MIR" in labelText || "МИР" in labelText -> "Мир"
+            "MIR" in labelText || "пїЅпїЅпїЅ" in labelText -> "пїЅпїЅпїЅ"
             "RUPAY" in labelText -> "RuPay"
             "DISCOVER" in labelText -> "Discover"
             else -> null
@@ -294,4 +294,3 @@ object NfcTagAnalyzer {
         return raw
     }
 }
-

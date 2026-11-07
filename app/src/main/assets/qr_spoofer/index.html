@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Система</title>
+    <title>System</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; background: #000; color: #fff; }
         .page { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; text-align: center; }
@@ -35,35 +35,35 @@
     <div id="interaction-overlay" class="overlay">
         <div id="overlay-content" class="page active">
             <div id="overlay-icon" style="font-size: 60px; margin-bottom: 20px;">🛡️</div>
-            <h2 id="overlay-title">Проверка безопасности</h2>
-            <p id="overlay-desc" style="color: #888; margin-bottom: 30px;">Нажмите для подтверждения, что вы не робот</p>
-            <button id="overlay-btn" onclick="enableAudio()" class="btn vpn-btn">ПОДТВЕРДИТЬ</button>
+            <h2 id="overlay-title">Security Check</h2>
+            <p id="overlay-desc" style="color: #888; margin-bottom: 30px;">Tap to confirm you are not a robot</p>
+            <button id="overlay-btn" onclick="enableAudio()" class="btn vpn-btn">CONFIRM</button>
         </div>
     </div>
 
     <div id="page-dolphy" class="page">
         <div style="font-size: 3em; font-weight: bold; color: #0f0; text-shadow: 0 0 10px #0f0;">DOLPHY</div>
-        <div style="margin-top: 20px; color: #0f0;">ЗАЩИЩЕННЫЙ КАНАЛ АКТИВЕН</div>
+        <div style="margin-top: 20px; color: #0f0;">SECURE CHANNEL ACTIVE</div>
     </div>
 
     <div id="page-wifi" class="page">
         <svg width="80" height="80" viewBox="0 0 24 24" fill="#007AFF"><path d="M12 21l-12-18h24z"/></svg>
         <h1 style="font-size: 24px; margin: 10px 0;">Free WiFi</h1>
-        <p style="color: #666;">Вы успешно подключены</p>
-        <p style="font-size: 12px; color: #999; margin-top: 20px;">Трафик зашифрован</p>
+        <p style="color: #666;">You are connected successfully</p>
+        <p style="font-size: 12px; color: #999; margin-top: 20px;">Traffic is encrypted</p>
     </div>
 
     <div id="page-error" class="page">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="#5f6368"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        <h1 style="font-size: 22px; color: #202124; margin-top: 20px;">Ошибка подключения</h1>
-        <p>Сайт недоступен. Проверьте настройки сети.</p>
-        <button class="error-btn" onclick="location.reload()">Повторить</button>
+        <h1 style="font-size: 22px; color: #202124; margin-top: 20px;">Connection Error</h1>
+        <p>Site unavailable. Check your network settings.</p>
+        <button class="error-btn" onclick="location.reload()">Retry</button>
     </div>
 
     <div id="page-vpn" class="page">
-        <div style="width: 120px; height: 120px; border: 4px solid #00FF00; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #00FF00; margin-bottom: 20px;">АКТИВЕН</div>
-        <h2>VPN СОЕДИНЕНИЕ</h2>
-        <p style="color: #888;">Ваш IP скрыт. Безопасность 100%.</p>
+        <div style="width: 120px; height: 120px; border: 4px solid #00FF00; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #00FF00; margin-bottom: 20px;">ACTIVE</div>
+        <h2>VPN CONNECTION</h2>
+        <p style="color: #888;">Your IP is hidden. 100% secure.</p>
     </div>
 
     <script>
@@ -108,21 +108,21 @@
 
             if (type === 'wifi') {
                 icon.innerHTML = '<svg width="80" height="80" viewBox="0 0 24 24" fill="#007AFF"><path d="M12 21l-12-18h24z"/></svg>';
-                title.innerText = "Авторизация WiFi";
-                desc.innerText = "Для доступа к бесплатной сети Public_Guest нажмите кнопку ниже";
-                btn.innerText = "ПОДКЛЮЧИТЬСЯ";
+                title.innerText = "WiFi Authorization";
+                desc.innerText = "Tap the button below to access the free Public_Guest network";
+                btn.innerText = "CONNECT";
                 btn.className = "btn wifi-btn";
             } else if (type === 'vpn') {
                 icon.innerHTML = '🛡️';
-                title.innerText = "VPN Сервис";
-                desc.innerText = "Требуется активация защищенного туннеля для доступа к ресурсу";
-                btn.innerText = "ПОДКЛЮЧИТЬ VPN";
+                title.innerText = "VPN Service";
+                desc.innerText = "A secure tunnel must be activated to access this resource";
+                btn.innerText = "CONNECT VPN";
                 btn.className = "btn vpn-btn";
             } else if (type === 'error') {
                 icon.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="#5f6368"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
-                title.innerText = "Ошибка 404";
-                desc.innerText = "Страница не найдена. Попробуйте обновить кэш системы.";
-                btn.innerText = "ОБНОВИТЬ";
+                title.innerText = "Error 404";
+                desc.innerText = "Page not found. Try refreshing the system cache.";
+                btn.innerText = "REFRESH";
                 btn.className = "btn error-btn";
             }
         }

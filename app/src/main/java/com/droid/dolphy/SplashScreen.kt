@@ -173,7 +173,7 @@ private fun MatrixSplashContent() {
     val backgroundMid = accentColor.copy(alpha = 0.10f)
     val backgroundBottom = Color(0xFF020304)
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
@@ -222,4 +222,3 @@ private fun MatrixSplashContent() {
         )
     }
 }
-

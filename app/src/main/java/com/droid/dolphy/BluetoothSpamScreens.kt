@@ -1,9 +1,10 @@
 package com.droid.dolphy
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
@@ -23,7 +24,7 @@ import com.droid.dolphy.plugin.PluginBluetoothHooks
 import org.json.JSONObject
 
 @Composable
-fun BondSpamScreen(
+private fun BondSpamContent(
     viewModel: SpamViewModel,
     onBack: () -> Unit
 ) {
@@ -41,44 +42,42 @@ fun BondSpamScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accentColor) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
+    BlurHeaderBox(
+        title = stringResource(R.string.bond_spam_title),
+        onBack = onBack,
+        accentColor = accentColor,
+        actions = {
+            DolphyIconButton(
+                onClick = {
+                    vibrate(context)
+                    viewModel.startDeviceScan()
+                }
             ) {
-                SectionTopBar(
-                    title = stringResource(R.string.bond_spam_title),
-                    onBack = onBack,
-                    actions = {
-                        DolphyIconButton(
-                            onClick = {
-                                vibrate(context)
-                                viewModel.startDeviceScan()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh",
-                                tint = accentColor
-                            )
-                        }
-                    }
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.cd_refresh),
+                    tint = accentColor
                 )
-
+            }
+        }
+    ) { headerPadding ->
+        Column(modifier = Modifier.fillMaxSize()) {
+            Spacer(Modifier.height(headerPadding))
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val deviceListHeight = (maxHeight - 300.dp).coerceIn(140.dp, 360.dp)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Upper half: Discovered Devices list
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1.2f),
-                        shape = RoundedCornerShape(16.dp),
+                            .height(deviceListHeight),
+                        shape = RoundedCornerShape(28.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
@@ -127,92 +126,62 @@ fun BondSpamScreen(
                                     )
                                 }
                             } else {
+                                val unknownName = stringResource(R.string.nrf_unknown)
                                 LazyColumn(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing)
                                 ) {
-                                    items(devices) { device ->
+                                    m3SegmentedItems(devices, key = { it.address }) { index, count, device ->
                                         val isSelected = selectedDevice?.address == device.address
-                                        val deviceName = runCatching { device.name }.getOrNull()?.takeIf { it.isNotBlank() }
-                                            ?: "Unknown Device"
+                                        val deviceName = (try { device.name } catch (_: SecurityException) { null })?.takeIf { it.isNotBlank() }
+                                            ?: unknownName
 
-                                        Card(
+                                        M3SegmentedListItem(
+                                            index = index,
+                                            count = count,
+                                            headline = deviceName,
+                                            supporting = device.address,
+                                            leadingIcon = Icons.Default.Bluetooth,
+                                            selected = isSelected,
+                                            showChevron = false,
+                                            trailingContent = if (isSelected) {
+                                                {
+                                                    Icon(
+                                                        imageVector = Icons.Default.CheckCircle,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.onPrimaryFixed,
+                                                        modifier = Modifier.size(22.dp)
+                                                    )
+                                                }
+                                            } else null,
                                             onClick = {
                                                 vibrate(context)
                                                 viewModel.selectDevice(device)
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = if (isSelected) {
-                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                                } else {
-                                                    MaterialTheme.colorScheme.surfaceContainer
-                                                }
-                                            ),
-                                            border = if (isSelected) {
-                                                BorderStroke(1.5.dp, accentColor)
-                                            } else null
-                                        ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Bluetooth,
-                                                    contentDescription = null,
-                                                    tint = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(12.dp))
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = deviceName,
-                                                        style = MaterialTheme.typography.bodyLarge,
-                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                    Text(
-                                                        text = device.address,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
-                                                if (isSelected) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.CheckCircle,
-                                                        contentDescription = "Selected",
-                                                        tint = accentColor,
-                                                        modifier = Modifier.size(20.dp)
-                                                    )
-                                                }
                                             }
-                                        }
+                                        )
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Lower half: Target info, Delay slider, Start/Stop
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
-                        shape = RoundedCornerShape(16.dp),
+                            .wrapContentHeight(),
+                        shape = RoundedCornerShape(28.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
                                 .padding(14.dp),
-                            verticalArrangement = Arrangement.SpaceBetween,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Column(
@@ -220,7 +189,7 @@ fun BondSpamScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                val targetName = runCatching { selectedDevice?.name }.getOrNull()?.takeIf { it.isNotBlank() }
+                                val targetName = (try { selectedDevice?.name } catch (_: SecurityException) { null })?.takeIf { it.isNotBlank() }
                                     ?: selectedDevice?.address
                                 val targetText = if (targetName != null) {
                                     "${stringResource(R.string.bond_spam_target)} $targetName"
@@ -261,6 +230,7 @@ fun BondSpamScreen(
 
                             AnimatedBleButton(
                                 text = if (isSpamming) stringResource(R.string.stop) else stringResource(R.string.start),
+                                enabled = isSpamming || selectedDevice != null,
                                 onClick = {
                                     if (isSpamming) {
                                         viewModel.stopSpam()
@@ -286,38 +256,49 @@ fun BondSpamScreen(
 }
 
 @Composable
-fun BleSpamFullScreen(
+private fun BleSpamFullContent(
     viewModel: SpamViewModel,
     navController: NavController,
     onBack: () -> Unit
 ) {
     val accentColor = MaterialTheme.colorScheme.primary
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MaterialBackground(accentColor = accentColor) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-            ) {
-                SectionTopBar(
-                    title = stringResource(R.string.ble_spam_screen_title),
-                    onBack = onBack
-                )
-                Box(modifier = Modifier.fillMaxSize()) {
-                    BleSpamScreen(viewModel) { section ->
-                        val decision = PluginBluetoothHooks.action(
-                            "bluetooth.ble.section.open",
-                            JSONObject().put("section", section.route),
-                        )
-                        if (!decision.cancelled && !decision.handled) {
-                            val changed = runCatching { JSONObject(decision.payloadJson) }.getOrNull()
-                            val route = changed?.optString("section")?.ifBlank { section.route } ?: section.route
-                            navController.navigate("ble_section/$route")
-                        }
+    BlurHeaderBox(
+        title = stringResource(R.string.ble_spam_screen_title),
+        onBack = onBack,
+        accentColor = accentColor
+    ) { headerPadding ->
+        Column(modifier = Modifier.fillMaxSize()) {
+            Spacer(Modifier.height(headerPadding))
+            Box(modifier = Modifier.fillMaxSize()) {
+                BleSpamScreen(viewModel) { section ->
+                    val decision = PluginBluetoothHooks.action(
+                        "bluetooth.ble.section.open",
+                        JSONObject().put("section", section.route),
+                    )
+                    if (!decision.cancelled && !decision.handled) {
+                        val changed = runCatching { JSONObject(decision.payloadJson) }.getOrNull()
+                        val route = changed?.optString("section")?.ifBlank { section.route } ?: section.route
+                        navController.navigate("ble_section/$route")
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BondSpamScreen(viewModel: SpamViewModel, onBack: () -> Unit) {
+    BluetoothPermissionGate(onBack = onBack) {
+        LaunchedEffect(Unit) { viewModel.onPermissionsGranted() }
+        BondSpamContent(viewModel, onBack)
+    }
+}
+
+@Composable
+fun BleSpamFullScreen(viewModel: SpamViewModel, navController: NavController, onBack: () -> Unit) {
+    BluetoothPermissionGate(advertise = true, onBack = onBack) {
+        LaunchedEffect(Unit) { viewModel.onPermissionsGranted() }
+        BleSpamFullContent(viewModel, navController, onBack)
     }
 }

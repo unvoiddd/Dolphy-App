@@ -48,7 +48,7 @@ object PythonUiParser {
             "dropdown" -> UiNode.Dropdown(options(o), o.optString("selectedValue"), nullable(o, "onSelectId"), o.optString("label"), b(o, "enabled", true))
             "webView" -> UiNode.WebView(o.optString("url"), o.optString("html"), b(o, "fillMaxSize", true), f(o, "height", 320f))
             "logPanel" -> UiNode.LogPanel(o.optString("text"), f(o, "maxHeight", 200f))
-            "alertDialog" -> UiNode.AlertDialog(b(o, "show"), o.optString("title"), o.optString("message"), o.optString("confirmText", "OK"), o.optString("dismissText", "Отмена"), nullable(o, "onConfirmId"), nullable(o, "onDismissId"), cancelable = b(o, "cancelable", true))
+            "alertDialog" -> UiNode.AlertDialog(b(o, "show"), o.optString("title"), o.optString("message"), o.optString("confirmText", "OK"), o.optString("dismissText", "Cancel"), nullable(o, "onConfirmId"), nullable(o, "onDismissId"), cancelable = b(o, "cancelable", true))
             else -> UiNode.Empty
         }
     }

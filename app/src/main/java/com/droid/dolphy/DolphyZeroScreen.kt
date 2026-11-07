@@ -107,8 +107,8 @@ fun DolphyZeroScreen(navController: NavController) {
                 ZeroMenuItem("IR", "IR Storm", ZeroAction.Navigate("ir_storm")),
                 ZeroMenuItem("IJ", "IR Jammer", ZeroAction.Navigate("ir_jammer")),
                 ZeroMenuItem("AR", "Archive", ZeroAction.Navigate("user_ir_remotes")),
-                ZeroMenuItem("JS", "JS Runner", ZeroAction.ShowMessage("JS Runner не реализован в Android-версии")),
-                ZeroMenuItem("UP", "Updater", ZeroAction.ShowMessage("Updater доступен только в firmware"))
+                ZeroMenuItem("JS", "JS Runner", ZeroAction.ShowMessage("JS Runner is not implemented in the Android version")),
+                ZeroMenuItem("UP", "Updater", ZeroAction.ShowMessage("Updater is firmware-only"))
             )
         )
     }
@@ -121,7 +121,7 @@ fun DolphyZeroScreen(navController: NavController) {
                 ZeroMenuItem("IR", "Infrared", ZeroAction.Navigate("ir_flipper_home")),
                 ZeroMenuItem("RF", "125 kHz RFID", ZeroAction.Navigate("nfc_tools")),
                 ZeroMenuItem("NF", "NFC", ZeroAction.Navigate("nfc_tools")),
-                ZeroMenuItem("U2", "U2F", ZeroAction.ShowMessage("U2F не поддерживается Android-версией")),
+                ZeroMenuItem("U2", "U2F", ZeroAction.ShowMessage("U2F is not supported by the Android version")),
                 ZeroMenuItem("AR", "Archive", ZeroAction.Navigate("user_ir_remotes"))
             )
         )
@@ -156,7 +156,7 @@ fun DolphyZeroScreen(navController: NavController) {
     fun goBack() {
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         if(menuStack.size > 1) {
-            menuStack.removeLast()
+            menuStack.removeAt(menuStack.lastIndex)
             selectedIndex = 0
         } else {
             navController.popBackStack()
@@ -514,4 +514,3 @@ private fun Int.floorMod(divisor: Int): Int {
     val result = this % divisor
     return if(result < 0) result + divisor else result
 }
-

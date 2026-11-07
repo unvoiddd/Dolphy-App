@@ -335,7 +335,7 @@ class PluginRuntimeSession:
         if function is None and screen_id == "main":
             function = self._resolve("create_screen", "screen_main")
         if function is None:
-            return json.dumps({"type": "column", "padding": 16, "children": [{"type": "text", "text": "Экран не найден", "style": "headlineSmall"}, {"type": "text", "text": "screen_" + screen_id, "style": "bodyMedium"}]})
+            return json.dumps({"type": "column", "padding": 16, "children": [{"type": "text", "text": "Screen not found", "style": "headlineSmall"}, {"type": "text", "text": "screen_" + screen_id, "style": "bodyMedium"}]})
         result = self._call(function, self.ui, self.bridge, state)
         return json.dumps(result if result is not None else {"type": "empty"}, ensure_ascii=False)
 

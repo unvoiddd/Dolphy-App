@@ -16,7 +16,7 @@ import org.json.JSONObject
 class BluetoothAdvertiser {
 
     private val bluetoothAdapter = BluetoothHelper.bluetoothAdapter
-    private val advertiser get() = bluetoothAdapter?.bluetoothLeAdvertiser
+    private val advertiser get() = try { bluetoothAdapter?.bluetoothLeAdvertiser } catch (_: SecurityException) { null }
 
     private val advertiseCallback = object : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
@@ -32,7 +32,6 @@ class BluetoothAdvertiser {
     private var legacyCallbackActive: Boolean = false
     private var extendedCallbackActive: Boolean = false
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_ADVERTISE)
     fun advertise(
         advertiseData: AdvertiseData,
         scanResponse: AdvertiseData? = null,
@@ -56,7 +55,6 @@ class BluetoothAdvertiser {
         advertiseLegacy(effectiveData, effectiveScanResponse, connectable)
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_ADVERTISE)
     private fun advertiseLegacy(advertiseData: AdvertiseData, scanResponse: AdvertiseData?, connectable: Boolean = false) {
         val adv = advertiser ?: run {
             Helper.log("BluetoothLeAdvertiser is null")
@@ -79,7 +77,6 @@ class BluetoothAdvertiser {
     }
 
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
-    @RequiresPermission(Manifest.permission.BLUETOOTH_ADVERTISE)
     private fun advertiseExtended(advertiseData: AdvertiseData, connectable: Boolean = false) {
         val adv = advertiser ?: run {
             Helper.log("BluetoothLeAdvertiser is null (extended)")
@@ -127,7 +124,6 @@ class BluetoothAdvertiser {
         }
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_ADVERTISE)
     fun stopAdvertising() {
         val pluginDecision = PluginBluetoothHooks.action("bluetooth.advertising.stop", JSONObject().put("source", "ble_spam"))
         if (pluginDecision.cancelled) return
@@ -141,7 +137,7 @@ class BluetoothAdvertiser {
             extCallback?.let {
                 try {
                     val adv = advertiser
-                    adv?.stopAdvertisingSet(it)
+                    try { adv?.stopAdvertisingSet(it) } catch (error: SecurityException) { Log.w("BLESpam", "Advertising permission revoked", error) }
 
 
                     Helper.log("Extended advertising stopped")
@@ -154,7 +150,7 @@ class BluetoothAdvertiser {
         }
         if (legacyCallbackActive) {
             try {
-                advertiser?.stopAdvertising(advertiseCallback)
+                try { advertiser?.stopAdvertising(advertiseCallback) } catch (error: SecurityException) { Log.w("BLESpam", "Advertising permission revoked", error) }
                 Helper.log("Legacy advertising stopped")
             } catch (e: Exception) {
                 Log.e("BLESpam", "Error stopping legacy advertising: ${e.message}")
@@ -163,4 +159,3 @@ class BluetoothAdvertiser {
         }
     }
 }
-

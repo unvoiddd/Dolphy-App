@@ -1,6 +1,7 @@
-import java.net.URI
-import java.io.InputStream
-import java.io.OutputStream
+
+import java.util.jar.Manifest
+import java.util.jar.Attributes
+import java.util.jar.JarOutputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -11,8 +12,6 @@ plugins {
     alias(libs.plugins.chaquopy)
 }
 
-
-
 android {
     namespace = "com.droid.dolphy"
     compileSdk = 36
@@ -21,8 +20,8 @@ android {
         applicationId = "com.droid.dolphy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26
-        versionName = "2.6"
+        versionCode = 27
+        versionName = "2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -66,8 +65,8 @@ android {
         noCompress += "png"
     }
     lint {
-        checkReleaseBuilds = false
-        abortOnError = false
+        checkReleaseBuilds = true
+        abortOnError = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -79,13 +78,12 @@ android {
         buildConfig = true
     }
 
-
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/INDEX.LIST"
             excludes += "/META-INF/io.netty.versions.properties"
+            excludes += "/META-INF/services/reactor.blockhound.integration.BlockHoundIntegration"
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
 
@@ -103,10 +101,6 @@ chaquopy {
         }
     }
 }
-
-
-
-
 
 dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
@@ -145,6 +139,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-exoplayer-rtsp:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.kotlinx.datetime)
@@ -162,27 +157,29 @@ tasks.register("testClasses") {
     dependsOn("compileDebugUnitTestJavaWithJavac")
 }
 
+// Keep the Windows test worker command below the platform's classpath limit.
+tasks.withType<Test>().configureEach {
+    doFirst {
+        val manifest = Manifest().apply {
+            mainAttributes[Attributes.Name.MANIFEST_VERSION] = "1.0"
+            mainAttributes[Attributes.Name.CLASS_PATH] =
+                classpath.files.joinToString(" ") { it.toURI().toASCIIString() }
+        }
+        val classpathJar = File(
+            System.getProperty("java.io.tmpdir"),
+            "dolphy-${project.projectDir.absolutePath.hashCode()}-$name-classpath.jar"
+        )
+        JarOutputStream(classpathJar.outputStream(), manifest).use { }
+        classpath = files(classpathJar)
+    }
+}
+
 val flipperIrAssetsSrc = rootProject.file(
     "flipperzero-firmware-dev/applications/main/infrared/resources/infrared/assets"
 )
 val flipperIrAssetsDst = project.file(
     "src/main/assets/flipperzero-firmware-dev/applications/main/infrared/resources/infrared/assets"
 )
-
-val nmapMacPrefixesDst = project.file("src/main/assets/ble/nmap-mac-prefixes.txt")
-val syncNmapMacPrefixes = tasks.register("syncNmapMacPrefixes") {
-    doLast {
-        if (!nmapMacPrefixesDst.exists()) {
-            nmapMacPrefixesDst.parentFile.mkdirs()
-            val url = URI("https://raw.githubusercontent.com/nmap/nmap/master/nmap-mac-prefixes").toURL()
-            url.openStream().use { input: InputStream ->
-                nmapMacPrefixesDst.outputStream().use { output: OutputStream ->
-                    input.copyTo(output)
-                }
-            }
-        }
-    }
-}
 
 val syncFlipperIrAssets = tasks.register<Copy>("syncFlipperIrAssets") {
     from(flipperIrAssetsSrc)

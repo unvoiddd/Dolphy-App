@@ -182,7 +182,7 @@ sealed class UiNode {
         val title: String,
         val message: String,
         val confirmText: String = "OK",
-        val dismissText: String = "Отмена",
+        val dismissText: String = "Cancel",
         val onConfirmId: String? = null,
         val onDismissId: String? = null,
 

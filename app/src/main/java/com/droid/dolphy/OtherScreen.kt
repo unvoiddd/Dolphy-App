@@ -1,6 +1,10 @@
 package com.droid.dolphy
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -13,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PushPin
@@ -23,10 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
@@ -57,11 +65,10 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
     var currentSections by remember(baseSections) { mutableStateOf(baseSections) }
 
     var draggingItem by remember { mutableStateOf<FunctionDestination?>(null) }
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
-    var startItemCenter by remember { mutableStateOf(Offset.Zero) }
+    var dragPointer by remember { mutableStateOf(Offset.Zero) }
 
-    val itemCenters = remember { mutableMapOf<String, Offset>() }
-    val sectionHeaderCenters = remember { mutableMapOf<String, Offset>() }
+    val itemBounds = remember { mutableStateMapOf<String, Rect>() }
+    val sectionHeaderCenters = remember { mutableStateMapOf<String, Offset>() }
 
     val functionsMenuViewType by spamViewModel.functionsMenuViewType.collectAsState()
     val functionsTileSize by spamViewModel.functionsTileSize.collectAsState()
@@ -81,16 +88,15 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
         pinnedRoutes.mapNotNull { route -> allDestinations.find { it.route == route } }
     }
 
-    fun handleDragMovement(delta: Offset) {
+    fun handleDragMovement() {
         val dragged = draggingItem ?: return
-        dragOffset += delta
-        val pointerCenter = startItemCenter + dragOffset
+        val pointerCenter = dragPointer
 
         var closestItemKey: String? = null
         var minDistance = Float.MAX_VALUE
 
-        itemCenters.forEach { (key, center) ->
-            val dist = hypot(pointerCenter.x - center.x, pointerCenter.y - center.y)
+        itemBounds.forEach { (key, bounds) ->
+            val dist = hypot(pointerCenter.x - bounds.center.x, pointerCenter.y - bounds.center.y)
             if (dist < minDistance) {
                 minDistance = dist
                 closestItemKey = key
@@ -195,7 +201,6 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
             }
         }
         draggingItem = null
-        dragOffset = Offset.Zero
     }
 
     fun onCardClicked(item: FunctionDestination) {
@@ -217,7 +222,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                             .padding(paddingValues)
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
-                        contentPadding = PaddingValues(top = 16.dp, bottom = 48.dp),
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 132.dp),
                     ) {
                         item(key = "minimal_header") {
                             Box(
@@ -338,12 +343,9 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                     modifier = Modifier
                                         .padding(top = 8.dp, bottom = 2.dp)
                                         .onGloballyPositioned { coords ->
-                                            val parent = coords.parentCoordinates
-                                            if (parent != null) {
-                                                val pos = coords.positionInParent()
-                                                val size = coords.size
-                                                sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
-                                            }
+                                            val pos = coords.positionInRoot()
+                                            val size = coords.size
+                                            sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
                                         }
                                 ) {
                                     M3SegmentedListSectionHeader(title = section)
@@ -358,6 +360,10 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                 val itemKey = "${section}_${item.route}"
                                 val isBeingDragged = draggingItem?.route == item.route
                                 val isPinned = pinnedRoutes.contains(item.route)
+                                val dragScale by animateFloatAsState(
+                                    targetValue = if (isBeingDragged) 1.04f else 1f,
+                                    label = "minimal_container_drag_scale"
+                                )
 
                                 Box {
                                     M3SegmentedListItem(
@@ -390,14 +396,24 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                             }
                                         },
                                         modifier = Modifier
-                                            .animateItem()
-                                            .onGloballyPositioned { coords ->
-                                                val parent = coords.parentCoordinates
-                                                if (parent != null && !isBeingDragged) {
-                                                    val pos = coords.positionInParent()
-                                                    val size = coords.size
-                                                    itemCenters[itemKey] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
+                                            .animateItem(placementSpec = if (isBeingDragged) snap() else spring(stiffness = Spring.StiffnessMediumLow))
+                                            .zIndex(if (isBeingDragged) 100f else 0f)
+                                            .graphicsLayer {
+                                                if (isBeingDragged) {
+                                                    val bounds = itemBounds[itemKey]
+                                                    if (bounds != null) {
+                                                        translationX = dragPointer.x - bounds.center.x
+                                                        translationY = dragPointer.y - bounds.center.y
+                                                    }
+                                                    scaleX = dragScale
+                                                    scaleY = dragScale
+                                                    shadowElevation = 12.dp.toPx()
                                                 }
+                                            }
+                                            .onGloballyPositioned { coords ->
+                                                val pos = coords.positionInRoot()
+                                                val size = coords.size
+                                                itemBounds[itemKey] = Rect(pos, Size(size.width.toFloat(), size.height.toFloat()))
                                             }
                                             .then(
                                                 if (item.isPlugin) {
@@ -407,18 +423,18 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                                                 vibrate(context)
                                                                 draggingItem = item
-                                                                dragOffset = Offset.Zero
-                                                                startItemCenter = itemCenters[itemKey] ?: Offset.Zero
+                                                                dragPointer = itemBounds[itemKey]?.center ?: Offset.Zero
                                                             },
-                                                            onDrag = { change, dragAmount ->
+                                                            onDrag = { change, _ ->
                                                                 change.consume()
-                                                                handleDragMovement(dragAmount)
+                                                                val bounds = itemBounds[itemKey]
+                                                                if (bounds != null) {
+                                                                    dragPointer = bounds.topLeft + change.position
+                                                                }
+                                                                handleDragMovement()
                                                             },
                                                             onDragEnd = { finishDrag() },
-                                                            onDragCancel = {
-                                                                draggingItem = null
-                                                                dragOffset = Offset.Zero
-                                                            }
+                                                            onDragCancel = { draggingItem = null }
                                                         )
                                                     }
                                                 } else {
@@ -493,7 +509,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(top = 16.dp, bottom = 48.dp),
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 132.dp),
                     ) {
                         item(
                             key = "minimal_header",
@@ -586,12 +602,9 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                     modifier = Modifier
                                         .padding(top = 8.dp, bottom = 2.dp)
                                         .onGloballyPositioned { coords ->
-                                            val parent = coords.parentCoordinates
-                                            if (parent != null) {
-                                                val pos = coords.positionInParent()
-                                                val size = coords.size
-                                                sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
-                                            }
+                                            val pos = coords.positionInRoot()
+                                            val size = coords.size
+                                            sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
                                         }
                                 ) {
                                     M3SegmentedListSectionHeader(title = section)
@@ -619,7 +632,10 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                     isPinned = isPinned,
                                     isBeingDragged = isBeingDragged,
                                     dragScale = dragScale,
-                                    dragOffset = dragOffset,
+                                    dragTranslation = {
+                                        val bounds = itemBounds[itemKey]
+                                        if (bounds != null) dragPointer - bounds.center else Offset.Zero
+                                    },
                                     isMenuExpanded = menuExpandedKey == itemKey,
                                     onMenuDismiss = { menuExpandedKey = null },
                                     onCardClick = { onCardClicked(item) },
@@ -643,14 +659,11 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                         menuExpandedKey = null
                                     },
                                     modifier = Modifier
-                                        .animateItem()
+                                        .animateItem(placementSpec = if (isBeingDragged) snap() else spring(stiffness = Spring.StiffnessMediumLow))
                                         .onGloballyPositioned { coords ->
-                                            val parent = coords.parentCoordinates
-                                            if (parent != null && !isBeingDragged) {
-                                                val pos = coords.positionInParent()
-                                                val size = coords.size
-                                                itemCenters[itemKey] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
-                                            }
+                                            val pos = coords.positionInRoot()
+                                            val size = coords.size
+                                            itemBounds[itemKey] = Rect(pos, Size(size.width.toFloat(), size.height.toFloat()))
                                         }
                                         .then(
                                             if (item.isPlugin) {
@@ -660,18 +673,18 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             vibrate(context)
                                                             draggingItem = item
-                                                            dragOffset = Offset.Zero
-                                                            startItemCenter = itemCenters[itemKey] ?: Offset.Zero
+                                                            dragPointer = itemBounds[itemKey]?.center ?: Offset.Zero
                                                         },
-                                                        onDrag = { change, dragAmount ->
+                                                        onDrag = { change, _ ->
                                                             change.consume()
-                                                            handleDragMovement(dragAmount)
+                                                            val bounds = itemBounds[itemKey]
+                                                            if (bounds != null) {
+                                                                dragPointer = bounds.topLeft + change.position
+                                                            }
+                                                            handleDragMovement()
                                                         },
                                                         onDragEnd = { finishDrag() },
-                                                        onDragCancel = {
-                                                            draggingItem = null
-                                                            dragOffset = Offset.Zero
-                                                        }
+                                                        onDragCancel = { draggingItem = null }
                                                     )
                                                 }
                                             } else Modifier
@@ -701,12 +714,9 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                 modifier = Modifier
                                     .padding(top = 16.dp, bottom = 4.dp)
                                     .onGloballyPositioned { coords ->
-                                        val parent = coords.parentCoordinates
-                                        if (parent != null) {
-                                            val pos = coords.positionInParent()
-                                            val size = coords.size
-                                            sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
-                                        }
+                                        val pos = coords.positionInRoot()
+                                        val size = coords.size
+                                        sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
                                     }
                             ) {
                                 M3SegmentedListSectionHeader(title = section)
@@ -733,7 +743,10 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                 isPinned = isPinned,
                                 isBeingDragged = isBeingDragged,
                                 dragScale = dragScale,
-                                dragOffset = dragOffset,
+                                dragTranslation = {
+                                    val bounds = itemBounds[itemKey]
+                                    if (bounds != null) dragPointer - bounds.center else Offset.Zero
+                                },
                                 isMenuExpanded = menuExpandedKey == itemKey,
                                 onMenuDismiss = { menuExpandedKey = null },
                                 onCardClick = { onCardClicked(item) },
@@ -757,14 +770,24 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                     menuExpandedKey = null
                                 },
                                 modifier = Modifier
-                                    .animateItem()
-                                    .onGloballyPositioned { coords ->
-                                        val parent = coords.parentCoordinates
-                                        if (parent != null && !isBeingDragged) {
-                                            val pos = coords.positionInParent()
-                                            val size = coords.size
-                                            itemCenters[itemKey] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
+                                    .animateItem(placementSpec = if (isBeingDragged) snap() else spring(stiffness = Spring.StiffnessMediumLow))
+                                    .zIndex(if (isBeingDragged) 100f else 0f)
+                                    .graphicsLayer {
+                                        if (isBeingDragged) {
+                                            val bounds = itemBounds[itemKey]
+                                            if (bounds != null) {
+                                                translationX = dragPointer.x - bounds.center.x
+                                                translationY = dragPointer.y - bounds.center.y
+                                            }
+                                            scaleX = dragScale
+                                            scaleY = dragScale
+                                            shadowElevation = 14.dp.toPx()
                                         }
+                                    }
+                                    .onGloballyPositioned { coords ->
+                                        val pos = coords.positionInRoot()
+                                        val size = coords.size
+                                        itemBounds[itemKey] = Rect(pos, Size(size.width.toFloat(), size.height.toFloat()))
                                     }
                                     .then(
                                         if (item.isPlugin) {
@@ -774,18 +797,18 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         vibrate(context)
                                                         draggingItem = item
-                                                        dragOffset = Offset.Zero
-                                                        startItemCenter = itemCenters[itemKey] ?: Offset.Zero
+                                                        dragPointer = itemBounds[itemKey]?.center ?: Offset.Zero
                                                     },
-                                                    onDrag = { change, dragAmount ->
+                                                    onDrag = { change, _ ->
                                                         change.consume()
-                                                        handleDragMovement(dragAmount)
+                                                        val bounds = itemBounds[itemKey]
+                                                        if (bounds != null) {
+                                                            dragPointer = bounds.topLeft + change.position
+                                                        }
+                                                        handleDragMovement()
                                                     },
                                                     onDragEnd = { finishDrag() },
-                                                    onDragCancel = {
-                                                        draggingItem = null
-                                                        dragOffset = Offset.Zero
-                                                    }
+                                                    onDragCancel = { draggingItem = null }
                                                 )
                                             }
                                         } else Modifier
@@ -809,12 +832,9 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                 modifier = Modifier
                                     .padding(top = 16.dp, bottom = 4.dp)
                                     .onGloballyPositioned { coords ->
-                                        val parent = coords.parentCoordinates
-                                        if (parent != null) {
-                                            val pos = coords.positionInParent()
-                                            val size = coords.size
-                                            sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
-                                        }
+                                        val pos = coords.positionInRoot()
+                                        val size = coords.size
+                                        sectionHeaderCenters[section] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
                                     }
                             ) {
                                 M3SegmentedListSectionHeader(title = section)
@@ -865,20 +885,20 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                         }
                                     },
                                     modifier = Modifier
-                                        .animateItem()
+                                        .animateItem(placementSpec = if (isBeingDragged) snap() else spring(stiffness = Spring.StiffnessMediumLow))
                                         .onGloballyPositioned { coords ->
-                                            val parent = coords.parentCoordinates
-                                            if (parent != null && !isBeingDragged) {
-                                                val pos = coords.positionInParent()
-                                                val size = coords.size
-                                                itemCenters[itemKey] = Offset(pos.x + size.width / 2f, pos.y + size.height / 2f)
-                                            }
+                                            val pos = coords.positionInRoot()
+                                            val size = coords.size
+                                            itemBounds[itemKey] = Rect(pos, Size(size.width.toFloat(), size.height.toFloat()))
                                         }
                                         .zIndex(if (isBeingDragged) 100f else 0f)
                                         .graphicsLayer {
                                             if (isBeingDragged) {
-                                                translationX = dragOffset.x
-                                                translationY = dragOffset.y
+                                                val bounds = itemBounds[itemKey]
+                                                if (bounds != null) {
+                                                translationX = dragPointer.x - bounds.center.x
+                                                translationY = dragPointer.y - bounds.center.y
+                                                }
                                                 scaleX = dragScale
                                                 scaleY = dragScale
                                                 shadowElevation = 14.dp.toPx()
@@ -892,18 +912,18 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             vibrate(context)
                                                             draggingItem = item
-                                                            dragOffset = Offset.Zero
-                                                            startItemCenter = itemCenters[itemKey] ?: Offset.Zero
+                                                            dragPointer = itemBounds[itemKey]?.center ?: Offset.Zero
                                                         },
-                                                        onDrag = { change, dragAmount ->
+                                                        onDrag = { change, _ ->
                                                             change.consume()
-                                                            handleDragMovement(dragAmount)
+                                                            val bounds = itemBounds[itemKey]
+                                                            if (bounds != null) {
+                                                                dragPointer = bounds.topLeft + change.position
+                                                            }
+                                                            handleDragMovement()
                                                         },
                                                         onDragEnd = { finishDrag() },
-                                                        onDragCancel = {
-                                                            draggingItem = null
-                                                            dragOffset = Offset.Zero
-                                                        }
+                                                        onDragCancel = { draggingItem = null }
                                                     )
                                                 }
                                             } else {
@@ -1037,7 +1057,7 @@ fun OtherScreen(navController: NavController, spamViewModel: SpamViewModel) {
                         )
                     }
                     Text(
-                        text = info.description.ifEmpty { "Описание отсутствует" },
+                        text = info.description.ifEmpty { "No description available" },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -1061,7 +1081,7 @@ private fun RenderTileCard(
     isPinned: Boolean,
     isBeingDragged: Boolean = false,
     dragScale: Float = 1f,
-    dragOffset: Offset = Offset.Zero,
+    dragTranslation: () -> Offset = { Offset.Zero },
     isMenuExpanded: Boolean,
     onMenuDismiss: () -> Unit,
     onCardClick: () -> Unit,
@@ -1070,6 +1090,23 @@ private fun RenderTileCard(
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var pressed by remember { mutableStateOf(false) }
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed && !isBeingDragged) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "tilePressScale"
+    )
+    val morphRadius by animateDpAsState(
+        targetValue = if (pressed && !isBeingDragged) 36.dp else 24.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "tileMorphRadius"
+    )
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -1077,25 +1114,35 @@ private fun RenderTileCard(
             .zIndex(if (isBeingDragged) 100f else 0f)
             .graphicsLayer {
                 if (isBeingDragged) {
-                    translationX = dragOffset.x
-                    translationY = dragOffset.y
+                    val translation = dragTranslation()
+                    translationX = translation.x
+                    translationY = translation.y
                     scaleX = dragScale
                     scaleY = dragScale
                     shadowElevation = 16.dp.toPx()
+                } else {
+                scaleX = pressScale
+                scaleY = pressScale
                 }
             }
             .then(
                 if (isBeingDragged) {
-                    Modifier.border(2.dp, accent, RoundedCornerShape(20.dp))
+                    Modifier.border(2.dp, accent, RoundedCornerShape(24.dp))
                 } else Modifier
             )
             .pointerInput(item.route) {
                 detectTapGestures(
+                    onPress = {
+                        pressed = true
+                        val released = tryAwaitRelease()
+                        pressed = false
+                        if (!released) { /* cancelled */ }
+                    },
                     onTap = { onCardClick() },
                     onLongPress = { onCardLongPress() }
                 )
             },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(morphRadius),
         colors = CardDefaults.cardColors(
             containerColor = if (isBeingDragged) {
                 MaterialTheme.colorScheme.surfaceContainerHighest
@@ -1123,8 +1170,8 @@ private fun RenderTileCard(
                     val containerSize = (tileSize * 0.26f).coerceIn(36f, 44f).dp
                     val iconSize = (tileSize * 0.15f).coerceIn(20f, 25f).dp
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = accent.copy(alpha = 0.14f),
+                        shape = CircleShape,
+                        color = accent.copy(alpha = 0.16f),
                         modifier = Modifier.size(containerSize)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -1163,41 +1210,53 @@ private fun RenderTileCard(
                     }
                 }
 
-                Column(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    val shortDesc = remember(item.description) {
-                        val words = item.description.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
-                        if (words.size <= 3) {
-                            item.description.trim().trimEnd(',', '.', ';', ':', '-')
-                        } else {
-                            words.take(3).joinToString(" ").trimEnd(',', '.', ';', ':', '-')
-                        }
-                    }
-                    if (shortDesc.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Text(
-                            text = shortDesc,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Normal
+                            text = item.title,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
                             ),
-                            color = Color.White.copy(alpha = 0.62f),
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+
+                        val shortDesc = remember(item.description) {
+                            val words = item.description.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+                            if (words.size <= 3) {
+                                item.description.trim().trimEnd(',', '.', ';', ':', '-')
+                            } else {
+                                words.take(3).joinToString(" ").trimEnd(',', '.', ';', ':', '-')
+                            }
+                        }
+                        if (shortDesc.isNotEmpty()) {
+                            Text(
+                                text = shortDesc,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
 

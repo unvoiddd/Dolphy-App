@@ -117,11 +117,7 @@ object UsbIrManager {
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
             addAction(ACTION_USB_PERMISSION)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            app.registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            app.registerReceiver(usbReceiver, filter)
-        }
+        androidx.core.content.ContextCompat.registerReceiver(app, usbReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
 
         isInitialized = true
         scanDevices()
@@ -177,6 +173,11 @@ object UsbIrManager {
     private fun openDevice(device: UsbDevice) {
         val manager = usbManager ?: return
         val profile = SUPPORTED_DONGLES[device.vendorId to device.productId] ?: return
+
+        if (_isConnected.value && activeConnection != null) {
+            if (activeDevice?.deviceName == device.deviceName) return
+            releaseUsb()
+        }
 
         var chosenInterface: UsbInterface? = null
         var chosenOut: UsbEndpoint? = null
@@ -278,26 +279,17 @@ object UsbIrManager {
         val conn = activeConnection ?: return false
         val outEp = outEndpoint ?: return false
 
-        val frames = if (profile.encoderType == "elksmart_bulk") {
-            elkSmartEncoder.encode(frequency, pattern)
-        } else {
-            legacyEncoder.encode(frequency, pattern)
-        } ?: return false
+        val inEp = inEndpoint
 
         try {
-            for (frame in frames) {
-                val sent = conn.bulkTransfer(outEp, frame, frame.size, 400)
-                if (sent <= 0) return false
-            }
-            val delayMs = if (profile.encoderType == "elksmart_bulk") {
-                elkSmartEncoder.postTransmitDelayMs(pattern)
+            if (sendOnce(profile, conn, inEp, outEp, frequency, pattern)) return true
+            Log.w(TAG, "USB IR transmit failed, re-handshaking and retrying")
+            val handshakeOk = if (inEp == null) false else if (profile.encoderType == "elksmart_bulk") {
+                elkSmartEncoder.openHandshake(conn, inEp, outEp)
             } else {
-                legacyEncoder.postTransmitDelayMs(pattern)
+                legacyEncoder.openHandshake(conn, inEp, outEp)
             }
-            if (delayMs > 0) {
-                Thread.sleep(delayMs.toLong())
-            }
-            return true
+            return handshakeOk && sendOnce(profile, conn, inEp, outEp, frequency, pattern)
         } catch (e: Exception) {
             Log.e(TAG, "Error transmitting over USB", e)
             releaseUsb()
@@ -305,7 +297,35 @@ object UsbIrManager {
         }
     }
 
+    private fun sendOnce(
+        profile: DongleProfile,
+        conn: UsbDeviceConnection,
+        inEp: UsbEndpoint?,
+        outEp: UsbEndpoint,
+        frequency: Int,
+        pattern: IntArray
+    ): Boolean {
+        if (profile.encoderType == "elksmart_bulk") {
+            drain(conn, inEp, 30)
+            val frames = elkSmartEncoder.encode(frequency, pattern) ?: return false
+            for (frame in frames) {
+                if (conn.bulkTransfer(outEp, frame, frame.size, 400) <= 0) return false
+            }
+            Thread.sleep(elkSmartEncoder.postTransmitDelayMs(pattern).toLong())
+            drain(conn, inEp, 30)
+            return true
+        }
+        return legacyEncoder.transmit(conn, inEp, outEp, frequency, pattern)
+    }
+
     private class LegacyBulkStEncoder {
+        private companion object {
+            const val CMD_SEND_MODE: Byte = 0x53
+
+            const val CMD_DATA: Byte = 0x44
+
+        }
+
         private var e = 1
         private var f = 0
 
@@ -321,12 +341,66 @@ object UsbIrManager {
 
         fun openHandshake(conn: UsbDeviceConnection, inEp: UsbEndpoint, outEp: UsbEndpoint): Boolean {
             drain(conn, inEp, 80)
+            val sent = sendCommand(conn, inEp, outEp, CMD_SEND_MODE, 250)
+            drain(conn, inEp, 50)
+            return sent
+        }
+
+        fun transmit(
+            conn: UsbDeviceConnection,
+            inEp: UsbEndpoint?,
+            outEp: UsbEndpoint,
+            freqHz: Int,
+            pattern: IntArray
+        ): Boolean {
+            drain(conn, inEp, 30)
+            if (!sendCommand(conn, inEp, outEp, CMD_SEND_MODE, 250)) return false
+
+            val cmdId = nextF()
+            val frames = encode(freqHz, pattern, cmdId) ?: return false
+            for (frame in frames) {
+                if (conn.bulkTransfer(outEp, frame, frame.size, 400) <= 0) return false
+            }
+
+            val waitMs = postTransmitDelayMs(pattern) + 400
+            if (inEp == null || !waitReply(conn, inEp, cmdId, CMD_DATA, waitMs)) {
+                Thread.sleep(postTransmitDelayMs(pattern).toLong())
+            }
+            drain(conn, inEp, 20)
+            return true
+        }
+
+        private fun sendCommand(
+            conn: UsbDeviceConnection,
+            inEp: UsbEndpoint?,
+            outEp: UsbEndpoint,
+            cmd: Byte,
+            replyTimeoutMs: Int
+        ): Boolean {
+            val cmdId = nextF()
             val frame = byteArrayOf(
-                0x02, 0x09, nextE().toByte(), 0x01, 0x01, 0x53, 0x54, nextF().toByte(), 0x53, 0x45, 0x4E
+                0x02, 0x09, nextE().toByte(), 0x01, 0x01, 0x53, 0x54, cmdId.toByte(), cmd, 0x45, 0x4E
             )
-            val sent = conn.bulkTransfer(outEp, frame, frame.size, 250)
-            drain(conn, inEp, 250)
-            return sent > 0
+            if (conn.bulkTransfer(outEp, frame, frame.size, 250) <= 0) return false
+            if (inEp != null) waitReply(conn, inEp, cmdId, cmd, replyTimeoutMs)
+            return true
+        }
+
+        private fun waitReply(conn: UsbDeviceConnection, inEp: UsbEndpoint, cmdId: Int, cmd: Byte, timeoutMs: Int): Boolean {
+            val size = maxOf(64, inEp.maxPacketSize)
+            val buf = ByteArray(size)
+            val deadline = System.currentTimeMillis() + timeoutMs
+            while (true) {
+                val left = (deadline - System.currentTimeMillis()).toInt()
+                if (left <= 0) return false
+                val n = conn.bulkTransfer(inEp, buf, size, minOf(left, 100))
+                if (n <= 0) continue
+                for (i in 0..n - 4) {
+                    if (buf[i] == 0x53.toByte() && buf[i + 1] == 0x54.toByte() &&
+                        (buf[i + 2].toInt() and 0xFF) == cmdId && buf[i + 3] == cmd
+                    ) return true
+                }
+            }
         }
 
         fun postTransmitDelayMs(pattern: IntArray): Int {
@@ -335,7 +409,7 @@ object UsbIrManager {
             return maxOf(25, (totalUs / 1000) + 2)
         }
 
-        fun encode(freqHz: Int, pattern: IntArray): List<ByteArray>? {
+        fun encode(freqHz: Int, pattern: IntArray, cmdId: Int): List<ByteArray>? {
             if (pattern.isEmpty()) return null
             val normalized = pattern.map { maxOf(1, it) }.toMutableList()
             if (normalized.size % 2 == 0) {
@@ -343,7 +417,7 @@ object UsbIrManager {
                 normalized[normalized.size - 1] = if (tail > 3000) tail - 3000 else 10
             }
 
-            val payload = mutableListOf<Byte>(0x53, 0x54, nextF().toByte(), 0x44, 0x00)
+            val payload = mutableListOf<Byte>(0x53, 0x54, cmdId.toByte(), CMD_DATA, 0x00)
             for (i in normalized.indices) {
                 var units = normalized[i] / 16
                 if (units <= 0) units = 1

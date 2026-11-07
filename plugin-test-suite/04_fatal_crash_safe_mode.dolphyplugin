@@ -1,0 +1,47 @@
+from java import dynamic_proxy
+from java.lang import Runnable, RuntimeException
+from android.os import Handler, Looper
+
+__id__ = "test_fatal_crash"
+__name__ = "Test 4 — Fatal Crash"
+__version__ = "1.0.0"
+__author__ = "Dolphy Test Suite"
+__description__ = "Deliberately closes Dolphy to verify crash logging and Safe Mode recovery"
+__icon__ = "rounded:emergency"
+__permissions__ = ["hooks"]
+
+
+class FatalCrashTask(dynamic_proxy(Runnable)):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        raise RuntimeException("Intentional fatal crash from Dolphy test plugin")
+
+
+class FatalCrashPlugin(BasePlugin):
+    def on_plugin_load(self):
+        self.add_module(
+            "Fatal crash test",
+            "Tests crash recovery and Safe Mode",
+            "emergency",
+            "main",
+            "PLUGINS",
+            4,
+        )
+
+    def crash_app(self):
+        Handler(Looper.getMainLooper()).post(FatalCrashTask())
+
+    def screen_main(self, ui, api, state):
+        return ui.scaffold(
+            title="Fatal crash test",
+            content=ui.column([
+                ui.card([
+                    ui.icon("warning", 48),
+                    ui.text("This test intentionally closes Dolphy", "titleLarge"),
+                    ui.text("After restarting, Safe Mode must disable every plugin and show the crash recovery sheet.", "bodyLarge"),
+                ]),
+                ui.button("Crash Dolphy", self.crash_app, fill_max_width=True),
+            ], padding=16, spacing=12, fill_max_size=True),
+        )

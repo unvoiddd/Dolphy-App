@@ -251,9 +251,11 @@ object BleSpamRuntime {
             .setContentTitle("BLE Spam")
             .setContentText(text)
             .setOngoing(true)
-            .addAction(0, "Остановить", stopPending)
+            .addAction(0, "Stop", stopPending)
             .build()
 
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
     }
 
@@ -266,4 +268,3 @@ object BleSpamRuntime {
         stopAllBleSpam()
     }
 }
-

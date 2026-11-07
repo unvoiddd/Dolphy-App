@@ -186,7 +186,7 @@ private fun ExpressiveSlider(
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null
 ) {
-    BoxWithConstraints(modifier = modifier) {
+    Box(modifier = modifier) {
         val colorScheme = MaterialTheme.colorScheme
         val phase = rememberInfiniteTransition(label = "wave").animateFloat(
             initialValue = 0f,
@@ -215,7 +215,7 @@ private fun ExpressiveSlider(
             val step = 6f
             var x = 0f
             while (x <= w) {
-            val y = h + (sin((x / w) * 2f * PI.toFloat() + phase.value).toFloat() * ampPx)
+                val y = h + (sin((x / w) * 2f * PI.toFloat() + phase.value).toFloat() * ampPx)
                 if (x == 0f) pathInactive.moveTo(x, y) else pathInactive.lineTo(x, y)
                 if (x <= activeW) {
                     if (x == 0f) pathActive.moveTo(x, y) else pathActive.lineTo(x, y)
@@ -304,4 +304,3 @@ fun ExpressiveCircularProgressIndicator(
         strokeWidth = strokeWidth
     )
 }
-

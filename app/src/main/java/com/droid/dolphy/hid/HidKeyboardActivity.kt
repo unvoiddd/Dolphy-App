@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -68,7 +69,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,6 +89,7 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.CompositionLocalProvider
 import com.droid.dolphy.AppLocale
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.DolphyCircularProgressIndicator
 import com.droid.dolphy.DolphyTheme
 import com.droid.dolphy.LocalExpressiveEnabled
@@ -98,7 +99,6 @@ import com.droid.dolphy.LocalLiquidGlassEnabled
 import com.droid.dolphy.LocalLiquidGlassNav
 import com.droid.dolphy.LocalLiquidGlassTopBars
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import com.kyant.backdrop.backdrops.emptyBackdrop
@@ -274,16 +274,11 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
             addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
         })
-        bindKeyboardService()
 
-        if (!adapter.isEnabled) {
-            val launcher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
-            launcher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-        }
 
         val permLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
             if (grants.values.all { it }) {
-                keyboardService?.initialize(); loadPairedDevices(adapter); startDiscovery(adapter)
+                bindKeyboardService(); if (adapter.isEnabled) { loadPairedDevices(adapter); startDiscovery(adapter) }
             }
         }
 
@@ -294,7 +289,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
         }
         val missing = required.filter { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isNotEmpty()) permLauncher.launch(missing.toTypedArray()) else {
-            keyboardService?.initialize(); loadPairedDevices(adapter); startDiscovery(adapter)
+            bindKeyboardService(); if (adapter.isEnabled) { loadPairedDevices(adapter); startDiscovery(adapter) }
         }
 
         val accentColor = Color(settingsPrefs.getInt("accent_color", 0xFFFF9800.toInt()))
@@ -369,23 +364,23 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                                     PcHidWorkspaceScreen(activeConn, capsLockState.value, onBack = { disconnectAndExitToOther() })
                                 }
                             } else {
-                                Scaffold(
-                                    topBar = {
-                                        SectionTopBar(
-                                            title = stringResource(if (controlScreenMode.value == ControlScreenMode.BadHid) R.string.hid_bad_hid_mode else R.string.hid_title),
-                                            onBack = {
-                                                if (controlScreenMode.value == ControlScreenMode.BadHid) {
-                                                    controlScreenMode.value = ControlScreenMode.Mobile
-                                                } else {
-                                                    disconnectAndExitToOther()
-                                                }
-                                            },
-                                            transparent = true
-                                        )
+                                BlurHeaderBox(
+                                    title = stringResource(if (controlScreenMode.value == ControlScreenMode.BadHid) R.string.hid_bad_hid_mode else R.string.hid_title),
+                                    onBack = {
+                                        if (controlScreenMode.value == ControlScreenMode.BadHid) {
+                                            controlScreenMode.value = ControlScreenMode.Mobile
+                                        } else {
+                                            disconnectAndExitToOther()
+                                        }
                                     },
-                                    modifier = Modifier.fillMaxSize()
-                                ) { pv ->
-                                    Box(Modifier.fillMaxSize().padding(pv)) {
+                                    accentColor = accentColor,
+                                ) { headerPadding ->
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .navigationBarsPadding()
+                                            .padding(top = headerPadding)
+                                    ) {
                                         HidMainScreen(
                                             activeConn,
                                             capsLockState.value,
@@ -399,18 +394,17 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                                 }
                             }
                         } else {
-                            Scaffold(
-                                topBar = {
-                                    SectionTopBar(
-                                        title = stringResource(R.string.hid_title),
-                                            onBack = { disconnectAndExitToOther() },
-                                        transparent = true
-                                    )
-                                },
-                                modifier = Modifier.fillMaxSize()
-                            ) { pv ->
+                            BlurHeaderBox(
+                                title = stringResource(R.string.hid_title),
+                                onBack = { disconnectAndExitToOther() },
+                                accentColor = accentColor,
+                            ) { headerPadding ->
                                 Column(
-                                    modifier = Modifier.fillMaxSize().padding(pv).padding(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .navigationBarsPadding()
+                                        .padding(top = headerPadding)
+                                        .padding(16.dp),
                                     verticalArrangement = Arrangement.Center,
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
@@ -424,24 +418,23 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
                         return@Surface
                     }
 
-                    Scaffold(
-                        topBar = {
-                            SectionTopBar(
-                                title = stringResource(R.string.hid_title),
-                                onBack = { finish() },
-                                transparent = true,
-                                actions = {
-                                    DolphyIconButton(onClick = { startDiscovery(adapter) }) {
-                                        if (scanning) DolphyCircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                        else Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.hid_scan))
-                                    }
-                                }
-                            )
+                    BlurHeaderBox(
+                        title = stringResource(R.string.hid_title),
+                        onBack = { finish() },
+                        accentColor = accentColor,
+                        actions = {
+                            DolphyIconButton(onClick = { startDiscovery(adapter) }) {
+                                if (scanning) DolphyCircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                else Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.hid_scan))
+                            }
                         },
-                        modifier = Modifier.fillMaxSize()
-                    ) { pv ->
+                    ) { headerPadding ->
                         Column(
-                            modifier = Modifier.fillMaxSize().padding(pv).padding(16.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .navigationBarsPadding()
+                                .padding(top = headerPadding)
+                                .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             val (statusText, statusColor) = when (status) {
@@ -885,7 +878,7 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
     }
 
     private fun disconnectAndExitToOther() {
-        runCatching { keyboardService?.disconnect() }
+        try { keyboardService?.disconnect() } catch (_: SecurityException) { }
         runCatching { keyboardService?.clearPendingDeviceAddress() }
         hidStatus.value = HidStatus.Disconnected
         hidConnectionState.value = null
@@ -1024,8 +1017,8 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
 
     private fun detectDeviceKind(device: BluetoothDevice, nameHint: String): BtDeviceKind {
         val name = nameHint.lowercase()
-        val devClass = device.bluetoothClass?.deviceClass
-        val major = device.bluetoothClass?.majorDeviceClass
+        val devClass = try { device.bluetoothClass?.deviceClass } catch (_: SecurityException) { null }
+        val major = try { device.bluetoothClass?.majorDeviceClass } catch (_: SecurityException) { null }
         if (major == BluetoothClass.Device.Major.COMPUTER) return BtDeviceKind.Computer
         if ("iphone" in name) return BtDeviceKind.IPhone
         if (
@@ -1078,4 +1071,3 @@ class HidKeyboardActivity : ComponentActivity(), KeyboardService.Listener {
         BtDeviceKind.Other -> if (isSearching) Icons.Default.BluetoothSearching else Icons.Default.DevicesOther
     }
 }
-

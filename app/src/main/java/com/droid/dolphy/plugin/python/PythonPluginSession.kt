@@ -103,7 +103,7 @@ class PythonPluginSession(
 
     override fun renderScreen(screenId: String): UiNode {
         return synchronized(this) {
-            val session = pythonSession ?: return@synchronized errorNode(lastError ?: "Плагин не запущен")
+            val session = pythonSession ?: return@synchronized errorNode(lastError ?: "Plugin is not running")
             try {
                 val stateJson = JSONObject(state as Map<*, *>).toString()
                 val raw = session.callAttr("render", screenId, stateJson).toString()
@@ -111,7 +111,7 @@ class PythonPluginSession(
             } catch (t: Throwable) {
                 lastError = t.message ?: t.javaClass.simpleName
                 Log.e(TAG, "Python plugin ${manifest.id} render failed", t)
-                errorNode(lastError ?: "Ошибка Python")
+                errorNode(lastError ?: "Python error")
             }
         }
     }
@@ -188,7 +188,7 @@ class PythonPluginSession(
 
     private fun errorNode(message: String): UiNode = UiNode.Column(
         children = listOf(
-            UiNode.Text("Ошибка плагина", "headlineSmall"),
+            UiNode.Text("Plugin error", "headlineSmall"),
             UiNode.Spacer(8f),
             UiNode.Text(message, "bodyMedium"),
         ),

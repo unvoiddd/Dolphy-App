@@ -28,8 +28,8 @@ fun NavigationCustomizationSections(viewModel: SpamViewModel) {
         M3SegmentedListItem(
             index = 0,
             count = count,
-            headline = "Кнопка FAB",
-            supporting = if (fabEnabled) "Отображается на панели" else "Скрыта, панель по центру",
+            headline = "FAB button",
+            supporting = if (fabEnabled) "Shown on the bar" else "Hidden, bar is centered",
             leadingIcon = Icons.Default.RadioButtonChecked,
             showChevron = false,
             trailingContent = {
@@ -44,7 +44,7 @@ fun NavigationCustomizationSections(viewModel: SpamViewModel) {
             M3SegmentedListItem(
                 index = 1,
                 count = count,
-                headline = "Действие FAB",
+                headline = "FAB action",
                 supporting = selectedFab?.title ?: stringResource(R.string.nav_modules),
                 leadingIcon = selectedFab?.icon ?: Icons.Default.Extension,
                 onClick = { showFabSheet = true },

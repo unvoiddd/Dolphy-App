@@ -1,0 +1,11 @@
+__id__ = "test_install_failure"
+__name__ = "Test 2 — Install Failure"
+__version__ = "1.0.0"
+__author__ = "Dolphy Test Suite"
+__description__ = "Raises during startup to verify failed installation and disabled state"
+__icon__ = "rounded:report"
+
+
+class InstallFailurePlugin(BasePlugin):
+    def on_plugin_load(self):
+        raise RuntimeError("Intentional startup failure from Dolphy test plugin")

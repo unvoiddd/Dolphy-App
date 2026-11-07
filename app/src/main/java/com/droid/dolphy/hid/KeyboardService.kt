@@ -30,17 +30,7 @@ import com.droid.dolphy.R
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
-
-
-
-
-
-
-
-
-
-
-
+@android.annotation.SuppressLint("MissingPermission")
 class KeyboardService : Service() {
 
     companion object {
@@ -52,7 +42,7 @@ class KeyboardService : Service() {
             } else null
         }
 
-        
+
         private const val TRANSPORT_BREDR = 1
         private const val SILENT_RETRY_MS = 1200L
         private const val SILENT_RETRY_MAX = 12
@@ -76,7 +66,7 @@ class KeyboardService : Service() {
 
     private var pendingDeviceAddress: String? = null
 
-    
+
     @Volatile
     private var silentBlueDuckyMode = false
     private val silentPairingReceiverRegistered = AtomicBoolean(false)
@@ -99,7 +89,7 @@ class KeyboardService : Service() {
         }
     }
 
-    
+
     private val silentPairingReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (!silentBlueDuckyMode) return
@@ -181,8 +171,6 @@ class KeyboardService : Service() {
     private var currentDevice: BluetoothDevice? = null
     private var currentState: Int = BluetoothProfile.STATE_DISCONNECTED
 
-
-
     private val profileServiceListener = object : BluetoothProfile.ServiceListener {
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
@@ -200,8 +188,6 @@ class KeyboardService : Service() {
             appRegistered = false
         }
     }
-
-
 
     private val hidCallback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         object : BluetoothHidDevice.Callback() {
@@ -280,8 +266,6 @@ class KeyboardService : Service() {
         }
     } else null
 
-
-
     interface Listener {
         fun onConnection(connection: Connection) {}
         fun onCapsLock(enabled: Boolean) {}
@@ -290,8 +274,6 @@ class KeyboardService : Service() {
 
     private var listener: Listener? = null
     fun setListener(l: Listener?) { listener = l }
-
-
 
     override fun onCreate() {
         super.onCreate()
@@ -314,18 +296,10 @@ class KeyboardService : Service() {
         return START_STICKY
     }
 
-
-
-
     fun initialize() {
         if (appRegistered) return
         requestHidProxy()
     }
-
-
-
-
-
 
     fun setTargetDeviceAddress(address: String) {
         setSilentBlueDuckyMode(false)
@@ -337,10 +311,6 @@ class KeyboardService : Service() {
         }
     }
 
-
-
-
-
     fun connectDirect(address: String) {
         setSilentBlueDuckyMode(false)
         pendingDeviceAddress = address
@@ -351,7 +321,7 @@ class KeyboardService : Service() {
         }
     }
 
-    
+
     fun connectSilentBlueDucky(address: String) {
         Log.i(tag, "connectSilentBlueDucky → $address")
         pendingDeviceAddress = address
@@ -405,12 +375,6 @@ class KeyboardService : Service() {
         }
     }
 
-
-
-
-
-
-
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun initiateConnect() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
@@ -455,7 +419,7 @@ class KeyboardService : Service() {
         forceProxyConnect(device)
     }
 
-    
+
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun initiateSilentBlueDuckyConnect(device: BluetoothDevice, proxy: BluetoothHidDevice) {
         val bondState = runCatching { device.bondState }.getOrDefault(BluetoothDevice.BOND_NONE)
@@ -506,7 +470,7 @@ class KeyboardService : Service() {
         }
     }
 
-    
+
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun createBondSilent(device: BluetoothDevice): Boolean {
         val viaTransport = runCatching {
@@ -674,8 +638,8 @@ class KeyboardService : Service() {
             }
             startForeground(1, notification)
         } catch (t: Throwable) {
-            Log.w(tag, "startForeground failed: ${t.message}")
+            Log.e(tag, "Cannot start HID foreground service", t)
+            stopSelf()
         }
     }
 }
-

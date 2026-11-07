@@ -62,13 +62,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.M3SegmentedListItem
 import com.droid.dolphy.M3SegmentedListItemSpacing
-import com.droid.dolphy.MaterialBackground
 import com.droid.dolphy.MaterialButton
 import com.droid.dolphy.MaterialCard
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 import com.droid.dolphy.m3SegmentedItems
 import kotlinx.coroutines.launch
 
@@ -108,39 +107,36 @@ fun LanToolsScreen(navController: NavController) {
             "other/wifi_print",
         ),
     )
-    MaterialBackground(accentColor = accent) {
-        Column(Modifier.fillMaxSize()) {
-            SectionTopBar(
-                title = stringResource(R.string.lan_tools_title),
-                onBack = { navController.popBackStack() },
-                accentColor = accent,
-            )
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
-            ) {
-                item {
-                    Text(
-                        text = stringResource(R.string.lan_tools_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
-                    )
-                }
-                m3SegmentedItems(tools) { index, count, tool ->
-                    M3SegmentedListItem(
-                        index = index,
-                        count = count,
-                        headline = tool.title,
-                        supporting = tool.description,
-                        leadingIcon = tool.icon,
-                        leadingIconTint = accent,
-                        onClick = { navController.navigate(tool.route) },
-                    )
-                }
+    BlurHeaderBox(
+        title = stringResource(R.string.lan_tools_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = headerPadding + 12.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.lan_tools_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+                )
+            }
+            m3SegmentedItems(tools) { index, count, tool ->
+                M3SegmentedListItem(
+                    index = index,
+                    count = count,
+                    headline = tool.title,
+                    supporting = tool.description,
+                    leadingIcon = tool.icon,
+                    leadingIconTint = accent,
+                    onClick = { navController.navigate(tool.route) },
+                )
             }
         }
     }
@@ -258,14 +254,16 @@ fun CameraNetworkScanScreen(navController: NavController) {
         }
     }
 
-    MaterialBackground(accentColor = accent) {
-        Column(Modifier.fillMaxSize()) {
-            SectionTopBar(
-                title = stringResource(R.string.lan_camera_title),
-                onBack = { navController.popBackStack() },
-                accentColor = accent,
-            )
-
+    BlurHeaderBox(
+        title = stringResource(R.string.lan_camera_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(top = headerPadding)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -394,19 +392,17 @@ fun CameraNetworkResultsScreen(navController: NavController) {
         )
     }
 
-    MaterialBackground(accentColor = accent) {
+    BlurHeaderBox(
+        title = stringResource(R.string.lan_camera_results_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
         Column(Modifier.fillMaxSize()) {
-            SectionTopBar(
-                title = stringResource(R.string.lan_camera_results_title),
-                onBack = { navController.popBackStack() },
-                accentColor = accent,
-            )
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(top = headerPadding + 8.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

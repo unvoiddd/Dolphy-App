@@ -72,9 +72,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.droid.dolphy.MaterialBackground
+import com.droid.dolphy.BlurHeaderBox
 import com.droid.dolphy.R
-import com.droid.dolphy.SectionTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,16 +98,15 @@ fun WifiPrintScreen(
         viewModel.selectDocument(uri, name, mime)
     }
 
-    MaterialBackground(accentColor = accent) {
+    BlurHeaderBox(
+        title = stringResource(R.string.wifi_print_title),
+        onBack = { navController.popBackStack() },
+        accentColor = accent,
+    ) { headerPadding ->
         Column(Modifier.fillMaxSize()) {
-            SectionTopBar(
-                title = stringResource(R.string.wifi_print_title),
-                onBack = { navController.popBackStack() },
-                accentColor = accent,
-            )
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = headerPadding + 10.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {

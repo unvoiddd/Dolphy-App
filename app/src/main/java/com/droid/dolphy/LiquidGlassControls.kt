@@ -16,6 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.dp
@@ -55,10 +56,12 @@ fun DolphyIconButton(
             }
         }
     } else {
+        val (interaction, scale) = rememberPressShrink(pressedScale = 0.86f)
         IconButton(
             onClick = onClick,
-            modifier = modifier.size(36.dp),
+            modifier = modifier.size(36.dp).scale(scale),
             enabled = enabled,
+            interactionSource = interaction,
             content = content,
         )
     }
@@ -85,11 +88,15 @@ fun DolphyButton(
             content = content,
         )
     } else {
+        val (interaction, scale) = rememberPressShrink()
+        val (_, pressedShape) = rememberPressRoundedShape(cornerRadius = 40.dp, source = interaction)
         AccentButton(
             onClick = onClick,
-            modifier = modifier,
+            modifier = modifier.scale(scale),
             enabled = enabled,
+            shape = pressedShape,
             colors = colors,
+            interactionSource = interaction,
             content = content,
         )
     }
