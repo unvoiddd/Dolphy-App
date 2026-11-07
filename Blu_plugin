@@ -1,0 +1,6 @@
+def on_plugin_load(self):
+    self.hook_screen("other", "my_other", "replace", 100)
+    self.hook_screen("settings", "my_settings", "replace", 100)
+    self.hook_screen("bluetooth/all", "my_all", "replace", 100)
+    self.hook_screen("bluetooth/ble", "my_ble", "replace", 100)
+    self.hook_screen("bluetooth/advert", "my_advert", "replace", 100)
