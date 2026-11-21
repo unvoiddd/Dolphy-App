@@ -380,6 +380,7 @@
     <string name="ir_user_remotes">Ваши пульты</string>
     <string name="ir_user_remotes_title">Ваши пульты</string>
     <string name="language_russian">Русский</string>
+    <string name="language_persian">Персидский</string>
     <string name="mood_bad">Bad</string>
     <string name="mood_happy">Happy</string>
     <string name="mood_ok">Ok</string>

@@ -11,11 +11,18 @@ object AppLocale {
     fun wrap(context: Context): Context {
         val prefs = context.getSharedPreferences("DolphyPrefs", Context.MODE_PRIVATE)
         val language = prefs.getString("app_language", "ru") ?: "ru"
-        val locale = Locale.forLanguageTag(if (language == "en") "en" else "ru")
+        val locale = Locale.forLanguageTag(
+            when (language) {
+                "en" -> "en"
+                "fa" -> "fa"
+                else -> "ru"
+            }
+        )
         Locale.setDefault(locale)
 
         val config = Configuration(context.resources.configuration)
         config.setLocales(android.os.LocaleList(locale))
+        config.setLayoutDirection(locale)
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             context.createConfigurationContext(config)

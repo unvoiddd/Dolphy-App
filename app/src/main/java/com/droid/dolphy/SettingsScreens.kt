@@ -130,6 +130,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                                 listOf(
                                     stringResource(R.string.language_russian) to "ru",
                                     "English" to "en",
+                                    stringResource(R.string.language_persian) to "fa",
                                 ).forEachIndexed { index, (label, language) ->
                                     SegmentedButton(
                                         selected = appLanguage == language,
@@ -137,7 +138,7 @@ fun SettingsScreen(spamViewModel: SpamViewModel, dolphyViewModel: DolphyViewMode
                                             spamViewModel.setAppLanguage(language)
                                             applyInAppLocale(context)
                                         },
-                                        shape = SegmentedButtonDefaults.itemShape(index, 2),
+                                        shape = SegmentedButtonDefaults.itemShape(index, 3),
                                         label = { Text(label) },
                                     )
                                 }

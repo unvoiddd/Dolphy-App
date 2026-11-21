@@ -661,6 +661,7 @@
     <string name="advertise_empty_presets">You have not added any devices yet.</string>
     <string name="ble_company_code_line">Company code: 0x%1$04X • %2$s</string>
     <string name="language_russian">Russian</string>
+    <string name="language_persian">Persian</string>
     <string name="theme_selection_title">Theme</string>
     <string name="theme_mode_auto_desc">Match system</string>
     <string name="theme_mode_dark_desc">Dark theme</string>

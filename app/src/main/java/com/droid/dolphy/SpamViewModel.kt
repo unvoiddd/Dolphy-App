@@ -353,7 +353,11 @@ class SpamViewModel(private val application: Application) : AndroidViewModel(app
     }
 
     fun setAppLanguage(language: String) {
-        val normalized = if (language == "en") "en" else "ru"
+        val normalized = when (language) {
+            "en" -> "en"
+            "fa" -> "fa"
+            else -> "ru"
+        }
         prefs.edit { putString("app_language", normalized) }
         _appLanguage.value = normalized
     }
